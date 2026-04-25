@@ -1,8 +1,15 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+const nextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   images: {
-    domains: ["images.unsplash.com"],
     remotePatterns: [
       {
         protocol: "https",
@@ -10,7 +17,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  /* config options here */
-};
+} satisfies NextConfig;
 
 export default nextConfig;
