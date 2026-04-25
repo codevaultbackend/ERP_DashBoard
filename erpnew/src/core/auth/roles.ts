@@ -38,37 +38,57 @@ function cleanRole(role?: string | null) {
     .replace(/^_+|_+$/g, "");
 }
 
-export function normalizeRole(role?: string | null): string {
+export function normalizeRole(role?: string | null): RawRole | string {
   const value = cleanRole(role);
 
-  if (value === "superadmin") return RAW_ROLES.SUPER_ADMIN;
-  if (value === "super_admin") return RAW_ROLES.SUPER_ADMIN;
+  if (!value) return "";
 
-  if (value === "headofficemanager") return RAW_ROLES.HEAD_MANAGER;
-  if (value === "head_office_manager") return RAW_ROLES.HEAD_MANAGER;
-  if (value === "headmanager") return RAW_ROLES.HEAD_MANAGER;
-  if (value === "head_manager") return RAW_ROLES.HEAD_MANAGER;
-  if (value === "head_manager_admin") return RAW_ROLES.HEAD_MANAGER;
+  if (value === "superadmin" || value === "super_admin") {
+    return RAW_ROLES.SUPER_ADMIN;
+  }
 
-  if (value === "headofficetl") return RAW_ROLES.HEAD_TL;
-  if (value === "head_office_tl") return RAW_ROLES.HEAD_TL;
-  if (value === "headtl") return RAW_ROLES.HEAD_TL;
-  if (value === "head_tl") return RAW_ROLES.HEAD_TL;
+  if (
+    value === "headofficemanager" ||
+    value === "head_office_manager" ||
+    value === "headmanager" ||
+    value === "head_manager" ||
+    value === "head_manager_admin"
+  ) {
+    return RAW_ROLES.HEAD_OFFICE_MANAGER;
+  }
 
-  if (value === "statemanager") return RAW_ROLES.STATE_MANAGER;
-  if (value === "state_manager") return RAW_ROLES.STATE_MANAGER;
-  if (value === "statetl") return RAW_ROLES.STATE_TL;
-  if (value === "state_tl") return RAW_ROLES.STATE_TL;
+  if (
+    value === "headofficetl" ||
+    value === "head_office_tl" ||
+    value === "headtl" ||
+    value === "head_tl"
+  ) {
+    return RAW_ROLES.HEAD_OFFICE_TL;
+  }
 
-  if (value === "districtmanager") return RAW_ROLES.DISTRICT_MANAGER;
-  if (value === "district_manager") return RAW_ROLES.DISTRICT_MANAGER;
-  if (value === "districttl") return RAW_ROLES.DISTRICT_TL;
-  if (value === "district_tl") return RAW_ROLES.DISTRICT_TL;
+  if (value === "statemanager" || value === "state_manager") {
+    return RAW_ROLES.STATE_MANAGER;
+  }
 
-  if (value === "retailmanager") return RAW_ROLES.RETAIL_MANAGER;
-  if (value === "retail_manager") return RAW_ROLES.RETAIL_MANAGER;
-  if (value === "retailtl") return RAW_ROLES.RETAIL_TL;
-  if (value === "retail_tl") return RAW_ROLES.RETAIL_TL;
+  if (value === "statetl" || value === "state_tl") {
+    return RAW_ROLES.STATE_TL;
+  }
+
+  if (value === "districtmanager" || value === "district_manager") {
+    return RAW_ROLES.DISTRICT_MANAGER;
+  }
+
+  if (value === "districttl" || value === "district_tl") {
+    return RAW_ROLES.DISTRICT_TL;
+  }
+
+  if (value === "retailmanager" || value === "retail_manager") {
+    return RAW_ROLES.RETAIL_MANAGER;
+  }
+
+  if (value === "retailtl" || value === "retail_tl") {
+    return RAW_ROLES.RETAIL_TL;
+  }
 
   if (value === "manager") return RAW_ROLES.RETAIL_MANAGER;
   if (value === "tl") return RAW_ROLES.RETAIL_TL;
