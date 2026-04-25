@@ -1,16 +1,35 @@
 import { normalizeRole } from "./roles";
 
+const COOKIE_MAX_AGE = 60 * 60 * 24; // 1 day
+
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${encodeURIComponent(
+    value
+  )}; path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
+}
+
+function removeCookie(name: string) {
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+}
+
 export const saveAuthSession = (data: any) => {
+  if (typeof window === "undefined") return;
+
+  const user = data?.user || {};
+  const token = data?.token || data?.accessToken || data?.access_token || "";
+
   const normalizedRole = normalizeRole(
-    data?.user?.normalized_role || data?.user?.role
+    user?.normalized_role || user?.role || data?.role
   );
 
-  const token = data?.token || data?.accessToken || "";
+  const level = String(user?.organization_level || "")
+    .trim()
+    .toLowerCase();
 
   localStorage.setItem(
     "user",
     JSON.stringify({
-      ...data.user,
+      ...user,
       normalized_role: normalizedRole,
     })
   );
@@ -18,21 +37,15 @@ export const saveAuthSession = (data: any) => {
   localStorage.setItem("token", token);
   localStorage.setItem("role", normalizedRole);
   localStorage.setItem("normalized_role", normalizedRole);
-  localStorage.setItem(
-    "level",
-    String(data?.user?.organization_level || "").trim().toLowerCase()
-  );
+  localStorage.setItem("level", level);
 
   sessionStorage.setItem("token", token);
   sessionStorage.setItem("role", normalizedRole);
   sessionStorage.setItem("normalized_role", normalizedRole);
-  sessionStorage.setItem(
-    "level",
-    String(data?.user?.organization_level || "").trim().toLowerCase()
-  );
+  sessionStorage.setItem("level", level);
 
-  document.cookie = `token=${token}; path=/; SameSite=Lax`;
-  document.cookie = `role=${normalizedRole}; path=/; SameSite=Lax`;
+  setCookie("token", token);
+  setCookie("role", normalizedRole);
 };
 
 export const getUserRole = () => {
@@ -47,24 +60,28 @@ export const getUserRole = () => {
 };
 
 export const setUserSession = (user: any) => {
+  if (typeof window === "undefined") return;
+
   const normalizedRole = normalizeRole(user?.normalized_role || user?.role);
+
+  const level = String(user?.organization_level || "")
+    .trim()
+    .toLowerCase();
 
   localStorage.setItem("role", normalizedRole);
   localStorage.setItem("normalized_role", normalizedRole);
-  localStorage.setItem(
-    "level",
-    String(user?.organization_level || "").trim().toLowerCase()
-  );
+  localStorage.setItem("level", level);
 
   sessionStorage.setItem("role", normalizedRole);
   sessionStorage.setItem("normalized_role", normalizedRole);
-  sessionStorage.setItem(
-    "level",
-    String(user?.organization_level || "").trim().toLowerCase()
-  );
+  sessionStorage.setItem("level", level);
+
+  setCookie("role", normalizedRole);
 };
 
 export const clearAuthSession = () => {
+  if (typeof window === "undefined") return;
+
   localStorage.removeItem("user");
   localStorage.removeItem("token");
   localStorage.removeItem("role");
@@ -76,6 +93,6 @@ export const clearAuthSession = () => {
   sessionStorage.removeItem("normalized_role");
   sessionStorage.removeItem("level");
 
-  document.cookie = "token=; path=/; Max-Age=0";
-  document.cookie = "role=; path=/; Max-Age=0";
+  removeCookie("token");
+  removeCookie("role");
 };

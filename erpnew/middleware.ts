@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { normalizeRole } from "./src/core/auth/roles";
+import { mapRoleToRouteGroup } from "./src/core/auth/roles";
 
-const ROLE_ACCESS: Record<string, string[]> = {
-  super_admin: ["/super-admin"],
-  admin: ["/admin", "/super-admin"],
-  district: ["/district"],
-  district_manager: ["/district"],
-  inventory_manager: ["/inventory-manager"],
-  super_inventory_manager: ["/inventory-manager"],
-  hr_admin: ["/hr-admin"],
-  stock_manager: ["/stock-manager"],
-  super_stock_manager: ["/stock-manager"],
-  sales_manager: ["/sales-manager"],
-  super_sales_manager: ["/sales-manager"],
-  purchase_manager: ["/purchase-manager"],
-  finance: ["/finance"],
+const ROLE_PREFIX: Record<string, string> = {
+  head_office: "/head-office",
+  state: "/state",
+  district: "/district",
+  retail: "/retail",
 };
+
+const publicRoutes = ["/login", "/forgot-password", "/reset-password"];
+
+function isPublicRoute(pathname: string) {
+  return publicRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -30,36 +29,31 @@ export function middleware(request: NextRequest) {
 
   const token = request.cookies.get("token")?.value;
   const rawRole = request.cookies.get("role")?.value;
-  const role = normalizeRole(rawRole);
+  const group = mapRoleToRouteGroup(rawRole);
 
-  const publicRoutes = ["/login", "/forgot-password", "/reset-password"];
-
-  if (!token && !publicRoutes.includes(pathname)) {
+  if (!token && !isPublicRoute(pathname)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  if (token && publicRoutes.includes(pathname)) {
+  if (token && isPublicRoute(pathname)) {
+    const prefix = group ? ROLE_PREFIX[group] : null;
     return NextResponse.redirect(
-      new URL(
-        role && ROLE_ACCESS[role]?.[0]
-          ? `${ROLE_ACCESS[role][0]}/dashboard`
-          : "/login",
-        request.url
-      )
+      new URL(prefix ? `${prefix}/dashboard` : "/login", request.url)
     );
   }
 
-  if (!role) return NextResponse.next();
+  if (!token || !group) {
+    return NextResponse.next();
+  }
 
-  const allowedPrefixes = ROLE_ACCESS[role] || [];
+  const allowedPrefix = ROLE_PREFIX[group];
 
-  const isAllowed = allowedPrefixes.some((prefix) =>
-    pathname.startsWith(prefix)
-  );
+  const isAllowed =
+    pathname === allowedPrefix || pathname.startsWith(`${allowedPrefix}/`);
 
-  if (!isAllowed && !publicRoutes.includes(pathname)) {
+  if (!isAllowed) {
     return NextResponse.redirect(
-      new URL(`${allowedPrefixes[0] || "/login"}/dashboard`, request.url)
+      new URL(`${allowedPrefix}/dashboard`, request.url)
     );
   }
 
