@@ -1,5 +1,61 @@
 @import "tailwindcss";
 
+
+@theme {
+  /* ===== ERP COLORS ===== */
+  --color-erp-bg: #f4f7fb;
+  --color-erp-card: #ffffff;
+  --color-erp-card-soft: #f8fafc;
+
+  --color-erp-primary: #2563eb;
+  --color-erp-primary-soft: #eef5ff;
+  --color-erp-primary-hover: #1d4ed8;
+
+  --color-erp-text: #111827;
+  --color-erp-text-soft: #334155;
+  --color-erp-muted: #94a3b8;
+
+  --color-erp-border: #e5e7eb;
+  --color-erp-border-soft: #f1f5f9;
+
+  --color-erp-success: #22c55e;
+  --color-erp-success-soft: #dcfce7;
+
+  --color-erp-danger: #FC4D4D;
+  --color-erp-danger-soft: #FEF2F2;
+
+  --color-erp-warning: #F81B1B;
+  --color-erp-warning-soft: #FFEDED;
+
+  --color-erp-purple: #a855f7;
+  --color-erp-purple-soft: #f3e8ff;
+
+  --color-erp-blue-soft: #eaf2ff;
+  --color-erp-yellow-soft: #fff2c6;
+  --color-erp-red-soft: #ffe8e8;
+
+  /* ===== RADIUS ===== */
+  --radius-erp-xs: 32px;
+  --radius-erp-sm: 32px;
+  --radius-erp-md: 32px;
+  --radius-erp-lg: 32px;
+  --radius-erp-xl: 32px;
+
+  /* ===== SHADOW ===== */
+  --shadow-erp-sm: 1px 1px 4px 0px #0000001A;
+  --shadow-erp-card: 1px 1px 4px 0px #0000001A;
+  --shadow-erp-topbar: 1px 1px 4px 0px #0000001A;
+}
+
+.dashboard-hidden-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dashboard-hidden-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Chrome, Edge, Safari */
 ::-webkit-scrollbar {
   width: 5px;
@@ -25,4 +81,8 @@
 * {
   scrollbar-width: thin;
   scrollbar-color: #9ca3af #f3f4f6;
+}
+/* globals.css */
+.input {
+  @apply w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10;
 }

@@ -1,102 +1,141 @@
 "use client";
 
 import { Clock3 } from "lucide-react";
-import DashboardShellCard from "./DashboardShellCard";
 
 type PendingTask = {
   id?: string | number;
-  level?: string;
-  category?: string;
-  time?: string;
   title?: string;
-  subtitle?: string;
-  amount?: string | number;
+  description?: string;
+  priority?: "low" | "medium" | "high" | string;
+  status?: string;
+  task_type?: string;
+  reference_no?: string;
+  store_name?: string;
+  store_code?: string | null;
+  district_code?: string | null;
+  createdAt?: string;
 };
-
-function badgeClasses(level: string) {
-  if (level === "HIGH") {
-    return "bg-[#FFE2E0] text-[#E53935]";
-  }
-  if (level === "MEDIUM") {
-    return "bg-[#FFE7CC] text-[#D97706]";
-  }
-  return "bg-[#E8F5E9] text-[#16A34A]";
-}
 
 type Props = {
   data?: PendingTask[];
+  loading?: boolean;
 };
 
-export default function PendingTasksCard({ data = [] }: Props) {
-  const taskCount = data.length;
+function badgeClasses(priority?: string) {
+  const value = priority?.toUpperCase();
 
+  if (value === "HIGH") return "bg-[#FFE6E6] text-[#FF1F1F]";
+  if (value === "MEDIUM") return "bg-[#FFF1DD] text-[#C2410C]";
+  return "bg-[#DCFCE7] text-[#16A34A]";
+}
+
+function formatTaskType(type?: string) {
+  if (!type) return "Task";
+
+  return type
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatTime(date?: string) {
+  if (!date) return "--";
+
+  const created = new Date(date).getTime();
+  const diff = Math.max(0, Date.now() - created);
+
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diff < minute) return "Just now";
+  if (diff < hour) return `${Math.floor(diff / minute)} minutes ago`;
+  if (diff < day) return `${Math.floor(diff / hour)} hours ago`;
+
+  return `${Math.floor(diff / day)} days ago`;
+}
+
+export default function PendingTasksCard({ data = [], loading = false }: Props) {
   return (
-    <DashboardShellCard
-      title="Pending Tasks - Requires Immediate Attention"
-      subtitle={
-        taskCount > 0
-          ? `You have ${taskCount} incomplete task${taskCount > 1 ? "s" : ""} that need your attention`
-          : "No pending tasks right now"
-      }
-      className="border-[#FF9B9B] bg-[#FFF7F7] shadow-[1px_1px_4px_0px_#0000001A]"
-    >
-      {taskCount === 0 ? (
-        <div className="flex min-h-[220px] items-center justify-center rounded-[22px] border border-[#EFEFEF] bg-white px-4 py-8 text-center text-[15px] font-medium text-[#98A2B3]">
-          No pending tasks available
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {data.map((task, index) => (
-            <div
-              key={task.id ?? index}
-              className="rounded-[22px] border border-[#EFEFEF] bg-white px-4 py-4 shadow-[0px_2px_10px_rgba(15,23,42,0.03)] sm:px-5"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  {task.level ? (
+    <section className="h-[337px] overflow-hidden rounded-[28px] border border-[#FF8F8F] bg-[#FFF5F5] px-[24px] pt-[20px] pb-[22px] shadow-[1px_1px_4px_0px_#0000001A]">
+      <h3 className="text-[20px] font-semibold leading-[24px] tracking-[-0.02em] text-[#111827]">
+        Pending Tasks - Requires Immediate Attention
+      </h3>
+
+      <p className="mt-[2px] text-[13px] leading-[18px] text-[#475569]">
+        {loading
+          ? "Loading pending tasks..."
+          : `You have ${data.length} incomplete tasks that need your attention`}
+      </p>
+
+      <div className="dashboard-hidden-scroll mt-[20px] h-[234px] overflow-y-auto pr-[2px]">
+        {loading ? (
+          <div className="space-y-[10px]">
+            {[1, 2].map((item) => (
+              <div
+                key={item}
+                className="h-[112px] animate-pulse rounded-[16px] bg-white shadow-[1px_1px_4px_0px_#0000001A]"
+              />
+            ))}
+          </div>
+        ) : data.length === 0 ? (
+          <div className="flex h-full items-center justify-center rounded-[16px] bg-white text-center shadow-[1px_1px_4px_0px_#0000001A]">
+            <div>
+              <p className="text-[15px] font-semibold text-[#111827]">
+                No pending tasks
+              </p>
+              <p className="mt-1 text-[13px] text-[#64748B]">
+                Everything is up to date.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-[10px]">
+            {data.map((task, index) => (
+              <article
+                key={task.id ?? index}
+                className="min-h-[112px] rounded-[16px] border border-[#EFEFEF] bg-white px-[17px] py-[14px] shadow-[1px_1px_4px_0px_#0000001A]"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-[10px]">
                     <span
-                      className={`inline-flex rounded-[10px] px-3 py-[5px] text-[13px] font-semibold ${badgeClasses(
-                        task.level
+                      className={`inline-flex h-[25px] shrink-0 items-center justify-center rounded-[7px] px-[10px] text-[12px] font-semibold leading-none ${badgeClasses(
+                        task.priority
                       )}`}
                     >
-                      {task.level}
+                      {(task.priority || "LOW").toUpperCase()}
                     </span>
-                  ) : null}
 
-                  {task.category ? (
-                    <span className="truncate text-[14px] font-medium text-[#4B5563]">
-                      {task.category}
+                    <span className="truncate text-[13px] font-semibold text-[#334155]">
+                      {formatTaskType(task.task_type)}
                     </span>
-                  ) : null}
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-[7px] pt-[2px] text-[13px] text-[#64748B]">
+                    <Clock3 className="h-[14px] w-[14px]" strokeWidth={2} />
+                    <span>{formatTime(task.createdAt)}</span>
+                  </div>
                 </div>
 
-                {task.time ? (
-                  <div className="flex shrink-0 items-center gap-2 text-[14px] text-[#6B7280]">
-                    <Clock3 className="h-[15px] w-[15px]" />
-                    <span>{task.time}</span>
-                  </div>
-                ) : null}
-              </div>
+                <h4 className="mt-[11px] line-clamp-1 text-[17px] font-semibold leading-[23px] tracking-[-0.02em] text-[#111827]">
+                  {task.title || "Untitled task"}
+                </h4>
 
-              <h4 className="mt-3 text-[18px] font-medium tracking-[-0.02em] text-[#111827]">
-                {task.title || "Untitled Task"}
-              </h4>
-
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[14px] text-[#667085]">
-                  {task.subtitle || "No additional details"}
-                </p>
-
-                {task.amount !== undefined && task.amount !== null && task.amount !== "" ? (
-                  <p className="text-[16px] font-semibold text-[#FF2F2F]">
-                    {task.amount}
+                <div className="mt-[7px] flex items-center justify-between gap-4">
+                  <p className="line-clamp-1 min-w-0 text-[15px] leading-[21px] text-[#475569]">
+                    {task.description || task.store_name || "No additional details"}
                   </p>
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </DashboardShellCard>
+
+                  {task.reference_no ? (
+                    <p className="shrink-0 text-[14px] font-semibold leading-[20px] text-[#FF1F1F]">
+                      {task.reference_no}
+                    </p>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

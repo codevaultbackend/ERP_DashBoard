@@ -1,4 +1,4 @@
-import { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 type StatCardProps = {
   title: string;
@@ -16,24 +16,21 @@ export default function StatCard({
   iconColor,
 }: StatCardProps) {
   return (
-    <div className="rounded-[20px] border border-[#D9D9D9] bg-white px-4 py-4 shadow-[0px_2px_8px_rgba(15,23,42,0.04)] sm:rounded-[24px] sm:px-[18px] sm:py-[18px] lg:rounded-[28px]">
+    <div className="min-h-[150px] rounded-[28px] border border-[#E5E7EB] bg-white px-4 py-4 shadow-[0_2px_8px_rgba(15,23,42,0.05)]">
       <div
         className={[
-          "flex h-[44px] w-[44px] items-center justify-center rounded-[14px] sm:h-[48px] sm:w-[48px] sm:rounded-[16px]",
+          "flex h-[50px] w-[50px] items-center justify-center rounded-[16px]",
           iconWrap,
         ].join(" ")}
       >
-        <Icon
-          className={["h-[20px] w-[20px] sm:h-[22px] sm:w-[22px]", iconColor].join(" ")}
-          strokeWidth={1.9}
-        />
+        <Icon className={["h-[22px] w-[22px]", iconColor].join(" ")} />
       </div>
 
-      <div className="mt-4 sm:mt-5">
-        <p className="text-[13px] font-medium leading-[18px] text-[#3F3F46] sm:text-[14px] sm:leading-[20px]">
+      <div className="mt-5 min-w-0">
+        <p className="truncate text-[14px] font-medium text-[#3F3F46]">
           {title}
         </p>
-        <h3 className="mt-1 text-[22px] font-semibold leading-[26px] tracking-[-0.03em] text-[#111111] sm:text-[24px] sm:leading-[28px]">
+        <h3 className="mt-1 truncate text-[28px] font-semibold leading-none tracking-[-0.04em] text-black">
           {value}
         </h3>
       </div>

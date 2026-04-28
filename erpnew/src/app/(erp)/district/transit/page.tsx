@@ -1,5 +1,5 @@
-import TransitListContent from "../../../../features/retail/transit/TransitListContent";
+import TransitListContent from "@/features/retail/transit/TransitListContent";
 
-export default function TransitPage() {
-  return <TransitListContent basePath="/super-admin/transit" />;
+export default function DistrictTransitPage() {
+  return <TransitListContent basePath="/district/transit" />;
 }

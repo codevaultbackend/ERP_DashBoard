@@ -154,7 +154,7 @@ export async function getMyStockRequests() {
 }
 
 export async function getReceivedStockRequests() {
-  const res = await requestApi.get("/request/requests/my");
+  const res = await requestApi.get("/request/requests/received");
   return res.data;
 }
 

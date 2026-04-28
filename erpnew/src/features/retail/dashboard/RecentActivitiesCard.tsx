@@ -52,18 +52,18 @@ export default function RecentActivitiesCard({ data = [] }: Props) {
       className="shadow-[1px_1px_4px_0px_#0000001A]"
     >
       {data.length === 0 ? (
-        <div className="flex min-h-[220px] items-center justify-center rounded-[16px] bg-[#F8FBFF] px-4 py-8 text-center text-[15px] font-medium text-[#98A2B3]">
+        <div className="flex min-h-[337px] items-center justify-center rounded-[16px] bg-[#F8FBFF] px-4 py-8 text-center text-[15px] font-medium text-[#98A2B3]">
           No recent activities found
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 h-[337px]">
           {data.map((item, index) => {
             const tone = getToneStyles(item.tone || "");
 
             return (
               <div
                 key={item.id ?? index}
-                className="flex items-start justify-between gap-3 rounded-[16px] bg-[#F8FBFF] px-3 py-3"
+                className="flex items-start justify-between gap-3  rounded-[16px] bg-[#F8FBFF] px-3 py-3"
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <div

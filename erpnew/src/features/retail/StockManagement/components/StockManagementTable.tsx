@@ -85,7 +85,7 @@ export default function StockManagementTable({
   onLoadArticles,
 }: StockManagementTableProps) {
   const rows = (externalRows ?? (stockRows as StockRow[])) as StockRow[];
-  const [openRowId, setOpenRowId] = useState<string | number | null>(1);
+  const [openRowId, setOpenRowId] = useState<string | number | null>(null);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
 
