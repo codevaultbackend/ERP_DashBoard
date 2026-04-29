@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
+  Camera,
   CheckCircle2,
   FileText,
   ImagePlus,
@@ -39,6 +40,17 @@ type DispatchItemState = {
   rate: number;
 };
 
+type MediaTarget = "driverPhoto" | "dispatchImages" | "dispatchVideo" | "ewayBill";
+
+type MediaChooserState = {
+  open: boolean;
+  target: MediaTarget | null;
+  title: string;
+  allowCamera: boolean;
+  allowVideoRecord: boolean;
+  allowFileUpload: boolean;
+};
+
 function safeNumber(value: unknown) {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
@@ -64,6 +76,23 @@ function inputClass(active: boolean) {
   ].join(" ");
 }
 
+function getCapturedFileName(prefix: string, extension: string) {
+  return `${prefix}-${Date.now()}.${extension}`;
+}
+
+function dataUrlToFile(dataUrl: string, filename: string) {
+  const [meta, base64] = dataUrl.split(",");
+  const mime = meta.match(/:(.*?);/)?.[1] || "image/jpeg";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new File([bytes], filename, { type: mime });
+}
+
 export default function ApproveDispatchModal({
   open,
   onClose,
@@ -74,6 +103,11 @@ export default function ApproveDispatchModal({
   const imageRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLInputElement | null>(null);
   const ewayBillRef = useRef<HTMLInputElement | null>(null);
+
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   const [remarks, setRemarks] = useState("");
   const [driverName, setDriverName] = useState("");
@@ -95,9 +129,50 @@ export default function ApproveDispatchModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const [mediaChooser, setMediaChooser] = useState<MediaChooserState>({
+    open: false,
+    target: null,
+    title: "",
+    allowCamera: false,
+    allowVideoRecord: false,
+    allowFileUpload: true,
+  });
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState<MediaTarget | null>(null);
+  const [cameraMode, setCameraMode] = useState<"photo" | "video">("photo");
+  const [cameraError, setCameraError] = useState("");
+  const [recording, setRecording] = useState(false);
+
   const alreadyDispatched =
     request?.transfer?.status === "in_transit" ||
     request?.transfer?.status === "received";
+
+  const stopCameraStream = () => {
+    mediaRecorderRef.current?.state === "recording" && mediaRecorderRef.current.stop();
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    mediaRecorderRef.current = null;
+    recordedChunksRef.current = [];
+    setRecording(false);
+  };
+
+  const closeCamera = () => {
+    stopCameraStream();
+    setCameraOpen(false);
+    setCameraTarget(null);
+    setCameraError("");
+  };
+
+  const closeMediaChooser = () => {
+    setMediaChooser({
+      open: false,
+      target: null,
+      title: "",
+      allowCamera: false,
+      allowVideoRecord: false,
+      allowFileUpload: true,
+    });
+  };
 
   useEffect(() => {
     if (!request) return;
@@ -117,6 +192,8 @@ export default function ApproveDispatchModal({
     setDispatchVideo(null);
     setEwayBill(null);
     setError("");
+    closeMediaChooser();
+    closeCamera();
 
     setItems(
       (request.request_items || []).map((item) => {
@@ -136,7 +213,21 @@ export default function ApproveDispatchModal({
         };
       })
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
+
+  useEffect(() => {
+    if (!open) {
+      closeMediaChooser();
+      closeCamera();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    return () => stopCameraStream();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const totalWeight = useMemo(() => {
     return items.reduce(
@@ -154,6 +245,140 @@ export default function ApproveDispatchModal({
   }, [items]);
 
   if (!open || !request) return null;
+
+  const openMediaChooser = (target: MediaTarget) => {
+    if (alreadyDispatched) return;
+
+    const config: Record<MediaTarget, Omit<MediaChooserState, "open" | "target">> = {
+      dispatchImages: {
+        title: "Dispatch Images",
+        allowCamera: true,
+        allowVideoRecord: false,
+        allowFileUpload: true,
+      },
+      dispatchVideo: {
+        title: "Dispatch Video",
+        allowCamera: false,
+        allowVideoRecord: true,
+        allowFileUpload: true,
+      },
+      driverPhoto: {
+        title: "Driver Photo",
+        allowCamera: true,
+        allowVideoRecord: false,
+        allowFileUpload: true,
+      },
+      ewayBill: {
+        title: "E-Way Bill",
+        allowCamera: false,
+        allowVideoRecord: false,
+        allowFileUpload: true,
+      },
+    };
+
+    setMediaChooser({ open: true, target, ...config[target] });
+  };
+
+  const triggerUploadInput = (target: MediaTarget | null) => {
+    closeMediaChooser();
+
+    requestAnimationFrame(() => {
+      if (target === "dispatchImages") imageRef.current?.click();
+      if (target === "dispatchVideo") videoRef.current?.click();
+      if (target === "driverPhoto") driverPhotoRef.current?.click();
+      if (target === "ewayBill") ewayBillRef.current?.click();
+    });
+  };
+
+  const openCameraForTarget = async (
+    target: MediaTarget | null,
+    mode: "photo" | "video"
+  ) => {
+    if (!target) return;
+
+    try {
+      closeMediaChooser();
+      stopCameraStream();
+      setCameraTarget(target);
+      setCameraMode(mode);
+      setCameraOpen(true);
+      setCameraError("");
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: mode === "video",
+      });
+
+      mediaStreamRef.current = stream;
+
+      setTimeout(() => {
+        if (cameraVideoRef.current) {
+          cameraVideoRef.current.srcObject = stream;
+          cameraVideoRef.current.play().catch(() => undefined);
+        }
+      }, 0);
+    } catch (err: any) {
+      setCameraError(
+        err?.message || "Camera permission is required to capture media."
+      );
+    }
+  };
+
+  const saveCapturedPhoto = () => {
+    if (!cameraVideoRef.current || !cameraTarget) return;
+
+    const video = cameraVideoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const file = dataUrlToFile(
+      canvas.toDataURL("image/jpeg", 0.92),
+      getCapturedFileName("camera-photo", "jpg")
+    );
+
+    if (cameraTarget === "driverPhoto") setDriverPhoto(file);
+    if (cameraTarget === "dispatchImages") {
+      setDispatchImages((prev) => [...prev, file]);
+    }
+
+    closeCamera();
+  };
+
+  const startVideoRecording = () => {
+    const stream = mediaStreamRef.current;
+    if (!stream || recording) return;
+
+    recordedChunksRef.current = [];
+    const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+    };
+
+    recorder.onstop = () => {
+      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+      const file = new File([blob], getCapturedFileName("recorded-video", "webm"), {
+        type: "video/webm",
+      });
+      setDispatchVideo(file);
+      closeCamera();
+    };
+
+    mediaRecorderRef.current = recorder;
+    recorder.start();
+    setRecording(true);
+  };
+
+  const stopVideoRecording = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+  };
 
   async function handleSubmit() {
     if (alreadyDispatched || submitting) return;
@@ -220,8 +445,8 @@ export default function ApproveDispatchModal({
         err?.code === 1
           ? "Location permission is required to approve and dispatch with live tracking."
           : err?.response?.data?.message ||
-          err?.message ||
-          "Failed to approve dispatch and start tracking.";
+            err?.message ||
+            "Failed to approve dispatch and start tracking.";
 
       setError(message);
     } finally {
@@ -346,7 +571,7 @@ export default function ApproveDispatchModal({
                 }
                 subtitle="or click to browse from computer"
                 active={dispatchImages.length > 0}
-                onClick={() => imageRef.current?.click()}
+                onClick={() => openMediaChooser("dispatchImages")}
               />
 
               <UploadBox
@@ -354,7 +579,7 @@ export default function ApproveDispatchModal({
                 title={dispatchVideo ? dispatchVideo.name : "Drag and drop video here"}
                 subtitle="or click to browse from computer"
                 active={!!dispatchVideo}
-                onClick={() => videoRef.current?.click()}
+                onClick={() => openMediaChooser("dispatchVideo")}
               />
 
               <UploadBox
@@ -363,7 +588,7 @@ export default function ApproveDispatchModal({
                 subtitle=""
                 active={!!ewayBill}
                 compact
-                onClick={() => ewayBillRef.current?.click()}
+                onClick={() => openMediaChooser("ewayBill")}
               />
 
               <div className="rounded-[18px] bg-white px-4 py-4">
@@ -459,7 +684,7 @@ export default function ApproveDispatchModal({
                 <button
                   type="button"
                   disabled={alreadyDispatched}
-                  onClick={() => driverPhotoRef.current?.click()}
+                  onClick={() => openMediaChooser("driverPhoto")}
                   className={[
                     "flex h-[42px] w-full items-center justify-center gap-2 rounded-[12px] text-[14px] font-medium leading-[20px] tracking-[-0.02em] transition disabled:cursor-not-allowed disabled:opacity-70",
                     driverPhoto
@@ -575,6 +800,138 @@ export default function ApproveDispatchModal({
           </div>
         </div>
       </div>
+
+      {mediaChooser.open ? (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40 px-4 font-erp backdrop-blur-[1px]">
+          <div className="w-full max-w-[420px] rounded-[24px] bg-white p-5 shadow-[0_18px_42px_rgba(15,23,42,0.25)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-[18px] font-semibold leading-[24px] tracking-[-0.03em] text-[#111827]">
+                  {mediaChooser.title}
+                </h3>
+                <p className="mt-1 text-[13px] leading-[18px] tracking-[-0.02em] text-[#667085]">
+                  Choose how you want to add media.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeMediaChooser}
+                className="rounded-full p-1 transition hover:bg-[#F3F4F6]"
+              >
+                <X className="h-5 w-5 text-[#1F2937]" />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {mediaChooser.allowFileUpload ? (
+                <button
+                  type="button"
+                  onClick={() => triggerUploadInput(mediaChooser.target)}
+                  className="flex h-[48px] items-center gap-3 rounded-[14px] bg-[#F3F4F6] px-4 text-left text-[14px] font-semibold leading-[20px] tracking-[-0.02em] text-[#111827] transition hover:bg-[#E5E7EB]"
+                >
+                  <Upload className="h-5 w-5 text-[#667085]" />
+                  Upload from device
+                </button>
+              ) : null}
+
+              {mediaChooser.allowCamera ? (
+                <button
+                  type="button"
+                  onClick={() => openCameraForTarget(mediaChooser.target, "photo")}
+                  className="flex h-[48px] items-center gap-3 rounded-[14px] bg-[#EEF4FF] px-4 text-left text-[14px] font-semibold leading-[20px] tracking-[-0.02em] text-[#111827] transition hover:bg-[#DBEAFE]"
+                >
+                  <Camera className="h-5 w-5 text-[#2563FF]" />
+                  Click picture with camera
+                </button>
+              ) : null}
+
+              {mediaChooser.allowVideoRecord ? (
+                <button
+                  type="button"
+                  onClick={() => openCameraForTarget(mediaChooser.target, "video")}
+                  className="flex h-[48px] items-center gap-3 rounded-[14px] bg-[#F5F3FF] px-4 text-left text-[14px] font-semibold leading-[20px] tracking-[-0.02em] text-[#111827] transition hover:bg-[#EDE9FE]"
+                >
+                  <Video className="h-5 w-5 text-[#9A28FF]" />
+                  Record video with camera
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cameraOpen ? (
+        <div className="fixed inset-0 z-[1001] flex items-center justify-center bg-black/70 px-4 font-erp backdrop-blur-[2px]">
+          <div className="w-full max-w-[620px] overflow-hidden rounded-[24px] bg-white shadow-[0_18px_42px_rgba(0,0,0,0.35)]">
+            <div className="flex items-center justify-between gap-3 px-5 py-4">
+              <div>
+                <h3 className="text-[18px] font-semibold leading-[24px] tracking-[-0.03em] text-[#111827]">
+                  {cameraMode === "photo" ? "Click Picture" : "Record Video"}
+                </h3>
+                <p className="text-[13px] leading-[18px] tracking-[-0.02em] text-[#667085]">
+                  Allow camera permission to capture media.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeCamera}
+                className="rounded-full p-1 transition hover:bg-[#F3F4F6]"
+              >
+                <X className="h-5 w-5 text-[#1F2937]" />
+              </button>
+            </div>
+
+            <div className="bg-black">
+              <video
+                ref={cameraVideoRef}
+                autoPlay
+                muted
+                playsInline
+                className="h-[360px] w-full object-cover"
+              />
+            </div>
+
+            {cameraError ? (
+              <div className="mx-5 mt-4 rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
+                {cameraError}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap justify-end gap-3 px-5 py-4">
+              <button
+                type="button"
+                onClick={closeCamera}
+                className="h-[38px] rounded-[12px] border border-[#E5E7EB] bg-white px-5 text-[14px] font-medium leading-[20px] tracking-[-0.02em] text-black transition hover:bg-[#F8FAFC]"
+              >
+                Cancel
+              </button>
+
+              {cameraMode === "photo" ? (
+                <button
+                  type="button"
+                  onClick={saveCapturedPhoto}
+                  className="flex h-[38px] items-center justify-center gap-2 rounded-[12px] bg-[#00A83D] px-5 text-[14px] font-medium leading-[20px] tracking-[-0.02em] text-white transition hover:bg-[#009236]"
+                >
+                  <Camera className="h-4 w-4" />
+                  Capture Photo
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={recording ? stopVideoRecording : startVideoRecording}
+                  className={[
+                    "flex h-[38px] items-center justify-center gap-2 rounded-[12px] px-5 text-[14px] font-medium leading-[20px] tracking-[-0.02em] text-white transition",
+                    recording ? "bg-[#DC2626] hover:bg-[#B91C1C]" : "bg-[#9A28FF] hover:bg-[#7E22CE]",
+                  ].join(" ")}
+                >
+                  <Video className="h-4 w-4" />
+                  {recording ? "Stop & Save" : "Start Recording"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

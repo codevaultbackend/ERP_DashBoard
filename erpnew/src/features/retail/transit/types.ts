@@ -27,7 +27,7 @@ export type TransitTransferItem = {
   category_name?: string;
   quantity: number;
   sku?: string;
-  purity?: string;
+  priority?: string;
   weight?: number | string;
   image?: string | null;
   article_code?: string;

@@ -14,6 +14,16 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+const safeText = (val: any) => {
+  if (val === null || val === undefined || val === "") return "Not found";
+  return String(val);
+};
+
+const safeNumber = (val: any) => {
+  const num = Number(val);
+  return Number.isFinite(num) ? num : 0;
+};
+
 type RequestCategoryOption = {
   label: string;
   value: string;
@@ -31,9 +41,9 @@ type RequestableProduct = {
 
 function mapCategoryRowToOption(row: CategoryRowApi): RequestCategoryOption {
   return {
-    label: row.category,
-    value: row.category,
-    quantity: Number(row.quantity || 0),
+    label: safeText(row?.category),
+    value: safeText(row?.category),
+    quantity: safeNumber(row?.quantity),
   };
 }
 
@@ -43,14 +53,16 @@ function getToneFromStock(quantity: number): "critical" | "medium" | "optimum" {
   return "optimum";
 }
 
-function mapCategoryItemToRequestProduct(row: CategoryItemApi): RequestableProduct {
-  const stock = Number(row.available_qty ?? row.quantity ?? 0);
+function mapCategoryItemToRequestProduct(
+  row: CategoryItemApi
+): RequestableProduct {
+  const stock = safeNumber(row?.available_qty ?? row?.quantity);
 
   return {
-    item_id: row.id,
-    name: row.item_name,
+    item_id: safeNumber(row?.id),
+    name: safeText(row?.item_name),
     stock,
-    article_code: row.article_code,
+    article_code: safeText(row?.article_code),
     qty: "",
     tone: getToneFromStock(stock),
   };
@@ -59,19 +71,19 @@ function mapCategoryItemToRequestProduct(row: CategoryItemApi): RequestableProdu
 function ToneBadge({ tone }: { tone: string }) {
   const cls =
     tone === "critical"
-      ? "border-[#FCA5A5] bg-[#FFF1F1] text-[#EF4444]"
+      ? "border-[#FF9B8F] bg-[#FFF1F0] text-[#F04438]"
       : tone === "optimum"
-      ? "border-[#86EFAC] bg-[#ECFDF3] text-[#16A34A]"
-      : "border-[#F7C97B] bg-[#FFF5E8] text-[#F59E0B]";
+      ? "border-[#86EFAC] bg-[#F0FDF4] text-[#16A34A]"
+      : "border-[#F5C27B] bg-[#FFF3E2] text-[#F59E0B]";
 
   return (
     <span
       className={cn(
-        "inline-flex h-[30px] items-center rounded-full border px-3 text-[14px] font-medium capitalize",
+        "inline-flex h-[24px] items-center rounded-erp-full border px-[10px] text-[12px] font-normal leading-none capitalize",
         cls
       )}
     >
-      {tone}
+      {safeText(tone)}
     </span>
   );
 }
@@ -95,13 +107,16 @@ export default function RequestStockModal({
 }: Props) {
   const [priority, setPriority] = useState("medium");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
 
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  const [categoryOptions, setCategoryOptions] = useState<RequestCategoryOption[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<
+    RequestCategoryOption[]
+  >([]);
   const [products, setProducts] = useState<RequestableProduct[]>([]);
 
   useEffect(() => {
@@ -114,11 +129,10 @@ export default function RequestStockModal({
 
         const res = await getStockCategories();
         const rows: CategoryRowApi[] = Array.isArray(res?.data) ? res.data : [];
+
         setCategoryOptions(rows.map(mapCategoryRowToOption));
       } catch (err: any) {
-        setError(
-          err?.response?.data?.message || err?.message || "Failed to fetch categories"
-        );
+        setError(safeText(err?.response?.data?.message || err?.message));
       } finally {
         setLoadingCategories(false);
       }
@@ -140,11 +154,10 @@ export default function RequestStockModal({
 
         const res = await getStockItemsByCategory(selectedCategory);
         const rows: CategoryItemApi[] = Array.isArray(res?.data) ? res.data : [];
+
         setProducts(rows.map(mapCategoryItemToRequestProduct));
       } catch (err: any) {
-        setError(
-          err?.response?.data?.message || err?.message || "Failed to fetch category items"
-        );
+        setError(safeText(err?.response?.data?.message || err?.message));
       } finally {
         setLoadingItems(false);
       }
@@ -154,7 +167,7 @@ export default function RequestStockModal({
   }, [open, selectedCategory]);
 
   const selectedCount = useMemo(
-    () => products.filter((item) => Number(item.qty) > 0).length,
+    () => products.filter((item) => safeNumber(item.qty) > 0).length,
     [products]
   );
 
@@ -163,6 +176,7 @@ export default function RequestStockModal({
   const resetModal = () => {
     setPriority("medium");
     setSelectedCategory("");
+    setCategoryOpen(false);
     setNotes("");
     setProducts([]);
     setError("");
@@ -179,14 +193,14 @@ export default function RequestStockModal({
       setError("");
 
       const payloadItems = products
-        .filter((item) => Number(item.qty) > 0)
+        .filter((item) => safeNumber(item.qty) > 0)
         .map((item) => ({
           item_id: item.item_id,
-          request_qty: Number(item.qty),
+          request_qty: safeNumber(item.qty),
         }));
 
       if (!storeId) {
-        setError("store_id not found");
+        setError("Store not found");
         return;
       }
 
@@ -204,7 +218,7 @@ export default function RequestStockModal({
         store_id: storeId,
         priority,
         category: selectedCategory,
-        notes,
+        notes: notes || "Not found",
         items: payloadItems,
       });
 
@@ -212,152 +226,200 @@ export default function RequestStockModal({
       await onSuccess();
       onClose();
     } catch (err: any) {
-      setError(
-        err?.response?.data?.message || err?.message || "Failed to create request"
-      );
+      setError(safeText(err?.response?.data?.message || err?.message));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(17,24,39,0.26)] p-3 sm:p-4">
-      <div className="max-h-[90vh] w-full max-w-[640px] overflow-y-auto rounded-[34px] bg-white p-6 shadow-[0px_18px_48px_rgba(0,0,0,0.18)] sm:p-7">
-        <div className="flex items-start justify-between gap-4">
-          <h3 className="text-[18px] font-semibold tracking-[-0.04em] text-[#0A0A0A] sm:text-[19px]">
+    <div
+      onMouseDown={() => setCategoryOpen(false)}
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/30 px-4 py-5 font-erp backdrop-blur-[1px]"
+    >
+      <div
+        onMouseDown={(e) => e.stopPropagation()}
+        className="relative flex max-h-[92vh] w-full max-w-[600px] flex-col overflow-hidden rounded-erp-2xl bg-erp-card shadow-[0_18px_45px_rgba(15,23,42,0.22)]"
+      >
+        <div className="flex shrink-0 items-center justify-between px-[28px] pb-[18px] pt-[24px]">
+          <h3 className="text-[20px] font-semibold leading-[26px] tracking-[-0.035em] text-[#0A0A0A]">
             Request Stock from District Manager
           </h3>
 
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-full p-1 text-[#555] transition hover:bg-[#F5F5F7]"
+            className="flex h-8 w-8 items-center justify-center rounded-erp-full text-[#3F3F46] transition hover:bg-erp-border-soft"
           >
-            <X className="h-[20px] w-[20px]" />
+            <X className="h-[18px] w-[18px]" />
           </button>
         </div>
 
-        {error ? (
-          <div className="mt-4 rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
+        <div className="dashboard-hidden-scroll flex-1 overflow-y-auto px-[28px] pb-[18px]">
+          {error ? (
+            <div className="mb-4 rounded-erp-xs border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700">
+              {error}
+            </div>
+          ) : null}
 
-        <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-[1fr_180px]">
-          <div>
-            <label className="mb-2 block text-[14px] font-medium text-[#111111]">
-              Priority
-            </label>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="h-[48px] w-full rounded-[14px] border border-[#D8DEE7] bg-white px-4 text-[15px] text-[#111111] outline-none"
-            >
-              <option value="low">low</option>
-              <option value="medium">medium</option>
-              <option value="high">high</option>
-            </select>
-          </div>
+          <div className="grid grid-cols-[1fr_150px] items-end gap-[100px] max-sm:grid-cols-1 max-sm:gap-4">
+            <div>
+              <label className="mb-[7px] block text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-[#0A0A0A]">
+                Priority
+              </label>
 
-          <div>
-            <label className="mb-2 block text-[14px] font-medium text-[#111111]">
-              Category
-            </label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="h-[44px] w-full rounded-[9px] border border-[#D6DDE7] bg-white px-3 text-[15px] font-medium text-erp-text outline-none transition focus:border-erp-primary focus:ring-2 focus:ring-erp-primary/10"
+              >
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+            </div>
 
             <div className="relative">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="h-[48px] w-full appearance-none rounded-full border border-[#ECECEC] bg-white px-6 pr-12 text-[16px] font-medium text-[#111111] shadow-[0px_2px_8px_rgba(0,0,0,0.04)] outline-none"
+              <button
+                type="button"
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={() => setCategoryOpen((prev) => !prev)}
+                className="flex h-[44px] w-full items-center justify-between rounded-erp-full border border-erp-border-soft bg-erp-card px-[22px] text-left text-[16px] font-medium leading-[22px] tracking-[-0.02em] text-[#111111] shadow-erp-card outline-none transition hover:bg-[#FAFAFB]"
               >
-                <option value="">
-                  {loadingCategories ? "Loading..." : "Category"}
-                </option>
-                {categoryOptions.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#111111]" />
+                <span className="truncate">
+                  {selectedCategory ||
+                    (loadingCategories ? "Loading..." : "Category")}
+                </span>
+
+                <ChevronDown
+                  className={cn(
+                    "h-[18px] w-[18px] shrink-0 text-[#111111] transition",
+                    categoryOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {categoryOpen ? (
+                <div
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="absolute right-0 top-[52px] z-[160] w-full overflow-hidden rounded-erp-sm border border-erp-border bg-erp-card shadow-[0_14px_34px_rgba(15,23,42,0.14)]"
+                >
+                  <div className="dashboard-hidden-scroll max-h-[220px] overflow-y-auto p-2">
+                    {loadingCategories ? (
+                      <div className="px-4 py-3 text-[14px] font-medium text-erp-muted">
+                        Loading...
+                      </div>
+                    ) : categoryOptions.length === 0 ? (
+                      <div className="px-4 py-3 text-[14px] font-medium text-erp-muted">
+                        Not found
+                      </div>
+                    ) : (
+                      categoryOptions.map((cat) => {
+                        const active = selectedCategory === cat.value;
+
+                        return (
+                          <button
+                            key={cat.value}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCategory(cat.value);
+                              setCategoryOpen(false);
+                            }}
+                            className={cn(
+                              "flex h-[42px] w-full items-center justify-between rounded-erp-xs px-4 text-left text-[15px] font-medium leading-[20px] tracking-[-0.02em] transition",
+                              active
+                                ? "bg-erp-primary-soft text-erp-primary"
+                                : "text-erp-heading hover:bg-erp-card-soft"
+                            )}
+                          >
+                            <span className="truncate">{safeText(cat.label)}</span>
+
+                            <span className="ml-3 shrink-0 text-[12px] font-medium text-erp-muted">
+                              {safeNumber(cat.quantity)}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
+          </div>
+
+          <div className="mt-[17px]">
+            <p className="mb-[9px] text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-[#0A0A0A]">
+              Select Products
+              {selectedCount > 0 ? ` (${selectedCount} selected)` : ""}
+            </p>
+
+            {!selectedCategory ? (
+              <EmptyState text="Please select a category first" />
+            ) : loadingItems ? (
+              <EmptyState text="Loading items..." />
+            ) : products.length === 0 ? (
+              <EmptyState text="Not found" />
+            ) : (
+              <div className="dashboard-hidden-scroll max-h-[352px] space-y-[10px] overflow-y-auto pr-[2px]">
+                {products.map((item) => (
+                  <div
+                    key={item.item_id}
+                    className="grid min-h-[77px] grid-cols-[1fr_106px] items-center gap-4 rounded-[13px] border border-[#E1E4EA] bg-white px-[14px] py-[10px] max-sm:grid-cols-1"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[18px] font-medium leading-[24px] tracking-[-0.03em] text-[#101010]">
+                        {safeText(item.name)}
+                      </p>
+
+                      <div className="mt-[4px] flex flex-wrap items-center gap-[7px]">
+                        <p className="text-[16px] font-normal leading-[20px] tracking-[-0.02em] text-erp-muted">
+                          Current Stock: {safeNumber(item.stock)}
+                        </p>
+                        <ToneBadge tone={item.tone} />
+                      </div>
+                    </div>
+
+                    <input
+                      type="number"
+                      min="0"
+                      value={item.qty}
+                      onChange={(e) =>
+                        setProducts((prev) =>
+                          prev.map((p) =>
+                            p.item_id === item.item_id
+                              ? { ...p, qty: e.target.value }
+                              : p
+                          )
+                        )
+                      }
+                      placeholder="Qty"
+                      className="h-[40px] w-[106px] rounded-[9px] border-0 bg-[#F4F4F6] px-[14px] text-[15px] font-medium text-erp-text outline-none placeholder:text-[#6B7280] focus:ring-2 focus:ring-erp-border max-sm:w-full"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-[17px]">
+            <label className="mb-[4px] block text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-[#0A0A0A]">
+              Additional Notes
+            </label>
+
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any additional information..."
+              className="h-[70px] w-full resize-none rounded-[10px] border-0 bg-[#F4F4F6] px-[14px] py-[13px] text-[15px] font-normal leading-[20px] text-erp-text outline-none placeholder:text-[#747489] focus:ring-2 focus:ring-erp-border"
+            />
           </div>
         </div>
 
-        <div className="mt-6">
-          <p className="mb-3 text-[14px] font-medium text-[#0A0A0A]">
-            Select Products{selectedCount > 0 ? ` (${selectedCount} selected)` : ""}
-          </p>
-
-          {!selectedCategory ? (
-            <div className="rounded-[18px] border border-dashed border-[#D0D5DD] bg-[#FAFAFA] px-4 py-8 text-center text-[15px] text-[#667085]">
-              Please select a category first
-            </div>
-          ) : loadingItems ? (
-            <div className="rounded-[18px] border border-dashed border-[#D0D5DD] bg-[#FAFAFA] px-4 py-8 text-center text-[15px] text-[#667085]">
-              Loading items...
-            </div>
-          ) : products.length === 0 ? (
-            <div className="rounded-[18px] border border-dashed border-[#D0D5DD] bg-[#FAFAFA] px-4 py-8 text-center text-[15px] text-[#667085]">
-              No items found in this category
-            </div>
-          ) : (
-            <div className="max-h-[330px] space-y-3 overflow-y-auto pr-1">
-              {products.map((item) => (
-                <div
-                  key={item.item_id}
-                  className="grid grid-cols-1 gap-4 rounded-[18px] border border-[#E4E7EC] bg-white px-4 py-4 md:grid-cols-[1fr_106px]"
-                >
-                  <div>
-                    <p className="text-[16px] font-medium leading-[1.2] text-[#0A0A0A]">
-                      {item.name}
-                    </p>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <p className="text-[14px] leading-[20px] text-[#6A7282]">
-                        Current Stock: {item.stock}
-                      </p>
-                      <ToneBadge tone={item.tone} />
-                    </div>
-                  </div>
-
-                  <input
-                    type="number"
-                    min="0"
-                    value={item.qty}
-                    onChange={(e) =>
-                      setProducts((prev) =>
-                        prev.map((p) =>
-                          p.item_id === item.item_id ? { ...p, qty: e.target.value } : p
-                        )
-                      )
-                    }
-                    placeholder="Qty"
-                    className="h-[54px] rounded-[12px] bg-[#F5F5F7] px-4 text-[16px] text-[#111827] outline-none"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-5">
-          <label className="mb-2 block text-[16px] font-medium text-[#111111]">
-            Additional Notes
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add any additional information..."
-            className="min-h-[100px] w-full resize-none rounded-[16px] bg-[#F5F5F7] px-4 py-4 text-[16px] text-[#667085] outline-none"
-          />
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid shrink-0 grid-cols-2 gap-[12px] px-[28px] pb-[27px] max-sm:grid-cols-1">
           <button
             type="button"
             onClick={handleClose}
-            className="h-[56px] rounded-[16px] border border-[#D9DCE3] bg-white text-[16px] font-medium text-[#111111]"
+            className="h-[40px] rounded-[9px] border border-erp-border bg-white text-[16px] font-normal tracking-[-0.02em] text-[#111111] transition hover:bg-erp-card-soft"
           >
             Cancel
           </button>
@@ -366,12 +428,20 @@ export default function RequestStockModal({
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="h-[56px] rounded-[16px] bg-[#02051B] text-[16px] font-medium text-white disabled:opacity-60"
+            className="h-[40px] rounded-[9px] bg-erp-dark text-[16px] font-normal tracking-[-0.02em] text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Sending..." : "Send Request"}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="flex min-h-[76px] items-center justify-center rounded-[13px] border border-dashed border-[#D7DCE5] px-4 text-center text-[14px] font-medium text-erp-muted">
+      {text}
     </div>
   );
 }
