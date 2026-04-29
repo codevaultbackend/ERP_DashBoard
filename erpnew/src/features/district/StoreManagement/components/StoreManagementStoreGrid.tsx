@@ -2,41 +2,48 @@
 
 import Link from "next/link";
 import { ChevronRight, Store } from "lucide-react";
-import { RetailStore } from "../types";
+import type { RetailStore } from "../types";
 
-export default function StoreManagementStoreGrid({ stores }: { stores: RetailStore[] }) {
-  if (!stores.length) {
+type Props = {
+  stores: RetailStore[];
+};
+
+export default function StoreManagementStoreGrid({ stores }: Props) {
+  if (!stores?.length) {
     return (
-      <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
+      <div className="rounded-erp-xl border border-dashed border-erp-border bg-erp-card p-10 text-center font-erp text-[15px] font-medium leading-[20px] tracking-[-0.02em] text-erp-muted shadow-erp-card">
         No retail stores found.
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-2 2xl:grid-cols-3">
       {stores.map((store) => (
         <Link
           key={store.id}
           href={`/district/store-management/${store.id}`}
-          className="group flex items-center justify-between rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+          className="group relative flex min-h-[108px] items-center rounded-erp-xl border border-erp-border bg-erp-card px-6 py-5 shadow-erp-card transition hover:-translate-y-[1px] hover:border-erp-primary/20 hover:shadow-md"
         >
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-blue-600">
-              <Store className="h-7 w-7" />
+          <div className="flex min-w-0 items-center gap-4 pr-10">
+            <div className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-erp-sm bg-erp-blue-soft text-erp-primary">
+              <Store className="h-7 w-7" strokeWidth={2.2} />
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900 md:text-xl">{store.name}</h2>
-              <p className="text-sm text-slate-500">{store.code}</p>
-              <p className="mt-1 text-xs text-slate-400">
-                {store.active ? "Active" : "Inactive"} • {store.employeeCount} Employees • {store.revenue}
+
+            <div className="min-w-0">
+              <h2 className="truncate font-erp text-[20px] font-semibold leading-[25px] tracking-[-0.04em] text-erp-heading">
+                {store.name || "Unnamed Store"}
+              </h2>
+
+              <p className="mt-1 truncate font-erp text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-erp-muted">
+                {store.code || "—"}
               </p>
             </div>
           </div>
 
-          <div className="rounded-xl bg-slate-50 p-2 text-slate-500 transition group-hover:bg-slate-100 group-hover:text-slate-900">
-            <ChevronRight className="h-5 w-5" />
-          </div>
+          <span className="absolute right-6 top-6 flex h-[26px] w-[26px] items-center justify-center rounded-[8px] bg-[#F5F5F5] text-erp-text transition group-hover:bg-erp-primary group-hover:text-white">
+            <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
+          </span>
         </Link>
       ))}
     </div>

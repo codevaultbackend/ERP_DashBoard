@@ -26,31 +26,23 @@ function StatusBadge({ item }: { item: RequestCardData }) {
 
   if (dispatched) {
     return (
-      <span className="inline-flex h-[38px] items-center gap-2 rounded-full bg-[#E8F8EE] px-5 text-[14px] font-semibold text-[#10A743]">
+      <span className="inline-flex h-[34px] items-center justify-center gap-2 rounded-erp-full bg-erp-success px-5 text-[14px] font-medium leading-[20px] tracking-[-0.02em] text-white sm:min-w-[130px]">
         <Truck className="h-4 w-4" />
-        Dispatched
+        Dispatch
       </span>
     );
   }
 
   if (status === "approved" || status === "completed") {
     return (
-      <span className="inline-flex h-[30px] items-center rounded-full bg-[#DDF7D8] px-4 text-[13px] font-semibold capitalize text-[#1F9D36]">
-        {status}
-      </span>
-    );
-  }
-
-  if (status === "rejected") {
-    return (
-      <span className="inline-flex h-[30px] items-center rounded-full bg-[#FEE2E2] px-4 text-[13px] font-semibold text-[#DC2626]">
-        Rejected
+      <span className="inline-flex h-[26px] items-center rounded-erp-full bg-erp-success-soft px-3 text-[13px] font-medium leading-[18px] tracking-[-0.02em] text-[#15803D]">
+        approved
       </span>
     );
   }
 
   return (
-    <span className="inline-flex h-[30px] items-center rounded-full bg-[#EEF2F7] px-4 text-[13px] font-semibold capitalize text-[#475467]">
+    <span className="inline-flex h-[26px] items-center rounded-erp-full bg-erp-border-soft px-3 text-[13px] font-medium leading-[18px] tracking-[-0.02em] text-erp-muted">
       {status.replaceAll("_", " ")}
     </span>
   );
@@ -69,7 +61,7 @@ function PriorityBadge({ priority }: { priority?: string }) {
   return (
     <span
       className={[
-        "inline-flex h-[28px] items-center rounded-full border px-3 text-[13px] font-medium capitalize",
+        "inline-flex h-[24px] items-center rounded-erp-full border px-3 text-[13px] font-normal leading-[18px] tracking-[-0.02em] capitalize",
         cls,
       ].join(" ")}
     >
@@ -80,6 +72,7 @@ function PriorityBadge({ priority }: { priority?: string }) {
 
 type Props = {
   item: RequestCardData;
+  compact?: boolean;
   onDispatch?: (item: RequestCardData) => void;
 };
 
@@ -89,19 +82,13 @@ export default function StockRequestCard({ item, onDispatch }: Props) {
 
   const handleClick = () => {
     if (dispatched) return;
-
-    if (!onDispatch) {
-      console.warn("StockRequestCard: onDispatch prop is missing", item);
-      return;
-    }
-
-    onDispatch(item);
+    onDispatch?.(item);
   };
 
   return (
-    <div
-      role="button"
-      tabIndex={dispatched ? -1 : 0}
+    <article
+      role={onDispatch && !dispatched ? "button" : undefined}
+      tabIndex={onDispatch && !dispatched ? 0 : -1}
       onClick={handleClick}
       onKeyDown={(e) => {
         if ((e.key === "Enter" || e.key === " ") && !dispatched) {
@@ -110,24 +97,24 @@ export default function StockRequestCard({ item, onDispatch }: Props) {
         }
       }}
       className={[
-        "w-full rounded-[28px] border bg-white p-5 text-left shadow-[0px_8px_24px_rgba(15,23,42,0.045)] transition sm:p-6",
-        dispatched
-          ? "cursor-default border-[#D7F4DF] bg-[#FCFFFD]"
-          : "cursor-pointer border-[#E4E7EC] hover:-translate-y-[1px] hover:border-[#C9D2E0] hover:shadow-[0px_14px_34px_rgba(15,23,42,0.08)]",
+        "w-full rounded-erp-xl border bg-erp-card px-5 py-5 text-left shadow-erp-card transition sm:px-6 sm:py-6",
+        onDispatch && !dispatched
+          ? "cursor-pointer border-erp-border hover:-translate-y-[1px] hover:border-[#CBD5E1]"
+          : "border-erp-border",
       ].join(" ")}
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="truncate text-[19px] font-semibold tracking-[-0.02em] text-[#111827] sm:text-[21px]">
+          <h3 className="truncate text-[20px] font-semibold leading-[26px] tracking-[-0.035em] text-erp-heading">
             Request #{item?.id ?? "-"}
           </h3>
 
-          {dispatched && (
-            <p className="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-[#12A150]">
+          {dispatched ? (
+            <p className="mt-1 flex items-center gap-1.5 text-[13px] font-medium leading-[18px] tracking-[-0.02em] text-erp-success">
               <CheckCircle2 className="h-4 w-4" />
-              This request is already dispatched
+              Already dispatched
             </p>
-          )}
+          ) : null}
         </div>
 
         <StatusBadge item={item} />
@@ -135,53 +122,57 @@ export default function StockRequestCard({ item, onDispatch }: Props) {
 
       <div className="mt-6 grid grid-cols-2 gap-5">
         <div>
-          <p className="text-[15px] font-medium text-[#667085]">Priority:</p>
+          <p className="text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-erp-muted">
+            Priority:
+          </p>
           <div className="mt-2">
             <PriorityBadge priority={item?.priority} />
           </div>
         </div>
 
         <div>
-          <p className="text-[15px] font-medium text-[#667085]">Created:</p>
-          <p className="mt-2 text-[15px] font-semibold text-[#2C3444]">
+          <p className="text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-erp-muted">
+            Created:
+          </p>
+          <p className="mt-2 text-[16px] font-medium leading-[22px] tracking-[-0.02em] text-[#2C3444]">
             {item?.created || "-"}
           </p>
         </div>
       </div>
 
-      <div className="mt-6">
-        <p className="text-[15px] font-semibold text-[#2C3444]">
+      <div className="mt-7">
+        <p className="text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-[#2C3444]">
           Requested Products:
         </p>
 
         {products.length === 0 ? (
-          <div className="mt-3 rounded-[16px] bg-[#F7F8FA] px-4 py-3 text-[14px] font-medium text-[#667085]">
+          <div className="mt-3 rounded-erp-sm bg-erp-card-soft px-4 py-3 text-[14px] font-medium leading-[20px] text-erp-muted">
             No products found
           </div>
         ) : (
-          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {products.map((product, index) => (
               <div
                 key={`${product?.name || "product"}-${index}`}
-                className="flex items-center justify-between gap-3 rounded-[16px] bg-[#F7F8FA] px-4 py-3"
+                className="flex min-h-[64px] items-center justify-between gap-3 rounded-erp-sm bg-erp-card-soft px-4 py-3"
               >
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold text-[#111827]">
+                  <p className="truncate text-[16px] font-medium leading-[20px] tracking-[-0.02em] text-erp-heading">
                     {product?.name || "Unnamed Product"}
                   </p>
-                  <p className="mt-1 text-[14px] font-medium text-[#667085]">
+                  <p className="mt-1 text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-[#4A5565]">
                     Qty: {product?.qty ?? 0}
                   </p>
                 </div>
 
-                {!dispatched && (
-                  <ChevronDown className="h-[18px] w-[18px] shrink-0 text-[#111827]" />
-                )}
+                {!dispatched ? (
+                  <ChevronDown className="h-[18px] w-[18px] shrink-0 text-black" />
+                ) : null}
               </div>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 }

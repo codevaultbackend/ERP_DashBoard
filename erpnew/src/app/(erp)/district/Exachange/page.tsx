@@ -21,9 +21,6 @@ import {
   type ExchangeDashboardStats,
 } from "../../../../features/retail/refund/api/exchange-api";
 
-
-
-
 const EMPTY_STATS: ExchangeDashboardStats = {
   total_exchanges: 0,
   within_7_days: 0,
@@ -42,22 +39,22 @@ export default function RefundReturnPage() {
   const [requests, setRequests] = useState<RefundRequest[]>([]);
   const [openModal, setOpenModal] = useState(false);
 
-  const loadExchangeDashboard = useCallback(async () => {
+  const loadExchangeDashboard = useCallback(async (force = false) => {
     try {
       setLoading(true);
       setPageError("");
 
-      const res = await getExchangeDashboard();
+      const res = await getExchangeDashboard(force);
 
       setStats(res?.stats || EMPTY_STATS);
-
-      const apiRows = Array.isArray(res?.data) ? res.data : [];
-      setRequests(apiRows.map(mapExchangeToRefundRequest));
+      setRequests(
+        Array.isArray(res?.data) ? res.data.map(mapExchangeToRefundRequest) : []
+      );
     } catch (err: any) {
       setPageError(
         err?.response?.data?.message ||
-        err?.message ||
-        "Failed to load exchange dashboard"
+          err?.message ||
+          "Failed to load exchange dashboard"
       );
       setStats(EMPTY_STATS);
       setRequests([]);
@@ -70,19 +67,19 @@ export default function RefundReturnPage() {
     loadExchangeDashboard();
   }, [loadExchangeDashboard]);
 
-  const refundStats = useMemo<RefundStat[]>(() => {
+  const exchangeStats = useMemo<RefundStat[]>(() => {
     return [
       {
         title: "Total Exchanges",
         value: String(stats.total_exchanges || 0),
         iconType: "refund",
-        iconWrapClassName: "bg-[#DBEAFE]",
+        iconWrapClassName: "bg-erp-blue-soft",
       },
       {
         title: "Within 7 Days",
         value: String(stats.within_7_days || 0),
         iconType: "approved",
-        iconWrapClassName: "bg-[#DCFCE7]",
+        iconWrapClassName: "bg-erp-success-soft",
       },
       {
         title: "After 7 Days",
@@ -94,7 +91,7 @@ export default function RefundReturnPage() {
         title: "Making Charges",
         value: formatCurrency(stats.making_charges || 0),
         iconType: "amount",
-        iconWrapClassName: "bg-[#F3E8FF]",
+        iconWrapClassName: "bg-erp-purple-soft",
       },
     ];
   }, [stats]);
@@ -129,76 +126,82 @@ export default function RefundReturnPage() {
   }, [requests, search, month, date]);
 
   return (
-    <div className="w-full pb-8">
-      <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <h1 className="text-[34px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[42px]">
-            Refund &amp; Return
-          </h1>
-          <p className="mt-2 text-[18px] text-[#5B6475]">
-            Track product refunds with automatic deduction calculation
-          </p>
-        </div>
-
-        <button
-          onClick={() => setOpenModal(true)}
-          className="inline-flex h-[56px] items-center justify-center gap-3 rounded-full bg-[#02031A] px-6 text-[16px] font-medium text-white shadow-[0px_10px_24px_rgba(2,3,26,0.18)]"
-        >
-          <Plus className="h-5 w-5" />
-          New Refund
-        </button>
-        <CreateRefundModal
-          open={openModal}
-          onClose={() => setOpenModal(false)}
-        />
-      </div>
-
-      <div className="mt-8">
-        <RefundPolicyCard points={refundPolicyPoints} />
-      </div>
-
-      <div className="mt-8 grid grid-cols-4 gap-4 max-[768px]:grid-cols-2 2xl:grid-cols-4">
-        {refundStats.map((item) => (
-          <RefundMetricCard key={item.title} item={item} />
-        ))}
-      </div>
-
-      <div className="mt-8">
-        <RefundSearchFilters
-          search={search}
-          setSearch={setSearch}
-          month={month}
-          setMonth={setMonth}
-          date={date}
-          setDate={setDate}
-        />
-      </div>
-
-      {pageError ? (
-        <div className="mt-6 rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
-          {pageError}
-        </div>
-      ) : null}
-
-      <div className="mt-6 space-y-5">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-[126px] animate-pulse rounded-[30px] border border-[#E5E7EB] bg-white"
-            />
-          ))
-        ) : filteredRequests.length > 0 ? (
-          filteredRequests.map((item) => (
-            <RefundRequestCard key={item.id} item={item} />
-          ))
-        ) : (
-          <div className="rounded-[30px] border border-dashed border-[#D0D5DD] bg-white p-8 text-center text-[15px] font-medium text-[#667085]">
-            No exchange records found.
+    <>
+      <main className="w-full pb-8 font-erp">
+        <section className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <h1 className="erp-page-title">Exchange Management</h1>
+            <p className="mt-1 erp-page-subtitle">
+              Track product exchanges with automatic deduction calculation
+            </p>
           </div>
-        )}
-      </div>
-    </div>
+
+          <button
+            type="button"
+            onClick={() => setOpenModal(true)}
+            className="inline-flex h-[48px] w-fit items-center justify-center gap-3 rounded-erp-full bg-erp-dark px-6 text-[15px] font-semibold leading-none tracking-[-0.02em] text-white shadow-erp-card transition hover:opacity-90"
+          >
+            <Plus className="h-5 w-5" />
+            New Exchange
+          </button>
+        </section>
+
+        <section className="mt-8">
+          <RefundPolicyCard points={refundPolicyPoints} />
+        </section>
+
+        <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+          {exchangeStats.map((item) => (
+            <RefundMetricCard key={item.title} item={item} />
+          ))}
+        </section>
+
+        <section className="mt-8">
+          <RefundSearchFilters
+            search={search}
+            setSearch={setSearch}
+            month={month}
+            setMonth={setMonth}
+            date={date}
+            setDate={setDate}
+          />
+        </section>
+
+        {pageError ? (
+          <div className="mt-6 rounded-erp-md border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
+            {pageError}
+          </div>
+        ) : null}
+
+        <section className="mt-6 space-y-5">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={index}
+                className="h-[126px] animate-pulse rounded-erp-xl border border-erp-border bg-white shadow-erp-card"
+              />
+            ))
+          ) : filteredRequests.length > 0 ? (
+            filteredRequests.map((item) => (
+              <RefundRequestCard key={item.id} item={item} />
+            ))
+          ) : (
+            <div className="rounded-erp-xl border border-dashed border-erp-border bg-white p-8 text-center text-[15px] font-medium text-erp-muted shadow-erp-card">
+              No exchange records found.
+            </div>
+          )}
+        </section>
+      </main>
+
+      <CreateRefundModal
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        onSuccess={async () => {
+          setOpenModal(false);
+          await loadExchangeDashboard(true);
+        }}
+      />
+    </>
   );
 }
 
@@ -219,7 +222,9 @@ function mapExchangeToRefundRequest(item: ExchangeDashboardItem): RefundRequest 
     metal: safeText(item.old_purity),
     weight: formatWeight(item.old_gross_weight),
     originalValue: formatCurrency(item.old_value),
-    refundReason: within7Days ? "Within 7 days exchange" : "After 7 days exchange",
+    refundReason: within7Days
+      ? "Within 7 days exchange"
+      : "After 7 days exchange",
     refundMethod: "Exchange",
     refundAmount: formatCurrency(item.new_value),
     status: "approved",
@@ -243,10 +248,10 @@ function normalizeDateToISO(value: string) {
 function formatDateOnly(value: string) {
   if (!value) return "--";
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "--";
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) return "--";
 
-  return date.toISOString().slice(0, 10);
+  return parsedDate.toISOString().slice(0, 10);
 }
 
 function formatCurrency(value: string | number | null | undefined) {
@@ -261,7 +266,11 @@ function formatCurrency(value: string | number | null | undefined) {
 
 function formatWeight(value: string | number | null | undefined) {
   if (value === null || value === undefined || value === "") return "--";
-  return `${Number(value).toFixed(3)} g`;
+
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "--";
+
+  return `${num.toFixed(3)} g`;
 }
 
 function safeText(value: string | number | null | undefined) {

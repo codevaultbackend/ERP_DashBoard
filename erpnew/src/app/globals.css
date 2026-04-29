@@ -1,9 +1,15 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
-
 @theme {
+  /* ===== FONT ===== */
+  --font-erp: "Inter", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+
   /* ===== ERP COLORS ===== */
   --color-erp-bg: #f4f7fb;
+  --color-erp-page: #f5f6f8;
+
   --color-erp-card: #ffffff;
   --color-erp-card-soft: #f8fafc;
 
@@ -11,40 +17,94 @@
   --color-erp-primary-soft: #eef5ff;
   --color-erp-primary-hover: #1d4ed8;
 
+  --color-erp-dark: #030314;
+  --color-erp-heading: #101828;
   --color-erp-text: #111827;
   --color-erp-text-soft: #334155;
-  --color-erp-muted: #94a3b8;
+  --color-erp-muted: #64748b;
+  --color-erp-placeholder: #a3a3a3;
 
   --color-erp-border: #e5e7eb;
   --color-erp-border-soft: #f1f5f9;
 
-  --color-erp-success: #22c55e;
+  --color-erp-success: #16b833;
   --color-erp-success-soft: #dcfce7;
 
-  --color-erp-danger: #FC4D4D;
-  --color-erp-danger-soft: #FEF2F2;
+  --color-erp-danger: #ff2d2d;
+  --color-erp-danger-soft: #ffeded;
 
-  --color-erp-warning: #F81B1B;
-  --color-erp-warning-soft: #FFEDED;
+  --color-erp-warning: #ff3b22;
+  --color-erp-warning-soft: #ffeded;
 
   --color-erp-purple: #a855f7;
   --color-erp-purple-soft: #f3e8ff;
 
-  --color-erp-blue-soft: #eaf2ff;
+  --color-erp-yellow: #c79a22;
   --color-erp-yellow-soft: #fff2c6;
+
   --color-erp-red-soft: #ffe8e8;
+  --color-erp-green-soft: #c9ffd1;
+  --color-erp-blue-soft: #eaf2ff;
 
   /* ===== RADIUS ===== */
-  --radius-erp-xs: 32px;
-  --radius-erp-sm: 32px;
-  --radius-erp-md: 32px;
-  --radius-erp-lg: 32px;
-  --radius-erp-xl: 32px;
+  --radius-erp-xs: 12px;
+  --radius-erp-sm: 16px;
+  --radius-erp-md: 20px;
+  --radius-erp-lg: 24px;
+  --radius-erp-xl: 28px;
+  --radius-erp-2xl: 32px;
+  --radius-erp-full: 999px;
 
   /* ===== SHADOW ===== */
-  --shadow-erp-sm: 1px 1px 4px 0px #0000001A;
-  --shadow-erp-card: 1px 1px 4px 0px #0000001A;
-  --shadow-erp-topbar: 1px 1px 4px 0px #0000001A;
+  --shadow-erp-sm: 1px 1px 4px 0px #0000001a;
+  --shadow-erp-card: 1px 1px 4px 0px #0000001a;
+  --shadow-erp-topbar: 1px 1px 4px 0px #0000001a;
+}
+
+html,
+body {
+  margin: 0;
+  font-family: var(--font-erp);
+  background: var(--color-erp-page);
+  color: var(--color-erp-text);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  text-rendering: geometricPrecision;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.erp-page-title {
+  @apply text-[34px] font-semibold leading-[42px] tracking-[-0.04em] text-erp-heading;
+}
+
+.erp-page-subtitle {
+  @apply text-[18px] font-normal leading-[24px] tracking-[-0.02em] text-erp-muted;
+}
+
+.erp-section-title {
+  @apply text-[24px] font-semibold leading-[30px] tracking-[-0.04em] text-erp-heading;
+}
+
+.erp-card-title {
+  @apply text-[20px] font-semibold leading-[26px] tracking-[-0.035em] text-erp-heading;
+}
+
+.erp-label {
+  @apply text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-erp-muted;
+}
+
+.erp-body-text {
+  @apply text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-erp-text-soft;
+}
+
+.erp-small-text {
+  @apply text-[14px] font-medium leading-[18px] tracking-[-0.02em];
+}
+
+.input {
+  @apply w-full rounded-erp-sm border border-erp-border bg-white px-3 py-2 text-[14px] leading-[20px] text-erp-text outline-none transition focus:border-erp-primary focus:ring-2 focus:ring-erp-primary/10;
 }
 
 .dashboard-hidden-scroll {
@@ -56,7 +116,6 @@
   display: none;
 }
 
-/* Chrome, Edge, Safari */
 ::-webkit-scrollbar {
   width: 5px;
   height: 10px;
@@ -77,12 +136,7 @@
   background: #6b7280;
 }
 
-/* Firefox */
 * {
   scrollbar-width: thin;
   scrollbar-color: #9ca3af #f3f4f6;
-}
-/* globals.css */
-.input {
-  @apply w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10;
 }

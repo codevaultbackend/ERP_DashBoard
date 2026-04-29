@@ -1,7 +1,6 @@
 import axios from "axios";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const exchangeApi = axios.create({
   baseURL: API_URL,
@@ -60,6 +59,36 @@ export type ExchangeDashboardResponse = {
   data: ExchangeDashboardItem[];
 };
 
+export type CreateExchangePayload = {
+  invoice_number: string;
+  original_product: {
+    item_id: number;
+    product_code: string;
+    product_name: string;
+    metal: string;
+    purity: string;
+    gross_weight: number;
+    net_weight: number;
+    stone_weight: number;
+    condition: string;
+    value: number;
+  };
+  new_product: {
+    item_id: number;
+    product_code: string;
+    product_name: string;
+    metal: string;
+    purity: string;
+    gross_weight: number;
+    net_weight: number;
+    stone_weight: number;
+    condition: string;
+    value: number;
+  };
+  making_charge: number;
+  stone_amount: number;
+};
+
 let cache: {
   data: ExchangeDashboardResponse;
   time: number;
@@ -82,6 +111,14 @@ export async function getExchangeDashboard(force = false) {
     data: res.data,
     time: now,
   };
+
+  return res.data;
+}
+
+export async function createExchange(payload: CreateExchangePayload) {
+  const res = await exchangeApi.post("/exchange/create", payload);
+
+  cache = null;
 
   return res.data;
 }

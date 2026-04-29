@@ -16,6 +16,7 @@ requestApi.interceptors.request.use((config) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
+
   return config;
 });
 
@@ -142,9 +143,13 @@ export async function getStockItemsByCategory(
     organization_id?: number | string;
   }
 ) {
-  const res = await requestApi.get(`/stock/category/${encodeURIComponent(category)}`, {
-    params,
-  });
+  const res = await requestApi.get(
+    `/stock/category/${encodeURIComponent(category)}`,
+    {
+      params,
+    }
+  );
+
   return res.data;
 }
 
@@ -194,6 +199,7 @@ export async function approveDispatchRequest(payload: {
   driver_photo?: File | null;
   dispatch_images?: File[];
   dispatch_video?: File | null;
+  e_way_bill?: File | null;
 }) {
   const formData = new FormData();
 
@@ -219,6 +225,10 @@ export async function approveDispatchRequest(payload: {
 
   if (payload.dispatch_video) {
     formData.append("dispatch_video", payload.dispatch_video);
+  }
+
+  if (payload.e_way_bill) {
+    formData.append("e_way_bill", payload.e_way_bill);
   }
 
   const res = await requestApi.put(

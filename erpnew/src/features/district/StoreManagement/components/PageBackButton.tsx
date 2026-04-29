@@ -3,13 +3,18 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-export default function PageBackButton({ href }: { href: string }) {
+type Props = {
+  href: string;
+};
+
+export default function PageBackButton({ href }: Props) {
   return (
     <Link
       href={href}
-      className="inline-flex h-[56px] w-[56px] shrink-0 items-center justify-center rounded-[18px] border border-[#E2E8F0] bg-white text-[#334155] shadow-[0px_1px_2px_rgba(15,23,42,0.05),0px_1px_3px_rgba(15,23,42,0.08)] transition hover:bg-[#F8FAFC]"
+      aria-label="Go back"
+      className="inline-flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-erp-sm border border-erp-border bg-erp-card text-erp-text-soft shadow-erp-card transition hover:-translate-y-[1px] hover:bg-erp-primary-soft hover:text-erp-primary"
     >
-      <ArrowLeft className="h-6 w-6" />
+      <ArrowLeft className="h-5 w-5" strokeWidth={2.2} />
     </Link>
   );
 }

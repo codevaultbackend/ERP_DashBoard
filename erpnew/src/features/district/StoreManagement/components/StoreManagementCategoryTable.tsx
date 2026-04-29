@@ -2,18 +2,12 @@
 
 import Image from "next/image";
 import React, { Fragment, useEffect, useRef, useState } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  X,
-} from "lucide-react";
-import { Category, Item } from "../types";
+import { ChevronDown, ChevronUp, Loader2, X } from "lucide-react";
+import type { Category, Item } from "../types";
 
 type Props = {
   storeId: string;
   categories?: Category[];
-  onAuditSubmit: (categoryId: string, issue: any) => void;
   onLoadCategoryItems?: (category: Category) => Promise<Item[]>;
 };
 
@@ -45,21 +39,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function isInteractiveElement(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-
-  return !!target.closest(
-    'button, a, input, select, textarea, label, [role="button"], [data-no-drag="true"]'
-  );
-}
-
-function DragScrollArea({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function DragScrollArea({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -67,80 +47,44 @@ function DragScrollArea({
     const el = ref.current;
     if (!el) return;
 
-    let pointerDown = false;
-    let isDragging = false;
+    let down = false;
     let startX = 0;
-    let startY = 0;
     let scrollLeft = 0;
-    let pointerId: number | null = null;
 
-    const DRAG_THRESHOLD = 6;
-
-    const onPointerDown = (e: PointerEvent) => {
+    const onDown = (e: PointerEvent) => {
       if (e.pointerType === "touch") return;
       if (e.button !== 0) return;
-      if (isInteractiveElement(e.target)) return;
+      if ((e.target as HTMLElement)?.closest("button,input,select,label")) return;
 
-      pointerDown = true;
-      isDragging = false;
+      down = true;
       startX = e.clientX;
-      startY = e.clientY;
       scrollLeft = el.scrollLeft;
-      pointerId = e.pointerId;
     };
 
-    const onPointerMove = (e: PointerEvent) => {
-      if (!pointerDown) return;
-
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-
-      if (!isDragging) {
-        if (Math.abs(dx) < DRAG_THRESHOLD) return;
-        if (Math.abs(dx) < Math.abs(dy)) return;
-
-        isDragging = true;
-        setDragging(true);
-
-        if (pointerId !== null) {
-          try {
-            el.setPointerCapture(pointerId);
-          } catch {}
-        }
-      }
-
+    const onMove = (e: PointerEvent) => {
+      if (!down) return;
       e.preventDefault();
-      el.scrollLeft = scrollLeft - dx;
+      setDragging(true);
+      el.scrollLeft = scrollLeft - (e.clientX - startX);
     };
 
-    const endDrag = () => {
-      pointerDown = false;
-      isDragging = false;
+    const onEnd = () => {
+      down = false;
       setDragging(false);
-
-      if (pointerId !== null) {
-        try {
-          if (el.hasPointerCapture(pointerId)) {
-            el.releasePointerCapture(pointerId);
-          }
-        } catch {}
-      }
-
-      pointerId = null;
     };
 
-    el.addEventListener("pointerdown", onPointerDown);
-    el.addEventListener("pointermove", onPointerMove);
-    el.addEventListener("pointerup", endDrag);
-    el.addEventListener("pointercancel", endDrag);
-    el.addEventListener("pointerleave", endDrag);
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onEnd);
+    el.addEventListener("pointercancel", onEnd);
+    el.addEventListener("pointerleave", onEnd);
 
     return () => {
-      el.removeEventListener("pointerdown", onPointerDown);
-      el.removeEventListener("pointermove", onPointerMove);
-      el.removeEventListener("pointerup", endDrag);
-      el.removeEventListener("pointercancel", endDrag);
-      el.removeEventListener("pointerleave", endDrag);
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onEnd);
+      el.removeEventListener("pointercancel", onEnd);
+      el.removeEventListener("pointerleave", onEnd);
     };
   }, []);
 
@@ -149,8 +93,7 @@ function DragScrollArea({
       ref={ref}
       className={cn(
         "store-table-scroll w-full overflow-x-auto overflow-y-hidden overscroll-x-contain",
-        dragging ? "cursor-grabbing" : "cursor-grab",
-        className
+        dragging ? "cursor-grabbing" : "cursor-grab"
       )}
     >
       {children}
@@ -173,19 +116,18 @@ function ImagePreviewModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-3xl rounded-3xl bg-white p-4 shadow-2xl"
+        className="relative w-full max-w-3xl rounded-erp-xl bg-white p-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow"
-          data-no-drag="true"
+          className="absolute right-4 top-4 z-10 inline-flex h-10 w-10 items-center justify-center rounded-erp-full bg-white/90 text-erp-text-soft shadow-erp-card transition hover:bg-white hover:text-erp-heading"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl">
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-erp-md bg-erp-card-soft">
           <Image src={image} alt="Preview" fill className="object-contain" />
         </div>
       </div>
@@ -211,19 +153,19 @@ export default function StoreManagementCategoryTable({
     setLoadingMap({});
     setLoadedMap({});
     setErrorMap({});
-  }, [safeCategories]);
+    setOpenCategoryId(null);
+  }, [safeCategories.length]);
 
   const getCurrentItems = (category: Category) => {
     const loadedItems = itemsMap[category.id];
-    if (Array.isArray(loadedItems) && loadedItems.length > 0) return loadedItems;
+    if (Array.isArray(loadedItems)) return loadedItems;
     return category.items ?? [];
   };
 
   const handleToggleRow = async (category: Category) => {
     const categoryId = category.id;
-    const isOpen = openCategoryId === categoryId;
 
-    if (isOpen) {
+    if (openCategoryId === categoryId) {
       setOpenCategoryId(null);
       return;
     }
@@ -240,16 +182,18 @@ export default function StoreManagementCategoryTable({
 
       setItemsMap((prev) => ({
         ...prev,
-        [categoryId]:
-          items.length ? items : prev[categoryId] ?? category.items ?? [],
+        [categoryId]: Array.isArray(items) ? items : [],
       }));
+
       setLoadedMap((prev) => ({ ...prev, [categoryId]: true }));
     } catch (error) {
       setItemsMap((prev) => ({
         ...prev,
-        [categoryId]: prev[categoryId] ?? category.items ?? [],
+        [categoryId]: category.items ?? [],
       }));
+
       setLoadedMap((prev) => ({ ...prev, [categoryId]: true }));
+
       setErrorMap((prev) => ({
         ...prev,
         [categoryId]:
@@ -270,24 +214,24 @@ export default function StoreManagementCategoryTable({
           -ms-overflow-style: none;
           -webkit-overflow-scrolling: touch;
         }
+
         .store-table-scroll::-webkit-scrollbar {
           display: none;
         }
       `}</style>
 
-      <div className="overflow-hidden rounded-[24px] border border-[#E2E8F0] bg-white shadow-[0px_1px_2px_rgba(15,23,42,0.05),0px_1px_3px_rgba(15,23,42,0.08)] md:rounded-[32px]">
+      <div className="overflow-hidden rounded-erp-2xl border border-erp-border bg-white shadow-erp-card">
         <DragScrollArea>
-          <table className="min-w-[1200px] w-full border-separate border-spacing-0">
+          <table className="w-full min-w-[1180px] border-separate border-spacing-0 font-erp">
             <thead>
-              <tr className="bg-[#020617]">
+              <tr className="bg-erp-dark">
                 {parentHeaders.map((header, index) => (
                   <th
                     key={header}
                     className={cn(
-                      "px-6 py-6 text-left text-[15px] font-semibold text-white whitespace-nowrap",
-                      index === 0 && "rounded-tl-[24px] md:rounded-tl-[32px]",
-                      index === parentHeaders.length - 1 &&
-                        "rounded-tr-[24px] md:rounded-tr-[32px]",
+                      "whitespace-nowrap px-6 py-6 text-left text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-white",
+                      index === 0 && "rounded-tl-erp-2xl",
+                      index === parentHeaders.length - 1 && "rounded-tr-erp-2xl",
                       [
                         "Quantity",
                         "Selling Price",
@@ -316,56 +260,55 @@ export default function StoreManagementCategoryTable({
 
                 return (
                   <Fragment key={category.id}>
-                    <tr className="bg-white transition hover:bg-[#FAFBFC]">
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-[15px] font-medium text-[#0F172A]">
+                    <tr className="bg-white transition hover:bg-erp-card-soft">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-[15px] font-medium tracking-[-0.02em] text-erp-heading">
                         {category.name}
                       </td>
 
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-[15px] font-medium text-[#0F172A]">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-[15px] font-medium text-erp-heading">
                         {category.code}
                       </td>
 
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-center text-[15px] font-medium text-[#0F172A]">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-center text-[15px] font-medium text-erp-heading">
                         {category.quantity}
                       </td>
 
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-center text-[15px] font-medium text-[#0F172A]">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-center text-[15px] font-medium text-erp-heading">
                         {category.sellingPrice}
                       </td>
 
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-center text-[15px] font-medium text-[#0F172A]">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-center text-[15px] font-medium text-erp-heading">
                         {category.makingCharge}
                       </td>
 
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-center text-[15px] font-medium text-[#0F172A]">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-center text-[15px] font-medium text-erp-heading">
                         {category.purity}
                       </td>
 
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-center text-[15px] font-medium text-[#0F172A]">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-center text-[15px] font-medium text-erp-heading">
                         {category.netWt}
                       </td>
 
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-center text-[15px] font-medium text-[#0F172A]">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-center text-[15px] font-medium text-erp-heading">
                         {category.stoneWt}
                       </td>
 
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-center text-[15px] font-medium text-[#0F172A]">
+                      <td className="border-b border-r border-erp-border px-6 py-7 text-center text-[15px] font-medium text-erp-heading">
                         {category.grossWt}
                       </td>
 
                       <td
                         className={cn(
-                          "border-b border-[#E5E7EB] px-6 py-7 text-center",
-                          !isOpen && isLastRow && "rounded-br-[24px] md:rounded-br-[32px]"
+                          "border-b border-erp-border px-6 py-7 text-center",
+                          !isOpen && isLastRow && "rounded-br-erp-2xl"
                         )}
                       >
                         <button
                           type="button"
                           onClick={() => handleToggleRow(category)}
-                          className="inline-flex items-center gap-2 text-[15px] font-medium text-[#2563EB] hover:text-[#1D4ED8]"
-                          data-no-drag="true"
+                          className="inline-flex items-center gap-2 text-[15px] font-semibold text-erp-primary underline underline-offset-2 transition hover:text-erp-primary-hover"
                         >
-                          <span>View</span>
+                          View
                           {isLoading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : isOpen ? (
@@ -379,143 +322,118 @@ export default function StoreManagementCategoryTable({
 
                     {isOpen && (
                       <tr>
-                        <td
-                          colSpan={10}
-                          className={cn(
-                            "bg-[#F8FAFC] p-0",
-                            isLastRow && "rounded-b-[24px] md:rounded-b-[32px]"
-                          )}
-                        >
-                          <div className="w-full overflow-hidden">
-                            <div className="border-b border-[#E5E7EB] bg-[#EEF2F7] px-6 py-4">
-                              <h3 className="text-[15px] font-semibold text-[#111827]">
-                                {category.name} Items
-                              </h3>
-                            </div>
+                        <td colSpan={10} className="bg-erp-card-soft p-0">
+                          <table className="w-full border-separate border-spacing-0">
+                            <thead>
+                              <tr className="bg-[#EEF2F7]">
+                                {childHeaders.map((header, index) => (
+                                  <th
+                                    key={header}
+                                    className={cn(
+                                      "whitespace-nowrap border-b border-r border-erp-border px-6 py-4 text-left text-[14px] font-semibold text-erp-heading",
+                                      [
+                                        "Quantity",
+                                        "Purity",
+                                        "Net Wt.",
+                                        "Stone Wt.",
+                                        "Gross Wt.",
+                                      ].includes(header) && "text-center",
+                                      index === childHeaders.length - 1 &&
+                                        "border-r-0"
+                                    )}
+                                  >
+                                    {header}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
 
-                            <table className="w-full border-separate border-spacing-0">
-                              <thead>
-                                <tr className="bg-[#EEF2F7]">
-                                  {childHeaders.map((header, index) => (
-                                    <th
-                                      key={header}
-                                      className={cn(
-                                        "border-b border-r border-[#E5E7EB] px-6 py-4 text-left text-[14px] font-semibold text-[#161616] whitespace-nowrap",
-                                        [
-                                          "Quantity",
-                                          "Purity",
-                                          "Net Wt.",
-                                          "Stone Wt.",
-                                          "Gross Wt.",
-                                        ].includes(header) && "text-center",
-                                        index === childHeaders.length - 1 &&
-                                          "border-r-0"
-                                      )}
-                                    >
-                                      {header}
-                                    </th>
-                                  ))}
+                            <tbody>
+                              {isLoading ? (
+                                <tr>
+                                  <td
+                                    colSpan={8}
+                                    className="px-6 py-8 text-center text-[14px] font-medium text-erp-muted"
+                                  >
+                                    Loading items...
+                                  </td>
                                 </tr>
-                              </thead>
-
-                              <tbody>
-                                {isLoading && items.length === 0 ? (
-                                  <tr>
-                                    <td
-                                      colSpan={8}
-                                      className="px-6 py-8 text-center text-[14px] font-medium text-[#64748B]"
-                                    >
-                                      Loading items...
-                                    </td>
-                                  </tr>
-                                ) : error && items.length === 0 ? (
-                                  <tr>
-                                    <td
-                                      colSpan={8}
-                                      className="px-6 py-8 text-center text-[14px] font-medium text-[#B42318]"
-                                    >
-                                      {error}
-                                    </td>
-                                  </tr>
-                                ) : items.length > 0 ? (
-                                  items.map((item, itemIndex) => {
-                                    const isLastItem =
-                                      itemIndex === items.length - 1;
-
-                                    return (
-                                      <tr
-                                        key={item.id}
-                                        className="bg-[#F8FAFC] transition hover:bg-[#F1F5F9]"
+                              ) : error && items.length === 0 ? (
+                                <tr>
+                                  <td
+                                    colSpan={8}
+                                    className="px-6 py-8 text-center text-[14px] font-medium text-erp-danger"
+                                  >
+                                    {error}
+                                  </td>
+                                </tr>
+                              ) : items.length === 0 ? (
+                                <tr>
+                                  <td
+                                    colSpan={8}
+                                    className="px-6 py-8 text-center text-[14px] font-medium text-erp-muted"
+                                  >
+                                    No items found.
+                                  </td>
+                                </tr>
+                              ) : (
+                                items.map((item) => (
+                                  <tr
+                                    key={item.id}
+                                    className="bg-erp-card-soft transition hover:bg-[#F1F5F9]"
+                                  >
+                                    <td className="border-b border-r border-erp-border px-6 py-4">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setPreviewImage(item.image)
+                                        }
+                                        className="block w-fit cursor-pointer"
                                       >
-                                        <td className="border-b border-r border-[#E5E7EB] px-6 py-4">
-                                          <button
-                                            type="button"
-                                            onClick={() => setPreviewImage(item.image)}
-                                            className="block w-fit cursor-pointer"
-                                            data-no-drag="true"
-                                          >
-                                            <div className="relative h-[28px] w-[76px] overflow-hidden rounded-[6px] bg-[#F4DCE6] transition hover:opacity-90">
-                                              <Image
-                                                src={item.image}
-                                                alt={item.name}
-                                                fill
-                                                className="object-cover"
-                                                draggable={false}
-                                              />
-                                            </div>
-                                          </button>
-                                        </td>
+                                        <div className="relative h-[34px] w-[82px] overflow-hidden rounded-[8px] bg-[#F4DCE6]">
+                                          <Image
+                                            src={item.image}
+                                            alt={item.name}
+                                            fill
+                                            className="object-cover"
+                                            draggable={false}
+                                          />
+                                        </div>
+                                      </button>
+                                    </td>
 
-                                        <td className="border-b border-r border-[#E5E7EB] px-6 py-4 text-[14px] font-medium text-[#1F2937]">
-                                          {item.name}
-                                        </td>
+                                    <td className="border-b border-r border-erp-border px-6 py-4 text-[14px] font-medium text-erp-text-soft">
+                                      {item.name}
+                                    </td>
 
-                                        <td className="border-b border-r border-[#E5E7EB] px-6 py-4 text-[14px] font-medium text-[#1F2937]">
-                                          {item.code}
-                                        </td>
+                                    <td className="border-b border-r border-erp-border px-6 py-4 text-[14px] font-medium text-erp-text-soft">
+                                      {item.code}
+                                    </td>
 
-                                        <td className="border-b border-r border-[#E5E7EB] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {item.quantity}
-                                        </td>
+                                    <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-erp-text-soft">
+                                      {item.quantity}
+                                    </td>
 
-                                        <td className="border-b border-r border-[#E5E7EB] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {item.purity}
-                                        </td>
+                                    <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-erp-text-soft">
+                                      {item.purity}
+                                    </td>
 
-                                        <td className="border-b border-r border-[#E5E7EB] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {item.netWt}
-                                        </td>
+                                    <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-erp-text-soft">
+                                      {item.netWt}
+                                    </td>
 
-                                        <td className="border-b border-r border-[#E5E7EB] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {item.stoneWt}
-                                        </td>
+                                    <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-erp-text-soft">
+                                      {item.stoneWt}
+                                    </td>
 
-                                        <td
-                                          className={cn(
-                                            "border-b border-[#E5E7EB] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]",
-                                            isLastItem &&
-                                              isLastRow &&
-                                              "rounded-br-[24px] md:rounded-br-[32px]"
-                                          )}
-                                        >
-                                          {item.grossWt}
-                                        </td>
-                                      </tr>
-                                    );
-                                  })
-                                ) : (
-                                  <tr>
-                                    <td
-                                      colSpan={8}
-                                      className="px-6 py-8 text-center text-[14px] font-medium text-[#64748B]"
-                                    >
-                                      No items found.
+                                    <td className="border-b border-erp-border px-6 py-4 text-center text-[14px] font-medium text-erp-text-soft">
+                                      {item.grossWt}
                                     </td>
                                   </tr>
-                                )}
-                              </tbody>
-                            </table>
-                          </div>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
                         </td>
                       </tr>
                     )}
@@ -523,11 +441,11 @@ export default function StoreManagementCategoryTable({
                 );
               })}
 
-              {safeCategories.length === 0 && (
+              {!safeCategories.length && (
                 <tr>
                   <td
                     colSpan={10}
-                    className="px-6 py-10 text-center text-[15px] font-medium text-[#6B7280]"
+                    className="px-6 py-10 text-center text-[15px] font-medium text-erp-muted"
                   >
                     No categories found.
                   </td>

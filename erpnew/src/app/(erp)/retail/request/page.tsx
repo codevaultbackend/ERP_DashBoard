@@ -16,11 +16,21 @@ import {
 
 function getStoreIdFromLocalStorage(): string | number {
   if (typeof window === "undefined") return "";
+
   try {
     const rawUser = localStorage.getItem("user");
     if (!rawUser) return "";
+
     const user = JSON.parse(rawUser);
-    return user?.store_id || user?.storeId || user?.organization_id || "";
+
+    return (
+      user?.store_id ||
+      user?.storeId ||
+      user?.retail_store_id ||
+      user?.branch_id ||
+      user?.organization_id ||
+      ""
+    );
   } catch {
     return "";
   }
@@ -44,36 +54,48 @@ export type RequestCardData = {
 
 function formatDate(value?: string) {
   if (!value) return "--";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getCardStatus(
+  req: StockRequestApi,
+  type: "mine" | "received"
+): RequestCardData["status"] {
+  const status = String(req.status || "").toLowerCase();
+
+  if (
+    status.includes("dispatch") ||
+    status.includes("dispatched") ||
+    status.includes("transit")
+  ) {
+    return "dispatch";
+  }
+
+  if (status.includes("approved")) {
+    return type === "received" ? "dispatch" : "approved";
+  }
+
+  return "pending";
 }
 
 function mapRequestToCard(
   req: StockRequestApi,
   type: "mine" | "received"
 ): RequestCardData {
-  const normalizedStatus = String(req.status || "").toLowerCase();
-
-  let status: "approved" | "dispatch" | "pending" = "pending";
-
-  if (type === "received") {
-    status = "dispatch";
-  } else if (normalizedStatus === "approved") {
-    status = "approved";
-  } else {
-    status = "pending";
-  }
-
   return {
     id: req.request_no || `req${req.id}`,
-    requestId: req.id,
+    requestId: Number(req.id),
     priority: req.priority || "medium",
     created: formatDate(req.created_at),
-    status,
+    status: getCardStatus(req, type),
     notes: req.notes || "",
     raw: req,
     products: Array.isArray(req.request_items)
@@ -83,7 +105,7 @@ function mapRequestToCard(
             item?.item?.article_code ||
             item?.item?.sku_code ||
             `Item ${item.item_id}`,
-          qty: Number(item.request_qty || 0),
+          qty: Number(item.request_qty || item.qty || 0),
         }))
       : [],
   };
@@ -92,19 +114,27 @@ function mapRequestToCard(
 export default function RetailRequestPage() {
   const [loading, setLoading] = useState(true);
   const [submittingRequest, setSubmittingRequest] = useState(false);
+
   const [openNewRequest, setOpenNewRequest] = useState(false);
   const [openApproveModal, setOpenApproveModal] = useState(false);
+
   const [selectedDispatchRequest, setSelectedDispatchRequest] =
     useState<StockRequestApi | null>(null);
 
+  const [storeId, setStoreId] = useState<string | number>("");
   const [myRequests, setMyRequests] = useState<StockRequestApi[]>([]);
-  const [receivedRequests, setReceivedRequests] = useState<StockRequestApi[]>([]);
+  const [receivedRequests, setReceivedRequests] = useState<StockRequestApi[]>(
+    []
+  );
   const [pageError, setPageError] = useState("");
 
-  const storeId = useMemo(() => getStoreIdFromLocalStorage(), []);
+  useEffect(() => {
+    setStoreId(getStoreIdFromLocalStorage());
+  }, []);
 
   const loadAll = useCallback(async () => {
     try {
+      setLoading(true);
       setPageError("");
 
       const [mineRes, receivedRes] = await Promise.all([
@@ -112,13 +142,10 @@ export default function RetailRequestPage() {
         getReceivedStockRequests(),
       ]);
 
-      const mineRows = Array.isArray(mineRes?.data) ? mineRes.data : [];
-      const receivedRows = Array.isArray(receivedRes?.data)
-        ? receivedRes.data
-        : [];
-
-      setMyRequests(mineRows);
-      setReceivedRequests(receivedRows);
+      setMyRequests(Array.isArray(mineRes?.data) ? mineRes.data : []);
+      setReceivedRequests(
+        Array.isArray(receivedRes?.data) ? receivedRes.data : []
+      );
     } catch (err: any) {
       setPageError(
         err?.response?.data?.message ||
@@ -145,8 +172,8 @@ export default function RetailRequestPage() {
   );
 
   return (
-    <div className="min-h-screen ">
-      <div className="mx-auto w-full max-w-[1600px] ">
+    <div className="min-h-screen bg-erp-page font-erp">
+      <div className="mx-auto w-full max-w-[1600px]">
         <div className="space-y-6">
           <RequestTopHeader onOpenNewRequest={() => setOpenNewRequest(true)} />
 
@@ -160,54 +187,43 @@ export default function RetailRequestPage() {
           <LowStockAlert onRequestStock={() => setOpenNewRequest(true)} />
 
           {pageError ? (
-            <div className="rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] text-red-700">
+            <div className="rounded-erp-xl border border-red-200 bg-red-50 px-5 py-4 text-[14px] font-medium leading-[20px] tracking-[-0.02em] text-red-700">
               {pageError}
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <section className="min-w-0">
+              <h2 className="erp-section-title mb-5">My Stock Requests</h2>
+
               {loading ? (
-                <div>
-                  <h2 className="mb-4 text-[22px] font-semibold tracking-[-0.03em] text-[#172033] sm:text-[26px]">
-                    My Stock Requests
-                  </h2>
-                  <div className="rounded-[30px] border border-[#E4E7EC] bg-white p-6">
-                    <div className="h-[240px] animate-pulse rounded-[18px] bg-[#F2F4F7]" />
-                  </div>
+                <div className="h-[270px] rounded-erp-xl border border-erp-border bg-erp-card p-6 shadow-erp-card">
+                  <div className="h-full animate-pulse rounded-erp-lg bg-erp-border-soft" />
                 </div>
               ) : myRequestCards.length === 0 ? (
                 <EmptyStockRequests onCreate={() => setOpenNewRequest(true)} />
               ) : (
-                <div>
-                  <h2 className="mb-4 text-[22px] font-semibold tracking-[-0.03em] text-[#172033] sm:text-[26px]">
-                    My Stock Requests
-                  </h2>
-
-                  <div className="space-y-4">
-                    {myRequestCards.map((item) => (
-                      <StockRequestCard
-                        key={item.requestId}
-                        item={item}
-                        compact={false}
-                      />
-                    ))}
-                  </div>
+                <div className="space-y-4">
+                  {myRequestCards.map((item) => (
+                    <StockRequestCard
+                      key={item.requestId}
+                      item={item}
+                      compact={false}
+                    />
+                  ))}
                 </div>
               )}
             </section>
 
             <section className="min-w-0">
-              <h2 className="mb-4 text-[22px] font-semibold tracking-[-0.03em] text-[#172033] sm:text-[26px]">
-                Received Requests
-              </h2>
+              <h2 className="erp-section-title mb-5">Received Requests</h2>
 
               {loading ? (
-                <div className="rounded-[30px] border border-[#E4E7EC] bg-white p-6">
-                  <div className="h-[240px] animate-pulse rounded-[18px] bg-[#F2F4F7]" />
+                <div className="h-[270px] rounded-erp-xl border border-erp-border bg-erp-card p-6 shadow-erp-card">
+                  <div className="h-full animate-pulse rounded-erp-lg bg-erp-border-soft" />
                 </div>
               ) : receivedRequestCards.length === 0 ? (
-                <div className="rounded-[30px] border border-[#E4E7EC] bg-[#FCFCFD] px-5 py-12 text-center text-[16px] text-[#556274] shadow-[0px_4px_14px_rgba(15,23,42,0.035)]">
+                <div className="flex h-[270px] items-center justify-center rounded-erp-xl border border-erp-border bg-erp-card text-[15px] font-medium leading-[22px] tracking-[-0.02em] text-erp-muted shadow-erp-card">
                   No received requests yet
                 </div>
               ) : (
@@ -236,7 +252,10 @@ export default function RetailRequestPage() {
         storeId={storeId}
         submitting={submittingRequest}
         setSubmitting={setSubmittingRequest}
-        onSuccess={loadAll}
+        onSuccess={async () => {
+          await loadAll();
+          setOpenNewRequest(false);
+        }}
       />
 
       <ApproveDispatchModal
@@ -246,7 +265,11 @@ export default function RetailRequestPage() {
           setSelectedDispatchRequest(null);
         }}
         request={selectedDispatchRequest}
-        onSuccess={loadAll}
+        onSuccess={async () => {
+          await loadAll();
+          setOpenApproveModal(false);
+          setSelectedDispatchRequest(null);
+        }}
       />
     </div>
   );

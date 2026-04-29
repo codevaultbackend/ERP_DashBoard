@@ -2,23 +2,30 @@
 
 import { Search } from "lucide-react";
 
-export default function SearchInput({
-  value,
-  onChange,
-  placeholder,
-}: {
+type Props = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
-}) {
+  className?: string;
+};
+
+export default function SearchInput({
+  value,
+  onChange,
+  placeholder = "Search...",
+  className = "",
+}: Props) {
   return (
-    <div className="flex h-[74px] w-full items-center gap-4 rounded-[32px] border border-[#E2E8F0] bg-white px-6 shadow-[0px_1px_2px_rgba(15,23,42,0.05),0px_1px_3px_rgba(15,23,42,0.08)]">
-      <Search className="h-6 w-6 shrink-0 text-[#94A3B8]" />
+    <div
+      className={`flex h-[48px] min-w-0 flex-1 items-center gap-3 rounded-erp-full bg-[#F4F4F5] px-4 ${className}`}
+    >
+      <Search className="h-5 w-5 shrink-0 text-[#9CA3AF]" strokeWidth={2} />
+
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-transparent text-[15px] font-normal text-[#0F172A] outline-none placeholder:text-[#94A3B8] md:text-[16px]"
+        className="h-full w-full bg-transparent font-erp text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-erp-text outline-none placeholder:text-erp-placeholder"
       />
     </div>
   );
