@@ -21,11 +21,12 @@ export default function LoginForm() {
     password: false,
   });
 
-  const emailValid =
-    formData.email.length > 0 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+  const cleanEmail = formData.email.trim();
 
-  const passwordValid = formData.password.length >= 6;
+  const emailValid =
+    cleanEmail.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail);
+
+  const passwordValid = formData.password.trim().length > 0;
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const { name, value } = e.target;
@@ -46,14 +47,24 @@ export default function LoginForm() {
       password: true,
     });
 
-    if (!emailValid || !passwordValid || loading) return;
+    if (loading) return;
+
+    if (!emailValid) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    if (!passwordValid) {
+      setError("Please enter your password");
+      return;
+    }
 
     setError("");
     setLoading(true);
 
     try {
       await loginUser({
-        email: formData.email.trim(),
+        email: cleanEmail,
         password: formData.password,
       });
     } catch (error: any) {
@@ -70,26 +81,24 @@ export default function LoginForm() {
         </div>
       )}
 
-      {/* TOP DECOR */}
       <img
         src="/LoginDecordown.png"
         alt=""
         className="pointer-events-none absolute left-0 top-0 z-[1] h-auto w-full"
       />
 
-      {/* LOGIN CONTENT */}
       <div className="relative z-10 w-full max-w-[520px] px-6 pt-[90px]">
         <div className="mb-12 text-center">
           <h1 className="text-[36px] font-[500] leading-[100%] text-black">
             Welcome Back!
           </h1>
+
           <p className="mb-[48px] mt-[24px] text-[18px] font-[400] leading-[100%] text-[#5F5F5F]">
             Please login to access your account
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* EMAIL */}
           <div>
             <label
               className={`mb-2 block text-[16px] font-[500] ${
@@ -105,6 +114,7 @@ export default function LoginForm() {
                 name="email"
                 value={formData.email}
                 placeholder="Enter your email"
+                autoComplete="email"
                 onChange={handleChange}
                 onBlur={() =>
                   setTouched((prev) => ({
@@ -125,9 +135,14 @@ export default function LoginForm() {
                 </span>
               )}
             </div>
+
+            {touched.email && !emailValid ? (
+              <p className="mt-2 text-sm text-red-500">
+                Please enter a valid email address
+              </p>
+            ) : null}
           </div>
 
-          {/* PASSWORD */}
           <div className="max-w-[476px]">
             <label
               className={`mb-2 block text-[16px] font-[500] ${
@@ -145,6 +160,7 @@ export default function LoginForm() {
                 name="password"
                 value={formData.password}
                 placeholder="Enter password"
+                autoComplete="current-password"
                 onChange={handleChange}
                 onBlur={() =>
                   setTouched((prev) => ({
@@ -173,6 +189,12 @@ export default function LoginForm() {
               </button>
             </div>
 
+            {touched.password && !passwordValid ? (
+              <p className="mt-2 text-sm text-red-500">
+                Please enter your password
+              </p>
+            ) : null}
+
             <div className="mt-2 text-right">
               <Link href="/Resetpassword" className="text-sm text-[#2563EB]">
                 Forgot password?
@@ -182,19 +204,16 @@ export default function LoginForm() {
 
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-          {/* LOGIN BUTTON */}
           <div
             className={`h-16 w-full max-w-[476px] rounded-xl shadow-[2px_2px_4px_0px_rgba(0,0,0,0.24)] ${
-              emailValid && passwordValid ? "bg-[#0D4CBA]" : "bg-[#0D4CBA]/60"
+              loading ? "bg-[#0D4CBA]/70" : "bg-[#0D4CBA]"
             }`}
           >
             <button
               type="submit"
-              disabled={!emailValid || !passwordValid || loading}
-              className={`h-full w-full rounded-[12px] text-lg text-white ${
-                !emailValid || !passwordValid || loading
-                  ? "cursor-not-allowed"
-                  : "cursor-pointer"
+              disabled={loading}
+              className={`h-full w-full rounded-[12px] text-lg font-medium text-white ${
+                loading ? "cursor-not-allowed" : "cursor-pointer"
               }`}
             >
               {loading ? "Logging in..." : "Login"}
@@ -203,7 +222,6 @@ export default function LoginForm() {
         </form>
       </div>
 
-      {/* BOTTOM DECOR */}
       <img
         src="/LoginDecorUp.png"
         alt=""
