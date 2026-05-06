@@ -19,9 +19,48 @@ import { formatCurrency, formatCurrencyCompact } from "../utils";
 
 type Row = {
   name: string;
+  revenue?: number;
+  value?: number;
+  color?: string;
+};
+
+type SafeRow = {
+  name: string;
   revenue: number;
   color: string;
 };
+
+type Props = {
+  data?: Row[] | null;
+};
+
+const COLORS = ["#F97316", "#3B93E8", "#22C55E", "#A855F7", "#EF4444"];
+
+const fallbackData: SafeRow[] = [
+  { name: "Gold", revenue: 0, color: "#F97316" },
+  { name: "Silver", revenue: 0, color: "#3B93E8" },
+  { name: "Diamond", revenue: 0, color: "#A855F7" },
+  { name: "Platinum", revenue: 0, color: "#22C55E" },
+];
+
+function toNumber(value: unknown): number {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function normalizeData(data?: Row[] | null): SafeRow[] {
+  if (!Array.isArray(data) || data.length === 0) {
+    return fallbackData;
+  }
+
+  const cleaned = data.map((item, index) => ({
+    name: item?.name || `Metal ${index + 1}`,
+    revenue: toNumber(item?.revenue ?? item?.value),
+    color: item?.color || COLORS[index % COLORS.length],
+  }));
+
+  return cleaned.length ? cleaned : fallbackData;
+}
 
 function CustomBarLegend() {
   return (
@@ -32,14 +71,16 @@ function CustomBarLegend() {
   );
 }
 
-type Props = {
-  data: Row[];
-};
-
 export default function MetalTypeChart({ data }: Props) {
   const { metalBarSize } = useResponsiveChart();
 
-  const maxValue = Math.max(1000, ...data.map((item) => item.revenue || 0));
+  const safeData = normalizeData(data);
+
+  const maxValue = Math.max(
+    1000,
+    ...safeData.map((item) => toNumber(item.revenue))
+  );
+
   const yMax = Math.ceil(maxValue * 1.2);
 
   const ticks = [
@@ -61,11 +102,12 @@ export default function MetalTypeChart({ data }: Props) {
       <div className="h-[300px] w-full sm:h-[360px] lg:h-[420px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
-            data={data}
+            data={safeData}
             margin={{ top: 14, right: 4, left: -12, bottom: 2 }}
             barSize={metalBarSize}
           >
             <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 4" vertical />
+
             <XAxis
               dataKey="name"
               tickLine={false}
@@ -73,14 +115,17 @@ export default function MetalTypeChart({ data }: Props) {
               interval={0}
               tick={{ fill: "#6B7280", fontSize: 11 }}
             />
+
             <YAxis
               tickFormatter={formatCurrencyCompact}
               tickLine={false}
               axisLine={false}
               tick={{ fill: "#9CA3AF", fontSize: 11 }}
               ticks={ticks}
+              domain={[0, yMax]}
               width={50}
             />
+
             <Tooltip
               formatter={(value: number) => [formatCurrency(value), "Revenue"]}
               contentStyle={{
@@ -89,9 +134,11 @@ export default function MetalTypeChart({ data }: Props) {
                 boxShadow: "0px 12px 30px rgba(15,23,42,0.10)",
               }}
             />
+
             <Legend content={<CustomBarLegend />} />
+
             <Bar dataKey="revenue" radius={[8, 8, 0, 0]}>
-              {data.map((entry) => (
+              {safeData.map((entry) => (
                 <Cell key={entry.name} fill={entry.color} />
               ))}
             </Bar>

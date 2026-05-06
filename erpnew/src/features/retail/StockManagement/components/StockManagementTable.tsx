@@ -2,8 +2,15 @@
 
 import Image from "next/image";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, X } from "lucide-react";
-import { stockRows } from "../../data/stock-management-data";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  X,
+} from "lucide-react";
+import StockAuditPopup from "./StockAuditPopup";
+import type { AuditStatus } from "../api/audit-api";
 
 type StockArticle = {
   id: string;
@@ -15,6 +22,11 @@ type StockArticle = {
   netWeight: string;
   stoneWeight: string;
   grossWeight: string;
+  category: string;
+
+  // ✅ backend audit fields
+  isItemAudit?: boolean;
+  itemAuditAt?: string | null;
 };
 
 type StockRow = {
@@ -32,16 +44,25 @@ type StockRow = {
   articles?: StockArticle[];
 };
 
-type StockManagementTableProps = {
-  rows?: StockRow[];
+type AuditMap = Record<
+  string,
+  {
+    status: AuditStatus;
+    remark: string;
+    category: string;
+  }
+>;
+
+type Props = {
+  rows: StockRow[];
   loading?: boolean;
   loadingRowCategory?: string | null;
-  selectedArticles: Record<string, boolean>;
-  reportedArticles: Record<string, boolean>;
-  onToggleArticle: (articleId: string) => void;
+  auditMap: AuditMap;
+  setAuditMap: React.Dispatch<React.SetStateAction<AuditMap>>;
+  reportedArticles?: Record<string, boolean>;
   searchValue: string;
   selectedCategory: string;
-  onLoadArticles?: (category: string) => Promise<void> | void;
+  onLoadArticles: (category: string) => Promise<void> | void;
 };
 
 const headers = [
@@ -73,21 +94,42 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+function isAuditDoneToday(article: StockArticle) {
+  if (!article.isItemAudit || !article.itemAuditAt) return false;
+
+  const auditDate = new Date(article.itemAuditAt);
+  if (Number.isNaN(auditDate.getTime())) return false;
+
+  const today = new Date();
+
+  return (
+    auditDate.getFullYear() === today.getFullYear() &&
+    auditDate.getMonth() === today.getMonth() &&
+    auditDate.getDate() === today.getDate()
+  );
+}
+
 export default function StockManagementTable({
-  rows: externalRows,
-  loading = false,
-  loadingRowCategory = null,
-  selectedArticles,
-  reportedArticles,
-  onToggleArticle,
+  rows = [],
+  loading,
+  loadingRowCategory,
+  auditMap,
+  setAuditMap,
+  reportedArticles = {},
   searchValue,
   selectedCategory,
   onLoadArticles,
-}: StockManagementTableProps) {
-  const rows = (externalRows ?? (stockRows as StockRow[])) as StockRow[];
+}: Props) {
   const [openRowId, setOpenRowId] = useState<string | number | null>(null);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
+
+  const [reasonPopup, setReasonPopup] = useState<{
+    id: string;
+    name: string;
+    category: string;
+    remark: string;
+  } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const isDraggingRef = useRef(false);
@@ -95,46 +137,112 @@ export default function StockManagementTable({
   const scrollLeftRef = useRef(0);
 
   const filteredRows = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
+    const query = (searchValue ?? "").trim().toLowerCase();
 
     return rows.filter((row) => {
       const categoryMatch =
         selectedCategory === "All" || row.category === selectedCategory;
 
       if (!categoryMatch) return false;
-
       if (!query) return true;
 
       const rowMatch =
-        row.category.toLowerCase().includes(query) ||
-        row.code.toLowerCase().includes(query) ||
-        row.purity.toLowerCase().includes(query);
+        row.category?.toLowerCase().includes(query) ||
+        row.code?.toLowerCase().includes(query) ||
+        row.purity?.toLowerCase().includes(query);
 
-      const articleMatch = row.articles?.some(
-        (article) =>
-          article.article.toLowerCase().includes(query) ||
-          article.code.toLowerCase().includes(query) ||
-          article.purity.toLowerCase().includes(query)
-      );
+      const articleMatch = row.articles?.some((article) => {
+        return (
+          article.article?.toLowerCase().includes(query) ||
+          article.code?.toLowerCase().includes(query) ||
+          article.purity?.toLowerCase().includes(query)
+        );
+      });
 
       return rowMatch || articleMatch;
     });
   }, [rows, searchValue, selectedCategory]);
 
-  const toggleRow = async (row: StockRow, hasArticles: boolean) => {
-    if (!hasArticles && !onLoadArticles) return;
-
+  const toggleRow = async (row: StockRow) => {
     const nextOpen = openRowId === row.id ? null : row.id;
     setOpenRowId(nextOpen);
 
-    if (nextOpen === row.id && onLoadArticles && !row.articles?.length) {
+    if (nextOpen === row.id && !row.articles?.length) {
       await onLoadArticles(row.category);
     }
   };
 
+  const isArticleCompletedAfterApi = (articleId: string) => {
+    return !!reportedArticles[articleId];
+  };
+
+  const isArticleDone = (article: StockArticle) => {
+    return isAuditDoneToday(article) || isArticleCompletedAfterApi(article.id);
+  };
+
+  const isArticleValidForAudit = (article: StockArticle) => {
+    if (isArticleDone(article)) return true;
+
+    const audit = auditMap[article.id];
+
+    if (!audit?.status) return false;
+    if (audit.status === "missing" && !audit.remark?.trim()) return false;
+
+    return audit.status === "present" || audit.status === "missing";
+  };
+
   const isRowFullyReported = (row: StockRow) => {
     if (!row.articles?.length) return false;
-    return row.articles.every((article) => reportedArticles[article.id]);
+
+    return row.articles.every((article) => isArticleValidForAudit(article));
+  };
+
+  const markDone = (article: StockArticle) => {
+    if (isArticleDone(article)) return;
+
+    setAuditMap((prev) => ({
+      ...prev,
+      [article.id]: {
+        status: "present",
+        remark: "",
+        category: article.category,
+      },
+    }));
+  };
+
+  const openReason = (article: StockArticle) => {
+    if (isArticleDone(article)) return;
+
+    setAuditMap((prev) => ({
+      ...prev,
+      [article.id]: {
+        status: "missing",
+        remark: prev[article.id]?.remark || "",
+        category: article.category,
+      },
+    }));
+
+    setReasonPopup({
+      id: article.id,
+      name: article.article,
+      category: article.category,
+      remark: auditMap[article.id]?.remark || "",
+    });
+  };
+
+  const saveReason = () => {
+    if (!reasonPopup?.remark.trim()) return;
+
+    setAuditMap((prev) => ({
+      ...prev,
+      [reasonPopup.id]: {
+        status: "missing",
+        remark: reasonPopup.remark.trim(),
+        category: reasonPopup.category,
+      },
+    }));
+
+    setReasonPopup(null);
   };
 
   const openImagePreview = (images: string[], index: number) => {
@@ -186,6 +294,7 @@ export default function StockManagementTable({
     if (!container || !isDraggingRef.current) return;
 
     e.preventDefault();
+
     const x = e.pageX - container.offsetLeft;
     const walk = x - startXRef.current;
     container.scrollLeft = scrollLeftRef.current - walk;
@@ -197,7 +306,7 @@ export default function StockManagementTable({
 
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-[30px] border border-[#E3E7ED] bg-[#FCFCFD] shadow-[0px_4px_14px_rgba(15,23,42,0.035)]">
+      <div className="overflow-hidden rounded-[30px] border border-erp-border bg-erp-card shadow-erp-card">
         <div className="p-6">
           <div className="h-[360px] animate-pulse rounded-[24px] bg-[#F3F4F6]" />
         </div>
@@ -207,25 +316,26 @@ export default function StockManagementTable({
 
   return (
     <>
-      <div className="overflow-hidden rounded-[30px] border border-[#E3E7ED] bg-[#FCFCFD] shadow-[0px_4px_14px_rgba(15,23,42,0.035)]">
+      <div className="overflow-hidden rounded-[30px] border border-erp-border bg-erp-card shadow-erp-card">
         <div
           ref={scrollRef}
-          className="overflow-x-auto cursor-grab select-none active:cursor-grabbing"
+          className="dashboard-hidden-scroll overflow-x-auto cursor-grab select-none active:cursor-grabbing"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={stopDragging}
           onMouseLeave={stopDragging}
         >
-          <table className="min-w-[1280px] w-full border-separate border-spacing-0">
+          <table className="w-full min-w-[1180px] border-separate border-spacing-0">
             <thead>
-              <tr className="bg-[#000000]">
+              <tr className="bg-black">
                 {headers.map((header, index) => (
                   <th
                     key={header}
                     className={cn(
-                      "px-6 py-5 text-left text-[14px] font-semibold text-white whitespace-nowrap",
+                      "h-[56px] border-r border-black px-6 text-left text-[15px] font-semibold leading-none text-white whitespace-nowrap",
                       index === 0 && "rounded-tl-[30px]",
-                      index === headers.length - 1 && "rounded-tr-[30px]",
+                      index === headers.length - 1 &&
+                        "rounded-tr-[30px] border-r-0",
                       [
                         "Quantity",
                         "Selling Price",
@@ -245,82 +355,71 @@ export default function StockManagementTable({
             </thead>
 
             <tbody>
-              {filteredRows.map((row, rowIndex) => {
-                const hasArticles = !!row.articles?.length || !!onLoadArticles;
+              {filteredRows.map((row) => {
                 const isOpen = openRowId === row.id;
-                const isLastRow = rowIndex === filteredRows.length - 1;
                 const rowCompleted = isRowFullyReported(row);
-                const rowImages = row.articles?.map((article) => article.image) ?? [];
+                const rowImages =
+                  row.articles?.map((article) => article.image) ?? [];
                 const isRowLoading = loadingRowCategory === row.category;
 
                 return (
                   <Fragment key={row.id}>
                     <tr className="bg-white transition hover:bg-[#FAFBFC]">
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-[14px] font-medium text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-[15px] font-normal text-[#111827]">
                         {row.category}
                       </td>
 
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-center text-[14px] font-medium text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-normal text-[#111827]">
                         {row.code}
                       </td>
 
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-center text-[14px] font-medium text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-normal text-[#111827]">
                         {row.quantity}
                       </td>
 
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-center text-[14px] font-semibold text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
                         {row.sellingPrice}
                       </td>
 
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-center text-[14px] font-semibold text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
                         {row.makingCharge}
                       </td>
 
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-center text-[14px] font-medium text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
                         {row.purity}
                       </td>
 
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-center text-[14px] font-medium text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
                         {row.netWeight}
                       </td>
 
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-center text-[14px] font-medium text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
                         {row.stoneWeight}
                       </td>
 
-                      <td className="border-b border-r border-[#D9DDE3] px-6 py-5 text-center text-[14px] font-medium text-[#1F2937]">
+                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
                         {row.grossWeight}
                       </td>
 
-                      <td
-                        className={cn(
-                          "border-b border-[#D9DDE3] px-6 py-5 text-center",
-                          !isOpen && isLastRow && "rounded-br-[30px]"
-                        )}
-                      >
+                      <td className="h-[54px] border-b border-erp-border px-6 text-center">
                         <div className="flex items-center justify-center gap-3">
                           {rowCompleted && (
-                            <span className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#22C55E] text-white shadow-[0px_4px_10px_rgba(34,197,94,0.24)]">
-                              <Check size={16} strokeWidth={3} />
+                            <span className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-full bg-erp-success text-white shadow-[0px_4px_10px_rgba(22,184,51,0.24)]">
+                              <Check size={15} strokeWidth={3} />
                             </span>
                           )}
 
                           <button
                             type="button"
-                            onClick={() => toggleRow(row, hasArticles)}
-                            disabled={!hasArticles}
-                            className={cn(
-                              "mx-auto flex items-center gap-2 text-[14px] font-medium text-[#1F2937] transition",
-                              hasArticles
-                                ? "cursor-pointer hover:text-black"
-                                : "cursor-default opacity-70"
-                            )}
+                            onClick={() => toggleRow(row)}
+                            className="text-[15px] font-medium text-[#2563EB] underline underline-offset-2 transition hover:text-[#1D4ED8]"
                           >
-                            <span>View Details</span>
                             {isOpen ? (
-                              <ChevronUp size={18} strokeWidth={2.2} />
+                              <span className="inline-flex items-center gap-1">
+                                Hide <ChevronUp size={15} strokeWidth={2.4} />
+                              </span>
                             ) : (
-                              <ChevronDown size={18} strokeWidth={2.2} />
+                              "View"
                             )}
                           </button>
                         </div>
@@ -329,15 +428,9 @@ export default function StockManagementTable({
 
                     {isOpen && (
                       <tr>
-                        <td
-                          colSpan={10}
-                          className={cn(
-                            "bg-[#F4F7FA] p-0",
-                            isLastRow && "rounded-b-[30px]"
-                          )}
-                        >
+                        <td colSpan={10} className="bg-[#F4F7FA] p-0">
                           {isRowLoading ? (
-                            <div className="px-6 py-8 text-center text-[14px] font-medium text-[#6B7280]">
+                            <div className="px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
                               Loading category items...
                             </div>
                           ) : row.articles?.length ? (
@@ -349,7 +442,7 @@ export default function StockManagementTable({
                                       <th
                                         key={header}
                                         className={cn(
-                                          "border-b border-r border-[#D9DDE3] px-6 py-4 text-left text-[14px] font-semibold text-[#161616] whitespace-nowrap",
+                                          "h-[48px] border-b border-r border-erp-border px-6 text-left text-[14px] font-semibold text-[#161616] whitespace-nowrap",
                                           [
                                             "Quantity",
                                             "Purity",
@@ -358,7 +451,8 @@ export default function StockManagementTable({
                                             "Gross Wt.",
                                             "Checklist",
                                           ].includes(header) && "text-center",
-                                          index === childHeaders.length - 1 && "border-r-0"
+                                          index === childHeaders.length - 1 &&
+                                            "border-r-0"
                                         )}
                                       >
                                         {header}
@@ -369,21 +463,25 @@ export default function StockManagementTable({
 
                                 <tbody>
                                   {row.articles.map((article, articleIndex) => {
-                                    const isLastArticle =
-                                      articleIndex === row.articles!.length - 1;
-                                    const isReported = !!reportedArticles[article.id];
-                                    const isSelected = !!selectedArticles[article.id];
+                                    const audit = auditMap[article.id];
+                                    const isDone = audit?.status === "present";
+                                    const isMissing =
+                                      audit?.status === "missing";
+                                    const isCompleted = isArticleDone(article);
 
                                     return (
                                       <tr
                                         key={article.id}
                                         className="bg-[#F7FAFC] transition hover:bg-[#F2F7FB]"
                                       >
-                                        <td className="border-b border-r border-[#D9DDE3] px-6 py-4">
+                                        <td className="border-b border-r border-erp-border px-6 py-4">
                                           <button
                                             type="button"
                                             onClick={() =>
-                                              openImagePreview(rowImages, articleIndex)
+                                              openImagePreview(
+                                                rowImages,
+                                                articleIndex
+                                              )
                                             }
                                             className="block w-fit cursor-pointer"
                                           >
@@ -399,72 +497,110 @@ export default function StockManagementTable({
                                           </button>
                                         </td>
 
-                                        <td className="border-b border-r border-[#D9DDE3] px-6 py-4 text-[14px] font-medium text-[#1F2937]">
-                                          <span className="text-[14px] font-medium text-[#1F2937]">
-                                            {article.article}
-                                          </span>
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-[14px] font-medium text-[#1F2937]">
+                                          {article.article}
                                         </td>
 
-                                        <td className="border-b border-r border-[#D9DDE3] px-6 py-4 text-[14px] font-medium text-[#1F2937]">
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-[14px] font-medium text-[#1F2937]">
                                           {article.code}
                                         </td>
 
-                                        <td className="border-b border-r border-[#D9DDE3] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
                                           {article.quantity}
                                         </td>
 
-                                        <td className="border-b border-r border-[#D9DDE3] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
                                           {article.purity}
                                         </td>
 
-                                        <td className="border-b border-r border-[#D9DDE3] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
                                           {article.netWeight}
                                         </td>
 
-                                        <td className="border-b border-r border-[#D9DDE3] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
                                           {article.stoneWeight}
                                         </td>
 
-                                        <td className="border-b border-r border-[#D9DDE3] px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
                                           {article.grossWeight}
                                         </td>
 
-                                        <td
-                                          className={cn(
-                                            "border-b border-[#D9DDE3] px-6 py-4 text-center",
-                                            isLastArticle && isLastRow && "rounded-br-[30px]"
-                                          )}
-                                        >
-                                          {isReported ? (
-                                            <span className="mx-auto inline-flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#22C55E] text-white shadow-[0px_4px_10px_rgba(34,197,94,0.24)]">
-                                              <Check size={16} strokeWidth={3} />
-                                            </span>
-                                          ) : (
-                                            <label className="inline-flex cursor-pointer items-center justify-center">
-                                              <input
-                                                type="checkbox"
-                                                checked={isSelected}
-                                                onChange={() => onToggleArticle(article.id)}
-                                                className="peer sr-only"
-                                              />
-                                              <span
-                                                className={cn(
-                                                  "flex h-[22px] w-[22px] items-center justify-center rounded-[6px] border transition-all",
-                                                  isSelected
-                                                    ? "border-[#020222] bg-[#020222]"
-                                                    : "border-[#B8C0CC] bg-white"
-                                                )}
-                                              >
-                                                {isSelected && (
+                                        <td className="border-b border-erp-border px-6 py-4 text-center">
+                                          <div className="flex items-center justify-center gap-2">
+                                            {isCompleted ? (
+                                              <div className="inline-flex h-[30px] min-w-[116px] items-center justify-center gap-2 rounded-full border border-erp-success bg-erp-success-soft px-3 text-[11px] font-semibold text-erp-success">
+                                                <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-erp-success text-white">
                                                   <Check
-                                                    size={14}
+                                                    size={12}
                                                     strokeWidth={3}
-                                                    className="text-white"
                                                   />
-                                                )}
-                                              </span>
-                                            </label>
-                                          )}
+                                                </span>
+                                                Audit Done
+                                              </div>
+                                            ) : (
+                                              <>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    markDone(article)
+                                                  }
+                                                  className={cn(
+                                                    "inline-flex h-[30px] min-w-[78px] items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold transition",
+                                                    isDone
+                                                      ? "border-erp-success bg-erp-success-soft text-erp-success"
+                                                      : "border-erp-border bg-white text-[#1F2937] hover:border-erp-success"
+                                                  )}
+                                                >
+                                                  <span
+                                                    className={cn(
+                                                      "h-[10px] w-[10px] rounded-full border",
+                                                      isDone
+                                                        ? "border-erp-success bg-erp-success"
+                                                        : "border-[#9CA3AF] bg-white"
+                                                    )}
+                                                  />
+                                                  Done
+                                                </button>
+
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    openReason(article)
+                                                  }
+                                                  className={cn(
+                                                    "inline-flex h-[30px] min-w-[92px] items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold transition",
+                                                    isMissing
+                                                      ? "border-erp-danger bg-erp-danger-soft text-erp-danger"
+                                                      : "border-erp-border bg-white text-[#1F2937] hover:border-erp-danger"
+                                                  )}
+                                                >
+                                                  <span
+                                                    className={cn(
+                                                      "h-[10px] w-[10px] rounded-full border",
+                                                      isMissing
+                                                        ? "border-erp-danger bg-erp-danger"
+                                                        : "border-[#9CA3AF] bg-white"
+                                                    )}
+                                                  />
+                                                  Not Done
+                                                </button>
+                                              </>
+                                            )}
+                                          </div>
+
+                                          {!isCompleted && !audit?.status ? (
+                                            <p className="mt-1 text-[11px] font-medium text-erp-danger">
+                                              Required
+                                            </p>
+                                          ) : null}
+
+                                          {!isCompleted &&
+                                          isMissing &&
+                                          audit?.remark ? (
+                                            <p className="mt-1 line-clamp-1 text-[11px] font-medium text-erp-danger">
+                                              {audit.remark}
+                                            </p>
+                                          ) : null}
                                         </td>
                                       </tr>
                                     );
@@ -473,7 +609,7 @@ export default function StockManagementTable({
                               </table>
                             </div>
                           ) : (
-                            <div className="px-6 py-8 text-center text-[14px] font-medium text-[#6B7280]">
+                            <div className="px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
                               No category items found.
                             </div>
                           )}
@@ -488,7 +624,7 @@ export default function StockManagementTable({
                 <tr>
                   <td
                     colSpan={10}
-                    className="px-6 py-10 text-center text-[15px] font-medium text-[#6B7280]"
+                    className="px-6 py-10 text-center text-[15px] font-medium text-erp-muted"
                   >
                     No inventory items found.
                   </td>
@@ -538,15 +674,22 @@ export default function StockManagementTable({
               <ChevronRight size={22} />
             </button>
           )}
-
-          {previewImages.length > 1 && (
-            <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm">
-              <span>{previewIndex + 1}</span>
-              <span>/</span>
-              <span>{previewImages.length}</span>
-            </div>
-          )}
         </div>
+      )}
+
+      {reasonPopup && (
+        <StockAuditPopup
+          open={!!reasonPopup}
+          itemName={reasonPopup.name}
+          remark={reasonPopup.remark}
+          onChange={(value) =>
+            setReasonPopup((prev) =>
+              prev ? { ...prev, remark: value } : prev
+            )
+          }
+          onClose={() => setReasonPopup(null)}
+          onSubmit={saveReason}
+        />
       )}
     </>
   );

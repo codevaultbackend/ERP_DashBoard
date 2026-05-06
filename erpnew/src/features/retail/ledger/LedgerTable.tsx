@@ -1,130 +1,179 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { LedgerClientRow } from "../data/types";
-import { getLedgerBasePathByRole } from "./role-path";
+import { usePathname } from "next/navigation";
+import type { LedgerClientRow } from "./types";
 
 type Props = {
   rows: LedgerClientRow[];
-  basePath?: string;
 };
 
-export default function LedgerTable({ rows, basePath }: Props) {
-  const resolvedBasePath = useMemo(
-    () => basePath || getLedgerBasePathByRole(),
-    [basePath]
+function isValidValue(value: unknown) {
+  return (
+    value !== null &&
+    value !== undefined &&
+    value !== "" &&
+    value !== "undefined" &&
+    value !== "null"
   );
+}
+
+function displayValue(value: unknown) {
+  return isValidValue(value) ? String(value) : "—";
+}
+
+function getClientId(row: LedgerClientRow & any) {
+  const value =
+    row?.customerId ??
+    row?.customer_id ??
+    row?.clientId ??
+    row?.client_id ??
+    row?.id ??
+    null;
+
+  return isValidValue(value) ? String(value) : null;
+}
+
+function getLedgerBasePath(pathname: string | null) {
+  if (!pathname) return "/retail/ledger";
+
+  const cleanPath = pathname.split("?")[0].replace(/\/+$/, "");
+  const parts = cleanPath.split("/").filter(Boolean);
+
+  const ledgerIndex = parts.findIndex((part) => part === "ledger");
+
+  if (ledgerIndex >= 0) {
+    return `/${parts.slice(0, ledgerIndex + 1).join("/")}`;
+  }
+
+  const lowerParts = parts.map((part) => part.toLowerCase());
+
+  if (
+    lowerParts.includes("headoffice") ||
+    lowerParts.includes("head-office") ||
+    lowerParts.includes("head") ||
+    lowerParts.includes("head_office")
+  ) {
+    const headPart =
+      parts.find((part) =>
+        ["headoffice", "head-office", "head", "head_office"].includes(
+          part.toLowerCase()
+        )
+      ) || "headoffice";
+
+    return `/${headPart}/ledger`;
+  }
+
+  if (lowerParts.includes("district")) return "/district/ledger";
+  if (lowerParts.includes("retail")) return "/retail/ledger";
+
+  return "/retail/ledger";
+}
+
+export default function LedgerTable({ rows }: Props) {
+  const pathname = usePathname();
+  const ledgerBasePath = getLedgerBasePath(pathname);
 
   return (
-    <>
-      <div className="hidden overflow-hidden rounded-[28px] border border-[#E0E3E8] bg-white shadow-[0px_3px_14px_rgba(15,23,42,0.03)] lg:block">
-        <div className="overflow-x-auto">
-          <table className="min-w-[980px] w-full border-separate border-spacing-0">
-            <thead>
-              <tr className="bg-black text-white">
-                {[
-                  "Client Name",
-                  "Total Deals",
-                  "Total Amount",
-                  "Received Amount",
-                  "Pending Amount",
-                  "Action",
-                ].map((header, idx) => (
-                  <th
-                    key={header}
-                    className={[
-                      "border-b border-[#1D1D1D] px-6 py-5 text-center text-[14px] font-semibold",
-                      idx === 0 ? "rounded-tl-[28px]" : "",
-                      idx === 5 ? "rounded-tr-[28px]" : "",
-                    ].join(" ")}
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+    <div className="w-full overflow-hidden rounded-[31px] border border-[#E5E7EB] bg-white shadow-[1px_1px_4px_0px_rgba(0,0,0,0.10)]">
+      <div className="overflow-x-auto dashboard-hidden-scroll">
+        <table className="w-full min-w-[1120px] table-fixed border-separate border-spacing-0 font-erp">
+          <colgroup>
+            <col className="w-[14.2%]" />
+            <col className="w-[16.7%]" />
+            <col className="w-[18.3%]" />
+            <col className="w-[20.2%]" />
+            <col className="w-[20.1%]" />
+            <col className="w-[10.5%]" />
+          </colgroup>
 
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="bg-white">
-                  <td className="border-b border-r border-[#E5E7EB] px-6 py-5 text-center text-[16px] font-medium text-[#30323A]">
-                    {row.clientName}
-                  </td>
-                  <td className="border-b border-r border-[#E5E7EB] px-6 py-5 text-center text-[16px] font-medium text-[#30323A]">
-                    {row.totalDeals}
-                  </td>
-                  <td className="border-b border-r border-[#E5E7EB] px-6 py-5 text-center text-[16px] font-semibold text-[#1F2937]">
-                    {row.totalAmount}
-                  </td>
-                  <td className="border-b border-r border-[#E5E7EB] px-6 py-5 text-center text-[16px] font-semibold text-[#1F2937]">
-                    {row.receivedAmount}
-                  </td>
-                  <td className="border-b border-r border-[#E5E7EB] px-6 py-5 text-center text-[16px] font-semibold text-[#1F2937]">
-                    {row.pendingAmount}
-                  </td>
-                  <td className="border-b border-[#E5E7EB] px-6 py-5 text-center">
-                    <Link
-                      href={`${resolvedBasePath}/${row.id}`}
-                      className="text-[16px] font-medium text-[#3B82F6] underline underline-offset-4"
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
+          <thead>
+            <tr className="h-[58px] bg-black text-white">
+              {[
+                "Client Name",
+                "Total Deals",
+                "Total Amount",
+                "Received Amount",
+                "Pending Amount",
+                "Action",
+              ].map((header, index) => (
+                <th
+                  key={header}
+                  className={[
+                    "border-b border-black px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em]",
+                    index === 0 ? "rounded-tl-[31px]" : "",
+                    index === 5 ? "rounded-tr-[31px]" : "",
+                  ].join(" ")}
+                >
+                  {header}
+                </th>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </tr>
+          </thead>
 
-      <div className="grid grid-cols-1 gap-4 lg:hidden">
-        {rows.map((row) => (
-          <div
-            key={row.id}
-            className="rounded-[24px] border border-[#E3E6EB] bg-white p-4 shadow-[0px_3px_12px_rgba(15,23,42,0.03)] sm:p-5"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <h3 className="text-[18px] font-semibold text-[#111827]">
-                {row.clientName}
-              </h3>
-              <Link
-                href={`${resolvedBasePath}/${row.id}`}
-                className="text-[15px] font-medium text-[#3B82F6] underline underline-offset-4"
-              >
-                View
-              </Link>
-            </div>
+          <tbody>
+            {rows.length > 0 ? (
+              rows.map((row: LedgerClientRow & any, index) => {
+                const clientId = getClientId(row);
+                const href = clientId
+                  ? `${ledgerBasePath}/${encodeURIComponent(clientId)}`
+                  : ledgerBasePath;
 
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-[16px] bg-[#F8F9FB] p-3">
-                <p className="text-[12px] text-[#7B8496]">Total Deals</p>
-                <p className="mt-1 text-[15px] font-semibold text-[#111827]">
-                  {row.totalDeals}
-                </p>
-              </div>
-              <div className="rounded-[16px] bg-[#F8F9FB] p-3">
-                <p className="text-[12px] text-[#7B8496]">Total Amount</p>
-                <p className="mt-1 text-[15px] font-semibold text-[#111827]">
-                  {row.totalAmount}
-                </p>
-              </div>
-              <div className="rounded-[16px] bg-[#F8F9FB] p-3">
-                <p className="text-[12px] text-[#7B8496]">Received</p>
-                <p className="mt-1 text-[15px] font-semibold text-[#111827]">
-                  {row.receivedAmount}
-                </p>
-              </div>
-              <div className="rounded-[16px] bg-[#F8F9FB] p-3">
-                <p className="text-[12px] text-[#7B8496]">Pending</p>
-                <p className="mt-1 text-[15px] font-semibold text-[#111827]">
-                  {row.pendingAmount}
-                </p>
-              </div>
-            </div>
-          </div>
-        ))}
+                return (
+                  <tr
+                    key={`${clientId ?? row.clientName ?? "ledger"}-${index}`}
+                    className="h-[54px] bg-white"
+                  >
+                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-normal leading-[20px] tracking-[-0.03em] text-[#30323A]">
+                      {displayValue(row.clientName)}
+                    </td>
+
+                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-normal leading-[20px] tracking-[-0.03em] text-[#30323A]">
+                      {displayValue(row.totalDeals)}
+                    </td>
+
+                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
+                      {displayValue(row.totalAmount)}
+                    </td>
+
+                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
+                      {displayValue(row.receivedAmount)}
+                    </td>
+
+                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
+                      {displayValue(row.pendingAmount)}
+                    </td>
+
+                    <td className="border-b border-[#E5E7EB] px-4 text-center align-middle">
+                      {clientId ? (
+                        <Link
+                          href={href}
+                          className="text-[16px] font-medium leading-[20px] tracking-[-0.03em] text-[#2563EB] underline underline-offset-[3px] transition hover:text-[#1D4ED8]"
+                        >
+                          View
+                        </Link>
+                      ) : (
+                        <span className="text-[16px] font-medium leading-[20px] tracking-[-0.03em] text-[#94A3B8]">
+                          View
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td
+                  colSpan={6}
+                  className="h-[180px] px-5 text-center align-middle text-[15px] font-medium text-[#64748B]"
+                >
+                  No ledger clients found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-    </>
+    </div>
   );
 }

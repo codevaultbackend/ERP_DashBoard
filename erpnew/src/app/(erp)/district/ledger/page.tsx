@@ -5,16 +5,15 @@ import { useEffect, useMemo, useState } from "react";
 import FinanceMetricCard from "../../../../features/retail/ledger/FinanceMetricCard";
 import FinanceSearchBar from "../../../../features/retail/ledger/FinanceSearchBar";
 import LedgerTable from "../../../../features/retail/ledger/LedgerTable";
-import {
-  getLedgerDashboardByRole,
-} from "../../../../features/retail/ledger/api";
+import { getLedgerDashboardByRole } from "../../../../features/retail/ledger/api";
 import type {
   LedgerClientRow,
   LedgerDashboardSummary,
 } from "../../../../features/retail/ledger/types";
 import {
-  formatCurrency,
+  downloadCsv,
   mapLedgerClientsToUi,
+  toNumber,
 } from "../../../../features/retail/ledger/utils";
 
 const EMPTY_SUMMARY: LedgerDashboardSummary = {
@@ -23,10 +22,33 @@ const EMPTY_SUMMARY: LedgerDashboardSummary = {
   goods_receipt: 0,
 };
 
+function formatMetricValue(value: number | string | null | undefined) {
+  return new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: 0,
+  }).format(toNumber(value));
+}
+
+function parseAmount(value: string | number | null | undefined) {
+  if (typeof value === "number") return value;
+
+  const text = String(value ?? "").trim();
+
+  if (!text) return 0;
+
+  const hasLakh = /L$/i.test(text);
+  const cleaned = text.replace(/[₹,\s]/g, "").replace(/L$/i, "");
+  const num = Number(cleaned);
+
+  if (Number.isNaN(num)) return 0;
+
+  return hasLakh ? num * 100000 : num;
+}
+
 export default function LedgerPage() {
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<LedgerClientRow[]>([]);
-  const [summary, setSummary] = useState<LedgerDashboardSummary>(EMPTY_SUMMARY);
+  const [summary, setSummary] =
+    useState<LedgerDashboardSummary>(EMPTY_SUMMARY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -49,6 +71,8 @@ export default function LedgerPage() {
         setSummary(res?.data?.summary ?? EMPTY_SUMMARY);
         setRows(mapLedgerClientsToUi(res));
       } catch (err) {
+        console.error("Ledger dashboard error:", err);
+
         if (!active) return;
 
         setRows([]);
@@ -72,20 +96,47 @@ export default function LedgerPage() {
 
   const filteredRows = useMemo(() => rows, [rows]);
 
+  const collectableAmount = useMemo(() => {
+    return rows.reduce((sum, item) => {
+      return sum + parseAmount(item.pendingAmount);
+    }, 0);
+  }, [rows]);
+
+  const handleExportReport = () => {
+    if (!filteredRows.length) return;
+
+    downloadCsv(
+      "ledger-report.csv",
+      filteredRows.map((row) => ({
+        "Client Name": row.clientName,
+        "Total Deals": row.totalDeals,
+        "Total Amount": row.totalAmount,
+        "Received Amount": row.receivedAmount,
+        "Pending Amount": row.pendingAmount,
+      }))
+    );
+  };
+
   return (
-    <div className="w-full pb-8">
+    <div className="w-full pb-8 font-erp">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h1 className="text-[34px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[42px]">
+          <h1 className="text-[34px] font-semibold leading-[42px] tracking-[-0.04em] text-[#111827] sm:text-[42px] sm:leading-[50px]">
             Ledger &amp; Accounts
           </h1>
-          <p className="mt-2 text-[18px] text-[#5B6475]">
+
+          <p className="mt-2 text-[18px] font-normal leading-[24px] tracking-[-0.02em] text-[#5B6475]">
             Complete financial tracking and product-wise ledger
           </p>
         </div>
 
-        <button className="inline-flex h-[56px] items-center justify-center gap-3 rounded-full bg-[#02031A] px-6 text-[16px] font-medium text-white shadow-[0px_10px_24px_rgba(2,3,26,0.18)]">
-          <Search className="h-4 w-4 rotate-45" />
+        <button
+          type="button"
+          onClick={handleExportReport}
+          disabled={!filteredRows.length}
+          className="inline-flex h-[56px] items-center justify-center gap-3 rounded-full bg-[#02031A] px-6 text-[16px] font-medium leading-[20px] tracking-[-0.02em] text-white shadow-[0px_10px_24px_rgba(2,3,26,0.18)] transition hover:bg-[#11122A] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Search className="h-4 w-4 rotate-45" strokeWidth={2.2} />
           Export Report
         </button>
       </div>
@@ -93,31 +144,32 @@ export default function LedgerPage() {
       <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <FinanceMetricCard
           title="Total Sales"
-          value={formatCurrency(summary.total_sales)}
+          value={formatMetricValue(summary.total_sales)}
           icon={<BarChart3 className="h-6 w-6 text-[#3B82F6]" />}
           iconWrapClassName="bg-[#DCEBFA]"
         />
+
         <FinanceMetricCard
           title="Total Loss"
-          value={formatCurrency(summary.loss)}
+          value={formatMetricValue(summary.loss)}
           icon={<TrendingDown className="h-6 w-6 text-[#FF3131]" />}
           iconWrapClassName="bg-[#F9E2E2]"
         />
+
         <FinanceMetricCard
           title="Collectable Amount"
-          value={formatCurrency(
-            rows.reduce((sum, item) => {
-              const raw = Number(String(item.pendingAmount).replace(/[^\d.-]/g, ""));
-              return sum + (Number.isNaN(raw) ? 0 : raw);
-            }, 0)
-          )}
+          value={formatMetricValue(collectableAmount)}
           icon={<Wallet className="h-6 w-6 text-[#B38300]" />}
           iconWrapClassName="bg-[#F7E8BA]"
         />
       </div>
 
       <div className="mt-8">
-        <FinanceSearchBar value={search} onChange={setSearch} />
+        <FinanceSearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by name..."
+        />
       </div>
 
       <div className="mt-8">

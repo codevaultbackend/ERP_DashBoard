@@ -1,40 +1,38 @@
 "use client";
 
-import React from "react";
+import type { ReactNode } from "react";
 
 type Props = {
   title: string;
-  value: string;
-  icon: React.ReactNode;
-  iconWrapClassName: string;
+  value: string | number;
+  icon: ReactNode;
+  iconWrapClassName?: string;
 };
 
 export default function FinanceMetricCard({
   title,
   value,
   icon,
-  iconWrapClassName,
+  iconWrapClassName = "bg-[#DBEAFE]",
 }: Props) {
   return (
-    <div className="rounded-[24px] border border-[#E3E6EB] bg-white px-4 py-4 shadow-[0px_2px_10px_rgba(15,23,42,0.02)] sm:px-6 sm:py-6">
-      <div className="flex items-center gap-4">
-        <div
-          className={[
-            "flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[16px]",
-            iconWrapClassName,
-          ].join(" ")}
-        >
-          {icon}
-        </div>
+    <div className="flex h-[110px] items-center rounded-[28px] border border-[#E1E5EA] bg-white px-[26px] shadow-[1px_1px_4px_0px_rgba(0,0,0,0.04)]">
+      <div
+        className={[
+          "flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[14px]",
+          iconWrapClassName,
+        ].join(" ")}
+      >
+        {icon}
+      </div>
 
-        <div className="min-w-0">
-          <p className="text-[15px] font-medium text-[#5B6475] sm:text-[16px]">
-            {title}
-          </p>
-          <h3 className="mt-1 text-[18px] font-semibold leading-none text-[#111827] sm:text-[20px]">
-            {value}
-          </h3>
-        </div>
+      <div className="ml-[14px] min-w-0">
+        <p className="text-[16px] font-normal leading-[20px] tracking-[-0.02em] text-[#4B5563]">
+          {title}
+        </p>
+        <p className="mt-[6px] text-[30px] font-semibold leading-[32px] tracking-[-0.04em] text-[#101828]">
+          {value}
+        </p>
       </div>
     </div>
   );

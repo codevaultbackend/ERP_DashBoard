@@ -2,7 +2,10 @@
 
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "http://localhost:5000";
 
 export const stockApi = axios.create({
   baseURL: API_URL,
@@ -12,14 +15,16 @@ export const stockApi = axios.create({
 stockApi.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
+
   return config;
 });
 
-export type StockRole = "retail" | "district";
+export type StockRole = "retail" | "district" | "head";
 
 export type StockCategoryRowApi = {
   category: string;
@@ -35,49 +40,56 @@ export type StockCategoryRowApi = {
 };
 
 export type StockCategoryItemApi = {
-  idx: number;
+  idx?: number;
   id: number;
   article_code: string;
   sku_code: string;
   item_name: string;
   metal_type: string;
   category: string;
-  details: string;
+  details?: string;
   purity: string;
   gross_weight: number;
   net_weight: number;
   stone_weight: number;
-  stone_amount: number;
-  making_charge: number;
-  purchase_rate: number;
-  sale_rate: number;
-  hsn_code: string;
-  unit: string;
-  current_status: string;
-  stock_id: number | null;
-  quantity: number;
-  available_qty: number;
-  available_weight: number;
-  reserved_qty: number;
-  reserved_weight: number;
-  transit_qty: number;
-  transit_weight: number;
-  damaged_qty: number;
-  damaged_weight: number;
-  dead_qty: number;
-  dead_weight: number;
-  store_id: number | null;
-  storeCode: string | null;
-  storeName: string | null;
-  organization_level: string | null;
-  organization_id: number;
-  createdAt: string | null;
-  updatedAt: string | null;
+  stone_amount?: number;
+  making_charge?: number;
+  purchase_rate?: number;
+  sale_rate?: number;
+  hsn_code?: string;
+  unit?: string;
+  current_status?: string;
+  stock_id?: number | null;
+  quantity?: number;
+  available_qty?: number;
+  available_weight?: number;
+  reserved_qty?: number;
+  reserved_weight?: number;
+  transit_qty?: number;
+  transit_weight?: number;
+  damaged_qty?: number;
+  damaged_weight?: number;
+  dead_qty?: number;
+  dead_weight?: number;
+  store_id?: number | null;
+  storeCode?: string | null;
+  storeName?: string | null;
+  organization_level?: string | null;
+  organization_id?: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  image?: string;
+  image_url?: string;
   action?: string;
 };
 
 function getListEndpoint(role: StockRole) {
   if (role === "district") return "/stock/getdistrict";
+
+  // head-office ke liye agar tumhara backend me alag endpoint hai
+  // to yaha replace kar dena, jaise "/stock/head"
+  if (role === "head") return "/stock/list";
+
   return "/stock/list";
 }
 

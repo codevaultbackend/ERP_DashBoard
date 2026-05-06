@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowUpRight, BadgeAlert, Box, MoveDownRight, Truck } from "lucide-react";
+import {
+  ArrowUpRight,
+  BadgeAlert,
+  Box,
+  MoveDownRight,
+  Truck,
+} from "lucide-react";
 import { stockStats } from "../../data/stock-management-data";
 
 type StockStatItem = {
@@ -21,24 +27,28 @@ function getToneClasses(tone: string) {
   switch (tone) {
     case "gold":
       return {
-        iconWrap: "bg-[#FDF1C9]",
-        iconColor: "text-[#C8A63A]",
+        iconWrap: "bg-erp-yellow-soft",
+        iconColor: "text-erp-yellow",
       };
+
     case "red":
       return {
-        iconWrap: "bg-[#FBE9E9]",
-        iconColor: "text-[#FF3B30]",
+        iconWrap: "bg-erp-danger-soft",
+        iconColor: "text-erp-danger",
       };
+
     case "soft-red":
       return {
-        iconWrap: "bg-[#F8E7E7]",
-        iconColor: "text-[#FF3B30]",
+        iconWrap: "bg-erp-warning-soft",
+        iconColor: "text-erp-warning",
       };
+
     case "purple":
       return {
-        iconWrap: "bg-[#EEDBFF]",
-        iconColor: "text-[#9333EA]",
+        iconWrap: "bg-erp-purple-soft",
+        iconColor: "text-erp-purple",
       };
+
     default:
       return {
         iconWrap: "bg-[#F3F4F6]",
@@ -51,10 +61,13 @@ function getIcon(icon: string, className: string) {
   switch (icon) {
     case "badge":
       return <BadgeAlert className={className} />;
+
     case "arrow":
       return <MoveDownRight className={className} />;
+
     case "truck":
       return <Truck className={className} />;
+
     default:
       return <Box className={className} />;
   }
@@ -66,7 +79,7 @@ type Props = {
 
 export default function StockStatCards({ stats = stockStats }: Props) {
   return (
-    <div className="grid grid-cols-4 max-[768px]:grid-cols-2 gap-4 max-[1000px]:grid-cols-3  2xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((item) => {
         const tone = getToneClasses(item.tone);
 
@@ -74,38 +87,44 @@ export default function StockStatCards({ stats = stockStats }: Props) {
           <div
             key={item.id}
             className={cn(
-              "rounded-[32px] border border-[#E3E7ED] bg-[#FCFCFD]",
-              "px-4 py-4 shadow-[1px_1px_4px_0_#0000001A]",
-              "sm:px-5 sm:py-5 xl:min-h-[164px] max-w-[272px]"
+              "flex min-h-[164px] flex-col justify-between",
+              "rounded-[32px] border border-erp-border bg-erp-card",
+              "px-[18px] py-[16px] shadow-erp-card"
             )}
           >
             <div
               className={cn(
-                "flex h-[50px] w-[50px] items-center justify-center rounded-[18px]",
+                "flex h-[54px] w-[54px] items-center justify-center rounded-[18px]",
                 tone.iconWrap
               )}
             >
-              {getIcon(item.icon, cn("h-[22px] w-[22px] stroke-[1.8]", tone.iconColor))}
+              {getIcon(
+                item.icon,
+                cn("h-[23px] w-[23px] stroke-[1.85]", tone.iconColor)
+              )}
             </div>
 
-            <div className="mt-5">
-              <p className="text-[14px] font-[400] leading-[1.25] text-[#282828]">
+            <div>
+              <p className="text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-[#282828]">
                 {item.title}
               </p>
 
-              <div className="mt-3 flex items-end justify-between gap-3">
-                <h3 className="text-[28px] font-[590] leading-none tracking-[-0.04em] text-[#000000] sm:text-[26px] md:text-[28px]">
+              <div className="mt-[6px] flex items-end justify-between gap-3">
+                <h3 className="text-[34px] font-semibold leading-[38px] tracking-[-0.06em] text-black">
                   {item.value}
                 </h3>
 
                 {item.change ? (
                   <div
                     className={cn(
-                      "flex shrink-0 items-center gap-1 text-[13px] font-semibold sm:text-[14px]",
-                      item.changeTone === "red" ? "text-[#FF3B30]" : "text-[#22C55E]"
+                      "mb-[6px] flex shrink-0 items-center gap-[4px]",
+                      "text-[15px] font-semibold leading-none tracking-[-0.02em]",
+                      item.changeTone === "red"
+                        ? "text-erp-danger"
+                        : "text-erp-success"
                     )}
                   >
-                    <ArrowUpRight className="h-[16px] w-[16px]" />
+                    <ArrowUpRight className="h-[16px] w-[16px] stroke-[2.2]" />
                     <span>{item.change}</span>
                   </div>
                 ) : null}

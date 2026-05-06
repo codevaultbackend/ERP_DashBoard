@@ -1,60 +1,13 @@
-import type {
-  DistrictReportsApiData,
-  ReportsUiData,
-  RetailReportsApiData,
-} from "./types";
-
-export function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(Number.isFinite(value) ? value : 0);
-}
-
-export function formatCurrencyCompact(value: number) {
-  const safe = Number.isFinite(value) ? value : 0;
-
-  if (safe >= 10000000) return `₹${(safe / 10000000).toFixed(1).replace(/\.0$/, "")}Cr`;
-  if (safe >= 100000) return `₹${(safe / 100000).toFixed(1).replace(/\.0$/, "")}L`;
-  if (safe >= 1000) return `₹${Math.round(safe / 1000)}K`;
-  return `₹${safe}`;
-}
-
-export function normalizeCategoryName(value: string) {
-  const raw = String(value || "").trim();
-  if (!raw) return "Unknown";
-
-  const key = raw.toLowerCase().replace(/\s+/g, " ");
-
-  if (
-    key === "nose pin" ||
-    key === "nosepin" ||
-    key === "nose-pin" ||
-    key === "no se pin" ||
-    key === "nose  pin" ||
-    key === "nose pin "
-  ) {
-    return "Nose Pin";
-  }
-
-  return raw
-    .toLowerCase()
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+import type { ReportsApiData, ReportsUiData } from "./types";
 
 const PIE_COLORS = [
   "#8B5CF6",
-  "#6366F1",
-  "#14B8A6",
-  "#EC4899",
-  "#EF4444",
-  "#F59E0B",
-  "#10B981",
   "#3B82F6",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#EC4899",
+  "#14B8A6",
 ];
 
 const BAR_COLORS = [
@@ -64,147 +17,142 @@ const BAR_COLORS = [
   "#9CA3AF",
   "#FB923C",
   "#FACC15",
-  "#CBD5E1",
-  "#94A3B8",
 ];
 
-const CATEGORY_TAGS = [
-  "bg-[#E9D5FF] text-[#7C3AED]",
-  "bg-[#DBEAFE] text-[#2563EB]",
-  "bg-[#DCFCE7] text-[#15803D]",
-  "bg-[#FEF3C7] text-[#B45309]",
-  "bg-[#FCE7F3] text-[#BE185D]",
-];
+export function safeNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
 
-export function getRankColor(rank: number) {
-  if (rank === 1) return "bg-[#E1A200]";
-  if (rank === 2) return "bg-[#9CA3AF]";
-  if (rank === 3) return "bg-[#F97316]";
-  return "bg-[#3B82F6]";
+  const raw = String(value || "")
+    .replace(/[₹,%\s]/g, "")
+    .replace(/,/g, "")
+    .trim();
+
+  if (!raw) return 0;
+
+  const multiplier = raw.toLowerCase().endsWith("cr")
+    ? 10000000
+    : raw.toLowerCase().endsWith("l")
+      ? 100000
+      : raw.toLowerCase().endsWith("k")
+        ? 1000
+        : 1;
+
+  const cleaned = raw.replace(/cr|l|k/gi, "");
+  const number = Number(cleaned);
+
+  return Number.isFinite(number) ? number * multiplier : 0;
 }
 
-export function getCategoryTagClassName(category: string) {
-  const normalized = normalizeCategoryName(category);
-  const index =
-    normalized.split("").reduce((sum, ch) => sum + ch.charCodeAt(0), 0) %
-    CATEGORY_TAGS.length;
-
-  return CATEGORY_TAGS[index];
+export function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(safeNumber(value));
 }
 
-function safeNumber(value: unknown) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
+export function formatCurrencyCompact(value: number) {
+  const safe = safeNumber(value);
+
+  if (safe >= 10000000) return `₹${(safe / 10000000).toFixed(1)}Cr`;
+  if (safe >= 100000) return `₹${(safe / 100000).toFixed(1)}L`;
+  if (safe >= 1000) return `₹${Math.round(safe / 1000)}K`;
+
+  return `₹${safe}`;
 }
 
-function normalizeDistrictResponse(data: DistrictReportsApiData): ReportsUiData {
-  const categoryRevenueTotal = (data.category_wise_sales || []).reduce(
-    (sum, item) => sum + safeNumber(item.revenue),
+function cleanLabel(value: unknown, fallback = "Unknown") {
+  const text = String(value || "").trim();
+  return text && text !== "null" ? text : fallback;
+}
+
+function titleCase(value: unknown) {
+  return cleanLabel(value)
+    .toLowerCase()
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function shortDate(value: unknown) {
+  const text = cleanLabel(value, "-");
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return new Date(text).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+    });
+  }
+
+  return text;
+}
+
+export function normalizeReportsApiData(data: ReportsApiData): ReportsUiData {
+  const cards = data?.cards || {};
+
+  const categoryTotal = (data?.categorySales || []).reduce(
+    (sum, item) => sum + safeNumber(item.value),
     0
   );
 
   return {
     summary: {
-      totalCashReceived: safeNumber(data.summary?.total_cash_received),
-      accountTransfer: safeNumber(data.summary?.account_transfer),
-      totalSales: safeNumber(data.summary?.total_sales),
+      totalRevenue: safeNumber(cards.totalRevenue),
+      totalProfit: safeNumber(cards.totalProfit),
+      totalInventory: safeNumber(cards.totalInventory),
+      avgMonthlySales: safeNumber(cards.avgMonthlySales),
+      growth: String(cards.growth || "0%"),
     },
-    cashVsAccount: (data.cash_vs_account_reconciliation || []).map((item) => ({
-      label: item.label || "-",
-      cash: safeNumber(item.cash_received),
-      account: safeNumber(item.account_transfer),
-      total: safeNumber(item.total_sales),
+
+    monthlyTrend: (data?.monthlyTrend || [])
+      .filter((item) => item?.label)
+      .map((item) => ({
+        label: cleanLabel(item.label),
+        sales: safeNumber(item.sales),
+        profit: safeNumber(item.profit),
+      })),
+
+    categorySales: (data?.categorySales || []).map((item, index) => {
+      const value = safeNumber(item.value);
+
+      return {
+        name: titleCase(item.label),
+        value,
+        percentage:
+          categoryTotal > 0 ? Math.round((value / categoryTotal) * 100) : 0,
+        color: PIE_COLORS[index % PIE_COLORS.length],
+      };
+    }),
+
+    metalTypeDistribution: (data?.metalDistribution || []).map(
+      (item, index) => ({
+        name: cleanLabel(item.label),
+        revenue: safeNumber(item.value),
+        color: BAR_COLORS[index % BAR_COLORS.length],
+      })
+    ),
+
+    dailyTrend: (data?.dailyTrend || []).map((item) => ({
+      day: shortDate(item.label),
+      sales: safeNumber(item.sales),
     })),
-    categorySales: (data.category_wise_sales || []).map((item, index) => ({
-      name: normalizeCategoryName(item.category),
-      value: safeNumber(item.revenue),
-      percentage:
-        categoryRevenueTotal > 0
-          ? Math.round((safeNumber(item.revenue) / categoryRevenueTotal) * 100)
-          : 0,
-      color: PIE_COLORS[index % PIE_COLORS.length],
-    })),
-    metalTypeDistribution: (data.metal_type_distribution || []).map((item, index) => ({
-      name: item.metal_type || "Unknown",
-      revenue: safeNumber(item.revenue),
-      color: BAR_COLORS[index % BAR_COLORS.length],
-    })),
-    topProducts: (data.top_performing_products || []).map((item) => ({
-      rank: safeNumber(item.rank),
-      name: item.product_name || "-",
-      category: normalizeCategoryName(item.category),
-      unitsSold: safeNumber(item.units_sold),
-      totalRevenue: formatCurrency(safeNumber(item.total_revenue)),
-      performance: Math.max(0, Math.min(100, safeNumber(item.performance))),
-      rankColor: getRankColor(safeNumber(item.rank)),
-      tagClassName: getCategoryTagClassName(item.category),
-    })),
+
+    inventoryAuditReport: (data?.inventoryAuditReport || []).map(
+      (item, index) => ({
+        id: item.id || index + 1,
+        item: cleanLabel(item.item || item.name || item.product_name, "-"),
+        code: cleanLabel(item.code, "-"),
+        skuCode: cleanLabel(item.sku_code, "-"),
+        category: titleCase(item.category),
+        metalType: cleanLabel(item.metal_type, "-"),
+        purity: cleanLabel(item.purity, "-"),
+        netWt: cleanLabel(item.netWt, "0g"),
+        stoneWt: cleanLabel(item.stoneWt, "0g"),
+        grossWt: cleanLabel(item.grossWt, "0g"),
+        checklist: Boolean(item.checklist),
+        auditStatus: cleanLabel(item.audit_status, "pending"),
+      })
+    ),
   };
-}
-
-function normalizeRetailResponse(data: RetailReportsApiData): ReportsUiData {
-  const summary = data.summary || data.dashboardSummary || {};
-
-  const cashRows = data.cash_vs_account_reconciliation || data.cashVsAccount || [];
-  const categoryRows = data.category_wise_sales || data.categorySales || [];
-  const metalRows = data.metal_type_distribution || data.typeDistribution || [];
-  const topRows = data.top_performing_products || data.topProducts || [];
-
-  const categoryRevenueTotal = categoryRows.reduce(
-    (sum, item: any) => sum + safeNumber(item.revenue),
-    0
-  );
-
-  return {
-    summary: {
-      totalCashReceived: safeNumber(
-        (summary as any).total_cash_received ?? (summary as any).totalCashReceived
-      ),
-      accountTransfer: safeNumber(
-        (summary as any).account_transfer ?? (summary as any).accountTransfer
-      ),
-      totalSales: safeNumber(
-        (summary as any).total_sales ?? (summary as any).totalSales
-      ),
-    },
-    cashVsAccount: cashRows.map((item: any) => ({
-      label: item.label || item.day || "-",
-      cash: safeNumber(item.cash_received ?? item.cash),
-      account: safeNumber(item.account_transfer ?? item.online),
-      total: safeNumber(item.total_sales ?? item.total),
-    })),
-    categorySales: categoryRows.map((item: any, index: number) => ({
-      name: normalizeCategoryName(item.category),
-      value: safeNumber(item.revenue),
-      percentage:
-        categoryRevenueTotal > 0
-          ? Math.round((safeNumber(item.revenue) / categoryRevenueTotal) * 100)
-          : 0,
-      color: PIE_COLORS[index % PIE_COLORS.length],
-    })),
-    metalTypeDistribution: metalRows.map((item: any, index: number) => ({
-      name: item.metal_type || item.label || "Unknown",
-      revenue: safeNumber(item.revenue ?? item.value),
-      color: BAR_COLORS[index % BAR_COLORS.length],
-    })),
-    topProducts: topRows.map((item: any) => ({
-      rank: safeNumber(item.rank),
-      name: item.product_name || "-",
-      category: normalizeCategoryName(item.category),
-      unitsSold: safeNumber(item.units_sold),
-      totalRevenue: formatCurrency(safeNumber(item.total_revenue)),
-      performance: Math.max(0, Math.min(100, safeNumber(item.performance))),
-      rankColor: getRankColor(safeNumber(item.rank)),
-      tagClassName: getCategoryTagClassName(item.category),
-    })),
-  };
-}
-
-export function normalizeReportsApiData(
-  role: "district" | "retail",
-  data: DistrictReportsApiData | RetailReportsApiData
-): ReportsUiData {
-  return role === "district"
-    ? normalizeDistrictResponse(data as DistrictReportsApiData)
-    : normalizeRetailResponse(data as RetailReportsApiData);
 }

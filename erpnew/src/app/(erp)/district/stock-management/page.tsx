@@ -2,11 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+
 import StockStatCards from "../../../../features/retail/StockManagement/components/StockStatCards";
 import StockManagementToolbar from "../../../../features/retail/StockManagement/components/StockManagementToolbar";
 import StockManagementTable from "../../../../features/retail/StockManagement/components/StockManagementTable";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+import {
+  createDailyAudit,
+  type AuditStatus,
+} from "../../../../features/retail/StockManagement/api/audit-api";
+
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "https://erp-backend-w3pb.onrender.com";
 
 const stockApi = axios.create({
   baseURL: API_URL,
@@ -16,10 +25,12 @@ const stockApi = axios.create({
 stockApi.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("token");
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
   }
+
   return config;
 });
 
@@ -40,56 +51,31 @@ type StockCategoryRowApi = {
   net_weight?: number;
   stone_weight?: number;
   gross_weight?: number;
-  action?: string;
 };
 
 type StockCategoryItemApi = {
-  idx: number;
   id: number;
-  article_code: string;
-  sku_code: string;
-  item_name: string;
-  metal_type: string;
-  category: string;
-  details: string;
-  purity: string;
-  gross_weight: number;
-  net_weight: number;
-  stone_weight: number;
-  stone_amount: number;
-  making_charge: number;
-  purchase_rate: number;
-  sale_rate: number;
-  hsn_code: string;
-  unit: string;
-  current_status: string;
-  stock_id: number | null;
-  quantity: number;
-  available_qty: number;
-  available_weight: number;
-  reserved_qty: number;
-  reserved_weight: number;
-  transit_qty: number;
-  transit_weight: number;
-  damaged_qty: number;
-  damaged_weight: number;
-  dead_qty: number;
-  dead_weight: number;
-  store_id: number | null;
-  storeCode: string | null;
-  storeName: string | null;
-  organization_level: string | null;
-  organization_id: number;
-  createdAt: string | null;
-  updatedAt: string | null;
-  action?: string;
+  article_code?: string;
+  sku_code?: string;
+  item_name?: string;
+  category?: string;
+  purity?: string;
+  gross_weight?: number;
+  net_weight?: number;
+  stone_weight?: number;
+  available_qty?: number;
+  quantity?: number;
+  image?: string;
+  image_url?: string;
+
+  // ✅ audit fields from backend
+  isItemAudit?: boolean;
+  itemAuditAt?: string | null;
 };
 
 type StockListResponse = {
   success: boolean;
   message: string;
-  organization_id?: number;
-  store_code?: string;
   summary?: StockSummaryApi;
   count?: number;
   data?: StockCategoryRowApi[];
@@ -105,6 +91,11 @@ export type StockArticle = {
   netWeight: string;
   stoneWeight: string;
   grossWeight: string;
+  category: string;
+
+  // ✅ used by table to show Audit Done
+  isItemAudit?: boolean;
+  itemAuditAt?: string | null;
 };
 
 export type StockRow = {
@@ -122,6 +113,15 @@ export type StockRow = {
   articles?: StockArticle[];
 };
 
+type AuditMap = Record<
+  string,
+  {
+    status: AuditStatus;
+    remark: string;
+    category: string;
+  }
+>;
+
 function safeText(value: unknown, fallback = "--") {
   if (value === null || value === undefined || value === "") return fallback;
   return String(value);
@@ -129,7 +129,7 @@ function safeText(value: unknown, fallback = "--") {
 
 function safeWeight(value: unknown) {
   if (value === null || value === undefined || value === "") return "--";
-  return `${value} g`;
+  return `${value}g`;
 }
 
 function safePrice(value: unknown) {
@@ -137,9 +137,22 @@ function safePrice(value: unknown) {
   return `₹${value}`;
 }
 
+function isAuditDoneToday(article: StockArticle) {
+  if (!article.isItemAudit || !article.itemAuditAt) return false;
+
+  const auditDate = new Date(article.itemAuditAt);
+  const today = new Date();
+
+  return (
+    auditDate.getFullYear() === today.getFullYear() &&
+    auditDate.getMonth() === today.getMonth() &&
+    auditDate.getDate() === today.getDate()
+  );
+}
+
 function mapCategoryRowsToStockRows(rows: StockCategoryRowApi[]): StockRow[] {
   return rows.map((row, index) => ({
-    id: index + 1,
+    id: row.category || index + 1,
     category: safeText(row.category),
     code: safeText(row.code),
     quantity: Number(row.quantity || 0),
@@ -149,22 +162,30 @@ function mapCategoryRowsToStockRows(rows: StockCategoryRowApi[]): StockRow[] {
     netWeight: safeWeight(row.net_weight),
     stoneWeight: safeWeight(row.stone_weight),
     grossWeight: safeWeight(row.gross_weight),
-    image: "/images/placeholder-product.png",
+    image: "/placeholder-product.png",
     articles: [],
   }));
 }
 
-function mapCategoryItemsToArticles(rows: StockCategoryItemApi[]): StockArticle[] {
+function mapCategoryItemsToArticles(
+  rows: StockCategoryItemApi[],
+  category: string
+): StockArticle[] {
   return rows.map((row) => ({
     id: String(row.id),
-    image: "/images/placeholder-product.png",
-    article: safeText(row.item_name),
+    image: row.image || row.image_url || "/placeholder-product.png",
+    article: safeText(row.item_name || row.article_code || row.sku_code, "Item"),
     code: safeText(row.article_code || row.sku_code),
     quantity: Number(row.available_qty ?? row.quantity ?? 0),
     purity: safeText(row.purity),
     netWeight: safeWeight(row.net_weight),
     stoneWeight: safeWeight(row.stone_weight),
     grossWeight: safeWeight(row.gross_weight),
+    category,
+
+    // ✅ important: backend audit state
+    isItemAudit: Boolean(row.isItemAudit),
+    itemAuditAt: row.itemAuditAt || null,
   }));
 }
 
@@ -174,12 +195,16 @@ async function getDistrictStockCategories(): Promise<StockListResponse> {
 }
 
 async function getDistrictStockItemsByCategory(category: string) {
-  const res = await stockApi.get(`/stock/category/${encodeURIComponent(category)}`);
+  const res = await stockApi.get(
+    `/stock/category/${encodeURIComponent(category)}`
+  );
+
   return res.data;
 }
 
 export default function StockManagementPage() {
   const [rows, setRows] = useState<StockRow[]>([]);
+
   const [summary, setSummary] = useState<StockSummaryApi>({
     total_stock_items: 0,
     dead_stock_items: 0,
@@ -188,13 +213,20 @@ export default function StockManagementPage() {
   });
 
   const [loading, setLoading] = useState(true);
-  const [loadingRowCategory, setLoadingRowCategory] = useState<string | null>(null);
+  const [loadingRowCategory, setLoadingRowCategory] = useState<string | null>(
+    null
+  );
   const [pageError, setPageError] = useState("");
 
   const [searchValue, setSearchValue] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedArticles, setSelectedArticles] = useState<Record<string, boolean>>({});
-  const [reportedArticles, setReportedArticles] = useState<Record<string, boolean>>({});
+
+  const [reportedArticles, setReportedArticles] = useState<
+    Record<string, boolean>
+  >({});
+
+  const [auditMap, setAuditMap] = useState<AuditMap>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const loadDistrictRows = useCallback(async () => {
     try {
@@ -204,6 +236,7 @@ export default function StockManagementPage() {
       const res = await getDistrictStockCategories();
 
       const apiRows = Array.isArray(res?.data) ? res.data : [];
+
       const apiSummary = res?.summary || {
         total_stock_items: 0,
         dead_stock_items: 0,
@@ -215,8 +248,11 @@ export default function StockManagementPage() {
       setSummary(apiSummary);
     } catch (err: any) {
       setPageError(
-        err?.response?.data?.message || err?.message || "Failed to load district stock"
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load district stock"
       );
+
       setRows([]);
       setSummary({
         total_stock_items: 0,
@@ -234,108 +270,84 @@ export default function StockManagementPage() {
   }, [loadDistrictRows]);
 
   useEffect(() => {
-    const storedSelected = sessionStorage.getItem("selected-audit-items");
     const storedReported = sessionStorage.getItem("submitted-audit-items");
-
-    if (storedSelected) {
-      try {
-        const parsed: string[] = JSON.parse(storedSelected);
-        const mapped = parsed.reduce<Record<string, boolean>>((acc, id) => {
-          acc[id] = true;
-          return acc;
-        }, {});
-        setSelectedArticles(mapped);
-      } catch {
-        sessionStorage.removeItem("selected-audit-items");
-      }
-    }
+    const storedAuditMap = sessionStorage.getItem("stock-audit-map");
 
     if (storedReported) {
       try {
         const parsed: string[] = JSON.parse(storedReported);
+
         const mapped = parsed.reduce<Record<string, boolean>>((acc, id) => {
           acc[id] = true;
           return acc;
         }, {});
+
         setReportedArticles(mapped);
       } catch {
         sessionStorage.removeItem("submitted-audit-items");
       }
     }
+
+    if (storedAuditMap) {
+      try {
+        setAuditMap(JSON.parse(storedAuditMap));
+      } catch {
+        sessionStorage.removeItem("stock-audit-map");
+      }
+    }
   }, []);
 
   useEffect(() => {
-    const selectedIds = Object.keys(selectedArticles).filter((id) => selectedArticles[id]);
-    sessionStorage.setItem("selected-audit-items", JSON.stringify(selectedIds));
-  }, [selectedArticles]);
+    const reportedIds = Object.keys(reportedArticles).filter(
+      (id) => reportedArticles[id]
+    );
+
+    sessionStorage.setItem(
+      "submitted-audit-items",
+      JSON.stringify(reportedIds)
+    );
+  }, [reportedArticles]);
 
   useEffect(() => {
-    const reportedIds = Object.keys(reportedArticles).filter((id) => reportedArticles[id]);
-    sessionStorage.setItem("submitted-audit-items", JSON.stringify(reportedIds));
-  }, [reportedArticles]);
+    sessionStorage.setItem("stock-audit-map", JSON.stringify(auditMap));
+  }, [auditMap]);
 
   const categories = useMemo(() => {
     const unique = Array.from(new Set(rows.map((row) => row.category)));
     return ["All", ...unique];
   }, [rows]);
 
-  const allArticles = useMemo(() => {
-    return rows.flatMap((row) => row.articles ?? []);
-  }, [rows]);
+  const auditedCount = useMemo(() => {
+    return Object.values(auditMap).filter((audit) => {
+      if (!audit?.status) return false;
+      if (audit.status === "missing" && !audit.remark?.trim()) return false;
 
-  const selectedCount = useMemo(() => {
-    return allArticles.filter(
-      (article) => selectedArticles[article.id] && !reportedArticles[article.id]
-    ).length;
-  }, [allArticles, selectedArticles, reportedArticles]);
-
-  const handleToggleArticle = (articleId: string) => {
-    if (reportedArticles[articleId]) return;
-
-    setSelectedArticles((prev) => ({
-      ...prev,
-      [articleId]: !prev[articleId],
-    }));
-  };
-
-  const handleCreateReport = () => {
-    const idsToSubmit = Object.keys(selectedArticles).filter(
-      (id) => selectedArticles[id] && !reportedArticles[id]
-    );
-
-    if (!idsToSubmit.length) return;
-
-    setReportedArticles((prev) => {
-      const next = { ...prev };
-      idsToSubmit.forEach((id) => {
-        next[id] = true;
-      });
-      return next;
-    });
-
-    setSelectedArticles((prev) => {
-      const next = { ...prev };
-      idsToSubmit.forEach((id) => {
-        next[id] = false;
-      });
-      return next;
-    });
-  };
+      return audit.status === "present" || audit.status === "missing";
+    }).length;
+  }, [auditMap]);
 
   const handleLoadArticles = async (category: string) => {
-    const existingRow = rows.find((row) => row.category === category);
+    const existingRow = rows.find(
+      (row) =>
+        row.category?.toLowerCase().trim() === category?.toLowerCase().trim()
+    );
+
     if (existingRow?.articles?.length) return;
 
     try {
       setLoadingRowCategory(category);
 
       const res = await getDistrictStockItemsByCategory(category);
-      const apiRows: StockCategoryItemApi[] = Array.isArray(res?.data) ? res.data : [];
-      const articles = mapCategoryItemsToArticles(apiRows);
+
+      const apiRows: StockCategoryItemApi[] = Array.isArray(res?.data)
+        ? res.data
+        : [];
+
+      const articles = mapCategoryItemsToArticles(apiRows, category);
 
       setRows((prev) =>
         prev.map((row) =>
-          row.category === category
+          row.category?.toLowerCase().trim() === category?.toLowerCase().trim()
             ? {
                 ...row,
                 articles,
@@ -347,6 +359,190 @@ export default function StockManagementPage() {
       console.error("Failed to load district category items", err);
     } finally {
       setLoadingRowCategory(null);
+    }
+  };
+
+  const fetchArticlesForCategory = async (category: string) => {
+    const res = await getDistrictStockItemsByCategory(category);
+
+    const apiRows: StockCategoryItemApi[] = Array.isArray(res?.data)
+      ? res.data
+      : [];
+
+    return mapCategoryItemsToArticles(apiRows, category);
+  };
+
+  const getRowsForAudit = async () => {
+    const targetRows =
+      selectedCategory === "All"
+        ? rows
+        : rows.filter(
+            (row) =>
+              row.category?.toLowerCase().trim() ===
+              selectedCategory?.toLowerCase().trim()
+          );
+
+    const hydratedRows: StockRow[] = [];
+
+    for (const row of targetRows) {
+      if (row.articles?.length) {
+        hydratedRows.push(row);
+        continue;
+      }
+
+      const articles = await fetchArticlesForCategory(row.category);
+
+      hydratedRows.push({
+        ...row,
+        articles,
+      });
+    }
+
+    setRows((prev) =>
+      prev.map((row) => {
+        const hydrated = hydratedRows.find(
+          (x) =>
+            x.category?.toLowerCase().trim() ===
+            row.category?.toLowerCase().trim()
+        );
+
+        return hydrated || row;
+      })
+    );
+
+    return hydratedRows;
+  };
+
+  const validateAuditRows = (articles: StockArticle[]) => {
+    const pendingArticles = articles.filter((article) => {
+      // ✅ already audited today, no radio required
+      if (isAuditDoneToday(article)) return false;
+
+      const audit = auditMap[article.id];
+
+      if (!audit?.status) return true;
+
+      if (audit.status === "missing" && !audit.remark?.trim()) {
+        return true;
+      }
+
+      return audit.status !== "present" && audit.status !== "missing";
+    });
+
+    if (pendingArticles.length > 0) {
+      alert(`Please complete audit for ${pendingArticles.length} item(s).`);
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleCreateReport = async () => {
+    console.log("🔵 AUDIT DEBUG START");
+
+    try {
+      if (submitting) return;
+
+      setSubmitting(true);
+
+      const auditRows = await getRowsForAudit();
+
+      console.log("✅ Selected Category:", selectedCategory);
+      console.log(
+        "✅ Audit Rows:",
+        auditRows.map((row) => row.category)
+      );
+
+      if (!auditRows.length) {
+        throw new Error("No category found for audit");
+      }
+
+      const articles = auditRows.flatMap((row) => row.articles || []);
+
+      console.log("✅ Articles Count:", articles.length);
+      console.log("✅ Articles:", articles);
+
+      if (!articles.length) {
+        throw new Error("No frontend articles found for audit");
+      }
+
+      if (!validateAuditRows(articles)) {
+        return;
+      }
+
+      const items = articles
+        // ✅ do not submit already audited today items
+        .filter((article) => !isAuditDoneToday(article))
+        .map((article) => {
+          const audit = auditMap[article.id];
+
+          const status: AuditStatus = audit?.status || "pending";
+
+          return {
+            item_id: Number(article.id),
+            audit_result: status,
+            checklist_note:
+              status === "present"
+                ? "Audit completed"
+                : audit?.remark || "Not audited",
+            missing_reason:
+              status === "missing" || status === "pending"
+                ? audit?.remark || "Not audited"
+                : undefined,
+          };
+        });
+
+      if (!items.length) {
+        alert("All selected items are already audited today.");
+        return;
+      }
+
+      const payload = {
+        // ✅ updated backend does not need category
+        submit: false,
+        items,
+      };
+
+      console.log("✅ FINAL AUDIT PAYLOAD:", JSON.stringify(payload, null, 2));
+
+      const result = await createDailyAudit(payload);
+
+      console.log("✅ AUDIT RESPONSE:", result);
+
+      const auditedAt = new Date().toISOString();
+
+      setReportedArticles((prev) => {
+        const next = { ...prev };
+
+        items.forEach((item) => {
+          next[String(item.item_id)] = true;
+        });
+
+        return next;
+      });
+
+      // ✅ update UI immediately after success
+      setRows((prev) =>
+        prev.map((row) => ({
+          ...row,
+          articles: row.articles?.map((article) =>
+            items.some((item) => String(item.item_id) === article.id)
+              ? {
+                  ...article,
+                  isItemAudit: true,
+                  itemAuditAt: auditedAt,
+                }
+              : article
+          ),
+        }))
+      );
+
+      alert(result?.message || "Audit saved successfully");
+    } catch (err: any) {
+      console.error("❌ AUDIT ERROR:", err?.message || err);
+      alert(err?.message || "Failed to save audit");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -390,13 +586,14 @@ export default function StockManagementPage() {
       />
 
       <StockManagementToolbar
-        selectedCount={selectedCount}
+        selectedCount={auditedCount}
         onCreateReport={handleCreateReport}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         categories={categories}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
+        submitting={submitting}
       />
 
       {pageError ? (
@@ -409,9 +606,9 @@ export default function StockManagementPage() {
         rows={rows}
         loading={loading}
         loadingRowCategory={loadingRowCategory}
-        selectedArticles={selectedArticles}
+        auditMap={auditMap}
+        setAuditMap={setAuditMap}
         reportedArticles={reportedArticles}
-        onToggleArticle={handleToggleArticle}
         searchValue={searchValue}
         selectedCategory={selectedCategory}
         onLoadArticles={handleLoadArticles}

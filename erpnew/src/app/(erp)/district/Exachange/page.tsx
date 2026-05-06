@@ -48,7 +48,9 @@ export default function RefundReturnPage() {
 
       setStats(res?.stats || EMPTY_STATS);
       setRequests(
-        Array.isArray(res?.data) ? res.data.map(mapExchangeToRefundRequest) : []
+        Array.isArray(res?.data)
+          ? res.data.map(mapExchangeToRefundRequest)
+          : []
       );
     } catch (err: any) {
       setPageError(
@@ -72,7 +74,7 @@ export default function RefundReturnPage() {
       {
         title: "Total Exchanges",
         value: String(stats.total_exchanges || 0),
-        iconType: "refund",
+        iconType: "total",
         iconWrapClassName: "bg-erp-blue-soft",
       },
       {
@@ -97,29 +99,29 @@ export default function RefundReturnPage() {
   }, [stats]);
 
   const filteredRequests = useMemo(() => {
-    return requests.filter((item) => {
-      const query = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
+    const normalizedDate = normalizeDateToISO(date.trim());
 
+    return requests.filter((item) => {
       const matchesSearch =
         !query ||
-        item.customerName.toLowerCase().includes(query) ||
-        item.id.toLowerCase().includes(query) ||
-        item.billNo.toLowerCase().includes(query) ||
-        item.productName.toLowerCase().includes(query);
+        safe(item.customerName).includes(query) ||
+        safe(item.id).includes(query) ||
+        safe(item.billNo).includes(query) ||
+        safe(item.productName).includes(query) ||
+        safe(item.productCode).includes(query) ||
+        safe(item.newProductName).includes(query) ||
+        safe(item.newProductCode).includes(query);
 
       const matchesMonth =
         month === "Select Month" ||
-        new Date(item.refundDate).toLocaleString("en-US", {
-          month: "long",
-        }) === month;
-
-      const normalizedDate = date.trim();
-      const isoDate = normalizeDateToISO(normalizedDate);
+        getMonthName(item.exchangeDate) === month ||
+        getMonthName(item.purchaseDate) === month;
 
       const matchesDate =
         !normalizedDate ||
-        item.refundDate === isoDate ||
-        item.purchaseDate === isoDate;
+        normalizeDateToISO(item.exchangeDate) === normalizedDate ||
+        normalizeDateToISO(item.purchaseDate) === normalizedDate;
 
       return matchesSearch && matchesMonth && matchesDate;
     });
@@ -139,7 +141,7 @@ export default function RefundReturnPage() {
           <button
             type="button"
             onClick={() => setOpenModal(true)}
-            className="inline-flex h-[48px] w-fit items-center justify-center gap-3 rounded-erp-full bg-erp-dark px-6 text-[15px] font-semibold leading-none tracking-[-0.02em] text-white shadow-erp-card transition hover:opacity-90"
+            className="inline-flex h-[56px] items-center justify-center gap-3 rounded-full bg-[#02031A] px-7 text-[16px] font-medium text-white shadow-[0px_10px_24px_rgba(2,3,26,0.18)] max-sm:w-full"
           >
             <Plus className="h-5 w-5" />
             New Exchange
@@ -151,9 +153,16 @@ export default function RefundReturnPage() {
         </section>
 
         <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {exchangeStats.map((item) => (
-            <RefundMetricCard key={item.title} item={item} />
-          ))}
+          {loading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[120px] animate-pulse rounded-erp-lg bg-white shadow-erp-card"
+                />
+              ))
+            : exchangeStats.map((item) => (
+                <RefundMetricCard key={item.title} item={item} />
+              ))}
         </section>
 
         <section className="mt-8">
@@ -168,17 +177,17 @@ export default function RefundReturnPage() {
         </section>
 
         {pageError ? (
-          <div className="mt-6 rounded-erp-md border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
+          <div className="mt-6 rounded-erp-lg border border-erp-danger-soft bg-white px-6 py-8 text-center text-erp-danger shadow-erp-card">
             {pageError}
           </div>
         ) : null}
 
         <section className="mt-6 space-y-5">
           {loading ? (
-            Array.from({ length: 4 }).map((_, index) => (
+            Array.from({ length: 4 }).map((_, i) => (
               <div
-                key={index}
-                className="h-[126px] animate-pulse rounded-erp-xl border border-erp-border bg-white shadow-erp-card"
+                key={i}
+                className="h-[130px] animate-pulse rounded-erp-lg bg-white shadow-erp-card"
               />
             ))
           ) : filteredRequests.length > 0 ? (
@@ -186,8 +195,8 @@ export default function RefundReturnPage() {
               <RefundRequestCard key={item.id} item={item} />
             ))
           ) : (
-            <div className="rounded-erp-xl border border-dashed border-erp-border bg-white p-8 text-center text-[15px] font-medium text-erp-muted shadow-erp-card">
-              No exchange records found.
+            <div className="rounded-erp-lg border border-erp-border bg-white py-12 text-center text-erp-muted shadow-erp-card">
+              No records found
             </div>
           )}
         </section>
@@ -206,74 +215,82 @@ export default function RefundReturnPage() {
 }
 
 function mapExchangeToRefundRequest(item: ExchangeDashboardItem): RefundRequest {
-  const within7Days = Number(item.days_since_purchase || 0) <= 7;
-  const purchaseDate = formatDateOnly(item.invoice_date);
-  const exchangeDate = formatDateOnly(item.exchange_date);
+  const days = Number(item.days_since_purchase || 0);
+  const within7 = days <= 7;
 
   return {
-    id: `EX-${item.id}`,
+    id: item.exchange_number || `EX-${item.id}`,
     customerName: safeText(item.name),
     phone: safeText(item.phone),
     billNo: safeText(item.invoice_number),
-    purchaseDate,
-    refundDate: exchangeDate,
-    productCode: safeText(item.old_product_code),
+
+    purchaseDate: formatDate(item.invoice_date),
+    exchangeDate: formatDate(item.exchange_date),
+
+    status: within7 ? "approved" : "processing",
+    statusBadge: `${days} days since purchase`,
+
+    refundReason: "Product exchange",
+    refundMethod: "Exchange",
+
+    refundAmount: formatCurrency(item.old_value),
+    deduction: within7 ? "FREE" : "5%",
+    finalRefund: formatCurrency(item.difference),
+
     productName: safeText(item.old_product_name),
+    productCode: safeText(item.old_product_code),
     metal: safeText(item.old_purity),
     weight: formatWeight(item.old_gross_weight),
     originalValue: formatCurrency(item.old_value),
-    refundReason: within7Days
-      ? "Within 7 days exchange"
-      : "After 7 days exchange",
-    refundMethod: "Exchange",
-    refundAmount: formatCurrency(item.new_value),
-    status: "approved",
-    statusBadge: within7Days ? "Within 7 Days" : "After 7 Days",
-    finalRefund: formatCurrency(item.difference),
-    deduction: formatCurrency(item.making_charges),
+
+    newProductName: safeText(item.new_product_name),
+    newProductCode: safeText(item.new_product_code),
+    newValue: formatCurrency(item.new_value),
+    makingCharges: formatCurrency(item.making_charges),
+    difference: formatCurrency(item.difference),
+
     expanded: false,
   };
 }
 
-function normalizeDateToISO(value: string) {
-  const parts = value.split("-");
-  if (parts.length !== 3) return value;
-
-  const [dd, mm, yyyy] = parts;
-  if (!dd || !mm || !yyyy) return value;
-
-  return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+function safe(value?: string) {
+  return (value || "").toLowerCase();
 }
 
-function formatDateOnly(value: string) {
+function safeText(value: any) {
+  return value ? String(value) : "--";
+}
+
+function formatDate(value?: string) {
   if (!value) return "--";
-
-  const parsedDate = new Date(value);
-  if (Number.isNaN(parsedDate.getTime())) return "--";
-
-  return parsedDate.toISOString().slice(0, 10);
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? "--" : d.toISOString().slice(0, 10);
 }
 
-function formatCurrency(value: string | number | null | undefined) {
-  const num = Number(value || 0);
-
+function formatCurrency(value: any) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(num);
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
 }
 
-function formatWeight(value: string | number | null | undefined) {
-  if (value === null || value === undefined || value === "") return "--";
-
+function formatWeight(value: any) {
   const num = Number(value);
-  if (!Number.isFinite(num)) return "--";
-
-  return `${num.toFixed(3)} g`;
+  return Number.isFinite(num) ? `${num} g` : "--";
 }
 
-function safeText(value: string | number | null | undefined) {
-  if (value === null || value === undefined || value === "") return "--";
-  return String(value);
+function normalizeDateToISO(value: string) {
+  if (!value) return "";
+  const parts = value.split("-");
+  if (parts.length !== 3) return value;
+  const [dd, mm, yyyy] = parts;
+  return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+}
+
+function getMonthName(value: string) {
+  const d = new Date(value);
+  return isNaN(d.getTime())
+    ? ""
+    : d.toLocaleString("en-US", { month: "long" });
 }

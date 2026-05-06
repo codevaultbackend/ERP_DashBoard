@@ -3,32 +3,35 @@ import StoreStatsCards from "./StoreStatsCards";
 import { districts } from "../store-management-data";
 
 export default function StoreManagementLanding() {
-  const districtCards = districts.map((district) => ({
-    id: district.id,
-    name: district.name,
-    code: district.code,
-  }));
-
   return (
-    <main className="min-h-screen w-full bg-[#F3F4F6]">
-      <div className="mb-7">
-        <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[46px]">
-          Store Management
-        </h1>
-        <p className="mt-1 text-[16px] text-[#475569] sm:text-[18px]">
-          Manage all district stores
-        </p>
-      </div>
+    <main className="min-h-screen bg-erp-bg text-erp-text">
+      <section className="mx-auto w-full max-w-[1500px]">
+        <div className="mb-7">
+          <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em] text-erp-text sm:text-[34px]">
+            Store Management
+          </h1>
 
-      <StoreStatsCards />
+          <p className="mt-1 text-[16px] font-medium text-erp-muted">
+            Manage all district stores
+          </p>
+        </div>
 
-      <div className="mt-8">
-        <h2 className="mb-5 text-[26px] font-semibold tracking-[-0.03em] text-[#111827] sm:text-[28px]">
-          All Stores
-        </h2>
+        <StoreStatsCards />
 
-        <StoreCardGrid scope="district" items={districtCards} />
-      </div>
+        <div className="mt-9">
+          <h2 className="text-[24px] font-bold tracking-[-0.03em] text-erp-text sm:text-[28px]">
+            All Stores
+          </h2>
+
+          <div className="mt-7">
+            <StoreCardGrid
+              scope="district"
+              items={districts}
+              emptyText="No district stores found."
+            />
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

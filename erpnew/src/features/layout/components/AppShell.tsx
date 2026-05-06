@@ -20,6 +20,8 @@ const NAV_ITEMS: Record<AppRole, NavItem[]> = {
     { label: "Stock Management", href: "/head-office/stock-management" },
     { label: "Transit", href: "/head-office/transit" },
     { label: "Ledger", href: "/head-office/ledger" },
+    { label: "Staff Management", href: "/head-office/staff-management" },
+    { label: "Activities Performed", href: "/head-office/activities-performed" },
     { label: "Store Management", href: "/head-office/store-management" },
     { label: "Reports & Analytics", href: "/head-office/reports-analytics" },
   ],
@@ -52,6 +54,7 @@ const NAV_ITEMS: Record<AppRole, NavItem[]> = {
     { label: "Request", href: "/retail/request" },
     { label: "Transit", href: "/retail/transit" },
     { label: "Billing", href: "/retail/billing" },
+    { label: "Activities Performed", href: "/retail/activities-performed" },
     { label: "Ledger", href: "/retail/ledger" },
     { label: "Exchange", href: "/retail/refund-return" },
     { label: "Reports & Analytics", href: "/retail/reports-analytics" },
@@ -101,7 +104,7 @@ export default function AppShell({
             />
           </div>
 
-          <div className="sticky top-[86px] z-30">
+          <div className="sticky top-[80px] z-30">
             <MobileNav items={items} pathname={pathname} />
           </div>
 

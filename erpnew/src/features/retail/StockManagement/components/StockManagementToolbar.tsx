@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, FileText, Plus, Search, Upload } from "lucide-react";
+import { ChevronDown, Plus, Search, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type StockManagementToolbarProps = {
@@ -12,6 +12,7 @@ type StockManagementToolbarProps = {
   categories: string[];
   selectedCategory: string;
   onCategoryChange: (value: string) => void;
+  submitting?: boolean;
 };
 
 export default function StockManagementToolbar({
@@ -22,52 +23,73 @@ export default function StockManagementToolbar({
   categories,
   selectedCategory,
   onCategoryChange,
+  submitting = false,
 }: StockManagementToolbarProps) {
-  const isDisabled = selectedCount === 0;
+  const isDisabled = submitting;
+
   const [openCategory, setOpenCategory] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (!dropdownRef.current) return;
+
       if (!dropdownRef.current.contains(event.target as Node)) {
         setOpenCategory(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
-    <div className="rounded-[28px] border-[1px] border-[#0000001A] bg-[#FCFCFD] p-3 shadow-[0px_4px_14px_rgba(15,23,42,0.035)] sm:p-4">
+    <div className="rounded-[30px] border border-erp-border bg-erp-card px-[18px] py-[17px] shadow-erp-card">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="relative w-full xl:max-w-[760px]">
-          <Search className="pointer-events-none absolute left-5 top-1/2 h-[19px] w-[19px] -translate-y-1/2 text-[#9CA3AF]" />
+        <div className="relative w-full xl:max-w-[540px] 2xl:max-w-[620px]">
+          <Search className="pointer-events-none absolute left-[18px] top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#8C96A6]" />
+
           <input
             type="text"
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search inventory..."
-            className="h-[36px] w-full rounded-[18px] border-0 bg-[#F4F4F5] pl-[58px] pr-4 text-[15px] font-medium text-[#111827] outline-none placeholder:text-[#9CA3AF]"
+            className={[
+              "h-[40px] w-full rounded-full border-0 bg-[#F4F4F5]",
+              "pl-[50px] pr-4",
+              "text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-[#111827]",
+              "outline-none transition placeholder:text-[#8C96A6]",
+              "focus:ring-2 focus:ring-erp-primary/10",
+            ].join(" ")}
           />
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row xl:items-center">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap xl:flex-nowrap xl:items-center xl:justify-end">
           <div ref={dropdownRef} className="relative">
             <button
               type="button"
               onClick={() => setOpenCategory((prev) => !prev)}
-              className="flex h-[36px] min-w-[148px] items-center justify-between rounded-[23px] border border-[#E7E8EC] bg-white px-5 text-[15px] font-medium text-[#111111] shadow-[0px_1px_2px_rgba(0,0,0,0.03)]"
+              className={[
+                "flex h-[40px] min-w-[148px] items-center justify-between",
+                "rounded-full border border-erp-border bg-white px-[20px]",
+                "text-[15px] font-medium leading-[20px] tracking-[-0.02em] text-[#111111]",
+                "shadow-[0px_1px_2px_rgba(0,0,0,0.03)] transition hover:bg-[#F8FAFC]",
+              ].join(" ")}
             >
-              <span className="truncate">{selectedCategory}</span>
+              <span className="truncate">
+                {selectedCategory === "All" ? "Category" : selectedCategory}
+              </span>
+
               <ChevronDown
-                className={`h-[18px] w-[18px] transition-transform ${openCategory ? "rotate-180" : ""}`}
+                className={`h-[18px] w-[18px] stroke-[2.2] transition-transform ${
+                  openCategory ? "rotate-180" : ""
+                }`}
               />
             </button>
 
             {openCategory && (
-              <div className="absolute right-0 z-20 mt-2 w-[190px] overflow-hidden rounded-[18px] border border-[#E7E8EC] bg-white shadow-[0px_12px_30px_rgba(15,23,42,0.10)]">
+              <div className="absolute right-0 z-30 mt-2 max-h-[280px] w-[210px] overflow-y-auto rounded-[18px] border border-erp-border bg-white shadow-[0px_12px_30px_rgba(15,23,42,0.10)]">
                 {categories.map((category) => {
                   const active = category === selectedCategory;
 
@@ -79,13 +101,15 @@ export default function StockManagementToolbar({
                         onCategoryChange(category);
                         setOpenCategory(false);
                       }}
-                      className={`flex w-full items-center justify-start px-4 py-3 text-left text-[14px] font-medium transition ${
+                      className={[
+                        "flex w-full items-center justify-start px-4 py-3 text-left",
+                        "text-[14px] font-medium leading-[18px] tracking-[-0.02em] transition",
                         active
-                          ? "bg-[#030213] text-white"
-                          : "bg-white text-[#111111] hover:bg-[#F5F7FA]"
-                      }`}
+                          ? "bg-erp-dark text-white"
+                          : "bg-white text-[#111111] hover:bg-[#F5F7FA]",
+                      ].join(" ")}
                     >
-                      {category}
+                      {category === "All" ? "Category" : category}
                     </button>
                   );
                 })}
@@ -95,36 +119,79 @@ export default function StockManagementToolbar({
 
           <button
             type="button"
-            className="flex h-[36px] items-center justify-center gap-2 rounded-[23px] bg-[#030213] px-5 text-[15px] font-medium text-white sm:px-6"
+            className={[
+              "flex h-[40px] items-center justify-center gap-[8px]",
+              "rounded-full bg-erp-dark px-[20px]",
+              "text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-white",
+              "transition hover:brightness-110 sm:px-[22px]",
+            ].join(" ")}
           >
-            <Upload className="h-[17px] w-[17px]" />
+            <Upload className="h-[17px] w-[17px] stroke-[2.2]" />
             <span className="whitespace-nowrap">Upload Challan</span>
           </button>
+
+          <Link
+            href="/retail/request"
+            className={[
+              "flex h-[40px] items-center justify-center gap-[8px]",
+              "rounded-full bg-erp-dark px-[20px]",
+              "text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-white",
+              "transition hover:brightness-110 sm:px-[22px]",
+            ].join(" ")}
+          >
+            <Plus className="h-[18px] w-[18px] stroke-[2.2]" />
+            <span className="whitespace-nowrap">Add Item</span>
+          </Link>
 
           <button
             type="button"
             onClick={onCreateReport}
             disabled={isDisabled}
             className={[
-              "flex h-[36px] items-center justify-center gap-2 rounded-[23px] px-5 text-[15px] font-medium transition-all sm:px-6",
+              "flex h-[40px] items-center justify-center gap-[8px]",
+              "rounded-full px-[20px]",
+              "text-[15px] font-semibold leading-[20px] tracking-[-0.02em] transition-all sm:px-[22px]",
               isDisabled
                 ? "cursor-not-allowed bg-[#D9DEE7] text-[#8E98A8]"
-                : "bg-[#16A34A] text-white shadow-[0px_6px_16px_rgba(22,163,74,0.20)] hover:brightness-[0.98]",
+                : "bg-erp-dark text-white hover:brightness-110",
             ].join(" ")}
           >
-            <FileText className="h-[17px] w-[17px]" />
-            <span className="whitespace-nowrap">
-              Create Audit{selectedCount > 0 ? ` (${selectedCount})` : ""}
-            </span>
-          </button>
+            {submitting ? (
+              <>
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
 
-          <Link
-            href="/retail/request"
-            className="flex h-[36px] items-center justify-center gap-2 rounded-[23px] bg-[#030213] px-5 text-[15px] font-medium text-white sm:px-6"
-          >
-            <Plus className="h-[18px] w-[18px]" />
-            <span className="whitespace-nowrap">Add Item</span>
-          </Link>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  />
+                </svg>
+
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <Plus className="h-[18px] w-[18px] stroke-[2.2]" />
+
+                <span className="whitespace-nowrap">
+                  Create Audit Report
+                  {selectedCount > 0 ? ` (${selectedCount})` : ""}
+                </span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

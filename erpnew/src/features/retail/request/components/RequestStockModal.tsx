@@ -32,11 +32,19 @@ type RequestCategoryOption = {
 
 type RequestableProduct = {
   item_id: number;
+  category: string;
   name: string;
   stock: number;
   article_code?: string;
   qty: string;
   tone: "critical" | "medium" | "optimum";
+};
+
+type SelectedRequestItem = {
+  item_id: number;
+  category: string;
+  name: string;
+  request_qty: number;
 };
 
 function mapCategoryRowToOption(row: CategoryRowApi): RequestCategoryOption {
@@ -54,16 +62,19 @@ function getToneFromStock(quantity: number): "critical" | "medium" | "optimum" {
 }
 
 function mapCategoryItemToRequestProduct(
-  row: CategoryItemApi
+  row: CategoryItemApi,
+  category: string,
+  selectedQty = ""
 ): RequestableProduct {
   const stock = safeNumber(row?.available_qty ?? row?.quantity);
 
   return {
     item_id: safeNumber(row?.id),
+    category,
     name: safeText(row?.item_name),
     stock,
     article_code: safeText(row?.article_code),
-    qty: "",
+    qty: selectedQty,
     tone: getToneFromStock(stock),
   };
 }
@@ -119,6 +130,15 @@ export default function RequestStockModal({
   >([]);
   const [products, setProducts] = useState<RequestableProduct[]>([]);
 
+  /*
+    ✅ IMPORTANT FIX:
+    This stores selected quantities globally.
+    So switching category will NOT clear old selected products.
+  */
+  const [selectedItems, setSelectedItems] = useState<
+    Record<number, SelectedRequestItem>
+  >({});
+
   useEffect(() => {
     if (!open) return;
 
@@ -155,7 +175,17 @@ export default function RequestStockModal({
         const res = await getStockItemsByCategory(selectedCategory);
         const rows: CategoryItemApi[] = Array.isArray(res?.data) ? res.data : [];
 
-        setProducts(rows.map(mapCategoryItemToRequestProduct));
+        setProducts(
+          rows.map((row) =>
+            mapCategoryItemToRequestProduct(
+              row,
+              selectedCategory,
+              selectedItems[safeNumber(row?.id)]?.request_qty
+                ? String(selectedItems[safeNumber(row?.id)]?.request_qty)
+                : ""
+            )
+          )
+        );
       } catch (err: any) {
         setError(safeText(err?.response?.data?.message || err?.message));
       } finally {
@@ -164,12 +194,17 @@ export default function RequestStockModal({
     };
 
     fetchItems();
-  }, [open, selectedCategory]);
+  }, [open, selectedCategory, selectedItems]);
 
   const selectedCount = useMemo(
-    () => products.filter((item) => safeNumber(item.qty) > 0).length,
-    [products]
+    () => Object.keys(selectedItems).length,
+    [selectedItems]
   );
+
+  const selectedCategoryCount = useMemo(() => {
+    return new Set(Object.values(selectedItems).map((item) => item.category))
+      .size;
+  }, [selectedItems]);
 
   if (!open) return null;
 
@@ -179,6 +214,7 @@ export default function RequestStockModal({
     setCategoryOpen(false);
     setNotes("");
     setProducts([]);
+    setSelectedItems({});
     setError("");
   };
 
@@ -187,25 +223,60 @@ export default function RequestStockModal({
     onClose();
   };
 
+  const handleQtyChange = (product: RequestableProduct, value: string) => {
+    const qty = safeNumber(value);
+
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.item_id === product.item_id ? { ...p, qty: value } : p
+      )
+    );
+
+    setSelectedItems((prev) => {
+      const next = { ...prev };
+
+      if (qty <= 0) {
+        delete next[product.item_id];
+        return next;
+      }
+
+      next[product.item_id] = {
+        item_id: product.item_id,
+        category: product.category,
+        name: product.name,
+        request_qty: qty,
+      };
+
+      return next;
+    });
+  };
+
+  const removeSelectedItem = (itemId: number) => {
+    setSelectedItems((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+
+    setProducts((prev) =>
+      prev.map((item) =>
+        item.item_id === itemId ? { ...item, qty: "" } : item
+      )
+    );
+  };
+
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
       setError("");
 
-      const payloadItems = products
-        .filter((item) => safeNumber(item.qty) > 0)
-        .map((item) => ({
-          item_id: item.item_id,
-          request_qty: safeNumber(item.qty),
-        }));
+      const payloadItems = Object.values(selectedItems).map((item) => ({
+        item_id: item.item_id,
+        request_qty: item.request_qty,
+      }));
 
       if (!storeId) {
         setError("Store not found");
-        return;
-      }
-
-      if (!selectedCategory) {
-        setError("Please select a category");
         return;
       }
 
@@ -214,10 +285,14 @@ export default function RequestStockModal({
         return;
       }
 
+      const selectedCategories = Array.from(
+        new Set(Object.values(selectedItems).map((item) => item.category))
+      );
+
       await createStockRequest({
         store_id: storeId,
         priority,
-        category: selectedCategory,
+        category: selectedCategories.join(", "),
         notes: notes || "Not found",
         items: payloadItems,
       });
@@ -316,6 +391,9 @@ export default function RequestStockModal({
                     ) : (
                       categoryOptions.map((cat) => {
                         const active = selectedCategory === cat.value;
+                        const categorySelectedCount = Object.values(
+                          selectedItems
+                        ).filter((item) => item.category === cat.value).length;
 
                         return (
                           <button
@@ -332,10 +410,14 @@ export default function RequestStockModal({
                                 : "text-erp-heading hover:bg-erp-card-soft"
                             )}
                           >
-                            <span className="truncate">{safeText(cat.label)}</span>
+                            <span className="truncate">
+                              {safeText(cat.label)}
+                            </span>
 
                             <span className="ml-3 shrink-0 text-[12px] font-medium text-erp-muted">
-                              {safeNumber(cat.quantity)}
+                              {categorySelectedCount > 0
+                                ? `${categorySelectedCount} selected`
+                                : safeNumber(cat.quantity)}
                             </span>
                           </button>
                         );
@@ -350,8 +432,28 @@ export default function RequestStockModal({
           <div className="mt-[17px]">
             <p className="mb-[9px] text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-[#0A0A0A]">
               Select Products
-              {selectedCount > 0 ? ` (${selectedCount} selected)` : ""}
+              {selectedCount > 0
+                ? ` (${selectedCount} selected from ${selectedCategoryCount} categories)`
+                : ""}
             </p>
+
+            {selectedCount > 0 ? (
+              <div className="mb-3 flex flex-wrap gap-2 rounded-[12px] border border-[#E1E4EA] bg-[#FAFBFC] p-3">
+                {Object.values(selectedItems).map((item) => (
+                  <button
+                    key={item.item_id}
+                    type="button"
+                    onClick={() => removeSelectedItem(item.item_id)}
+                    className="inline-flex max-w-full items-center gap-2 rounded-erp-full border border-erp-border bg-white px-3 py-1.5 text-[12px] font-medium text-erp-heading shadow-sm"
+                  >
+                    <span className="truncate">
+                      {item.name} · Qty {item.request_qty}
+                    </span>
+                    <X className="h-3.5 w-3.5 shrink-0 text-erp-muted" />
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             {!selectedCategory ? (
               <EmptyState text="Please select a category first" />
@@ -361,42 +463,43 @@ export default function RequestStockModal({
               <EmptyState text="Not found" />
             ) : (
               <div className="dashboard-hidden-scroll max-h-[352px] space-y-[10px] overflow-y-auto pr-[2px]">
-                {products.map((item) => (
-                  <div
-                    key={item.item_id}
-                    className="grid min-h-[77px] grid-cols-[1fr_106px] items-center gap-4 rounded-[13px] border border-[#E1E4EA] bg-white px-[14px] py-[10px] max-sm:grid-cols-1"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-[18px] font-medium leading-[24px] tracking-[-0.03em] text-[#101010]">
-                        {safeText(item.name)}
-                      </p>
+                {products.map((item) => {
+                  const isSelected = safeNumber(item.qty) > 0;
 
-                      <div className="mt-[4px] flex flex-wrap items-center gap-[7px]">
-                        <p className="text-[16px] font-normal leading-[20px] tracking-[-0.02em] text-erp-muted">
-                          Current Stock: {safeNumber(item.stock)}
+                  return (
+                    <div
+                      key={item.item_id}
+                      className={cn(
+                        "grid min-h-[77px] grid-cols-[1fr_106px] items-center gap-4 rounded-[13px] border bg-white px-[14px] py-[10px] transition max-sm:grid-cols-1",
+                        isSelected
+                          ? "border-erp-primary bg-erp-primary-soft/40"
+                          : "border-[#E1E4EA]"
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[18px] font-medium leading-[24px] tracking-[-0.03em] text-[#101010]">
+                          {safeText(item.name)}
                         </p>
-                        <ToneBadge tone={item.tone} />
-                      </div>
-                    </div>
 
-                    <input
-                      type="number"
-                      min="0"
-                      value={item.qty}
-                      onChange={(e) =>
-                        setProducts((prev) =>
-                          prev.map((p) =>
-                            p.item_id === item.item_id
-                              ? { ...p, qty: e.target.value }
-                              : p
-                          )
-                        )
-                      }
-                      placeholder="Qty"
-                      className="h-[40px] w-[106px] rounded-[9px] border-0 bg-[#F4F4F6] px-[14px] text-[15px] font-medium text-erp-text outline-none placeholder:text-[#6B7280] focus:ring-2 focus:ring-erp-border max-sm:w-full"
-                    />
-                  </div>
-                ))}
+                        <div className="mt-[4px] flex flex-wrap items-center gap-[7px]">
+                          <p className="text-[16px] font-normal leading-[20px] tracking-[-0.02em] text-erp-muted">
+                            Current Stock: {safeNumber(item.stock)}
+                          </p>
+                          <ToneBadge tone={item.tone} />
+                        </div>
+                      </div>
+
+                      <input
+                        type="number"
+                        min="0"
+                        value={item.qty}
+                        onChange={(e) => handleQtyChange(item, e.target.value)}
+                        placeholder="Qty"
+                        className="h-[40px] w-[106px] rounded-[9px] border-0 bg-[#F4F4F6] px-[14px] text-[15px] font-medium text-erp-text outline-none placeholder:text-[#6B7280] focus:ring-2 focus:ring-erp-border max-sm:w-full"
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

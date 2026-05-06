@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  DirectionsRenderer,
   GoogleMap,
   MarkerF,
   PolylineF,
@@ -21,7 +22,7 @@ type LatLng = {
   lng: number;
 };
 
-const DEFAULT_CENTER = {
+const DEFAULT_CENTER: LatLng = {
   lat: 28.6139,
   lng: 77.209,
 };
@@ -46,6 +47,33 @@ function formatTime(value?: string | Date | null) {
   }
 }
 
+function isValidLatLng(point?: LatLng | null) {
+  return (
+    !!point &&
+    Number.isFinite(point.lat) &&
+    Number.isFinite(point.lng) &&
+    point.lat >= -90 &&
+    point.lat <= 90 &&
+    point.lng >= -180 &&
+    point.lng <= 180
+  );
+}
+
+function isSamePoint(a?: LatLng | null, b?: LatLng | null) {
+  if (!a || !b) return false;
+  return (
+    a.lat.toFixed(5) === b.lat.toFixed(5) &&
+    a.lng.toFixed(5) === b.lng.toFixed(5)
+  );
+}
+
+function getRouteKey(origin?: LatLng | null, destination?: LatLng | null) {
+  if (!isValidLatLng(origin) || !isValidLatLng(destination)) return "";
+  return `${origin!.lat.toFixed(5)},${origin!.lng.toFixed(
+    5
+  )}-${destination!.lat.toFixed(5)},${destination!.lng.toFixed(5)}`;
+}
+
 export default function LiveTransitMap({
   transferId,
   height = 520,
@@ -53,8 +81,12 @@ export default function LiveTransitMap({
 }: Props) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const animationRef = useRef<number | null>(null);
+  const lastRouteKeyRef = useRef("");
 
   const [animatedPosition, setAnimatedPosition] = useState<LatLng | null>(null);
+  const [directions, setDirections] =
+    useState<google.maps.DirectionsResult | null>(null);
+  const [directionsError, setDirectionsError] = useState<string | null>(null);
 
   const {
     current,
@@ -82,17 +114,6 @@ export default function LiveTransitMap({
     googleMapsApiKey: apiKey,
   });
 
-  const routePath = useMemo(() => {
-    const path: LatLng[] = [];
-
-    if (animatedPosition) path.push(animatedPosition);
-    else if (current) path.push(current);
-
-    if (destination) path.push(destination);
-
-    return path;
-  }, [animatedPosition, current, destination]);
-
   useEffect(() => {
     if (!current) return;
 
@@ -101,28 +122,20 @@ export default function LiveTransitMap({
       return;
     }
 
+    if (isSamePoint(animatedPosition, current)) return;
+
     const from = animatedPosition;
     const to = current;
-
-    if (
-      from.lat.toFixed(6) === to.lat.toFixed(6) &&
-      from.lng.toFixed(6) === to.lng.toFixed(6)
-    ) {
-      return;
-    }
-
     const start = performance.now();
     const duration = 1200;
 
     const animate = (now: number) => {
       const progress = Math.min((now - start) / duration, 1);
 
-      const next = {
+      setAnimatedPosition({
         lat: lerp(from.lat, to.lat, progress),
         lng: lerp(from.lng, to.lng, progress),
-      };
-
-      setAnimatedPosition(next);
+      });
 
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
@@ -143,26 +156,68 @@ export default function LiveTransitMap({
   }, [current]);
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!isValidLatLng(current) || !isValidLatLng(destination)) return;
+
+    const routeKey = getRouteKey(current, destination);
+    if (!routeKey || lastRouteKeyRef.current === routeKey) return;
+
+    lastRouteKeyRef.current = routeKey;
+
+    const service = new google.maps.DirectionsService();
+
+    service.route(
+      {
+        origin: current!,
+        destination: destination!,
+        travelMode: google.maps.TravelMode.DRIVING,
+        provideRouteAlternatives: false,
+        region: "IN",
+      },
+      (result, routeStatus) => {
+        if (routeStatus === google.maps.DirectionsStatus.OK && result) {
+          setDirections(result);
+          setDirectionsError(null);
+
+          if (mapRef.current && result.routes[0]?.bounds) {
+            mapRef.current.fitBounds(result.routes[0].bounds);
+          }
+        } else {
+          setDirections(null);
+          setDirectionsError(`Road route unavailable: ${routeStatus}`);
+          console.error("Directions failed:", {
+            routeStatus,
+            origin: current,
+            destination,
+          });
+        }
+      }
+    );
+  }, [isLoaded, current, destination]);
+
+  useEffect(() => {
     if (!mapRef.current) return;
+    if (directions) return;
 
     const focus = animatedPosition || current || destination || DEFAULT_CENTER;
     mapRef.current.panTo(focus);
-  }, [animatedPosition, current, destination]);
+  }, [animatedPosition, current, destination, directions]);
 
   const markerIcon = useMemo(() => {
     if (!isLoaded || typeof window === "undefined") return undefined;
 
     return {
-      path: "M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99ZM6.5 16C5.67 16 5 15.33 5 14.5S5.67 13 6.5 13 8 13.67 8 14.5 7.33 16 6.5 16Zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5ZM5 11l1.5-4.5h11L19 11H5Z",
-      fillColor: "#2563eb",
-      fillOpacity: 1,
-      strokeWeight: 1,
-      strokeColor: "#ffffff",
-      scale: 1.4,
+      url: "/icons/3d-car.png",
+      scaledSize: new google.maps.Size(54, 54),
+      anchor: new google.maps.Point(27, 27),
       rotation: Number(heading || 0),
-      anchor: new google.maps.Point(12, 12),
     };
   }, [isLoaded, heading]);
+
+  const fallbackPath = useMemo(() => {
+    if (!isValidLatLng(current) || !isValidLatLng(destination)) return [];
+    return [current!, destination!];
+  }, [current, destination]);
 
   if (!apiKey) {
     return (
@@ -256,23 +311,53 @@ export default function LiveTransitMap({
           clickableIcons: false,
         }}
       >
-        {routePath.length >= 2 && (
-          <PolylineF
-            path={routePath}
+        {directions ? (
+          <DirectionsRenderer
+            directions={directions}
             options={{
-              strokeColor: "#2563eb",
-              strokeOpacity: 0.9,
-              strokeWeight: 5,
-              geodesic: true,
+              suppressMarkers: true,
+              preserveViewport: true,
+              polylineOptions: {
+                strokeColor: "#2563eb",
+                strokeOpacity: 0.9,
+                strokeWeight: 5,
+              },
             }}
           />
+        ) : (
+          fallbackPath.length === 2 && (
+            <PolylineF
+              path={fallbackPath}
+              options={{
+                strokeColor: "#2563eb",
+                strokeOpacity: 0.55,
+                strokeWeight: 4,
+                geodesic: true,
+                icons: [
+                  {
+                    icon: {
+                      path: "M 0,-1 0,1",
+                      strokeOpacity: 1,
+                      scale: 3,
+                    },
+                    offset: "0",
+                    repeat: "16px",
+                  },
+                ],
+              }}
+            />
+          )
         )}
 
         {animatedPosition && (
           <MarkerF
             position={animatedPosition}
-            icon={markerIcon}
             title="Current vehicle location"
+            icon={{
+              url: "/Truck3d.png",
+              scaledSize: new google.maps.Size(56, 56),
+              anchor: new google.maps.Point(28, 28),
+            }}
           />
         )}
 
@@ -322,9 +407,9 @@ export default function LiveTransitMap({
         </div>
       )}
 
-      {error && !preview && (
-        <div className="absolute left-4 top-24 z-20 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600 shadow">
-          {error}
+      {(error || directionsError) && !preview && (
+        <div className="absolute left-4 top-24 z-20 rounded-xl bg-white/95 px-4 py-3 text-xs font-medium text-slate-600 shadow">
+          {error || directionsError}
         </div>
       )}
 

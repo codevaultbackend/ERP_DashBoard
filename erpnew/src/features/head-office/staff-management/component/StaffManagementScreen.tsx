@@ -1,537 +1,393 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  BadgePlus,
+  CalendarMinus,
   ChevronDown,
-  Pencil,
+  Edit3,
+  Loader2,
+  Plus,
   Search,
-  ShieldAlert,
   Trash2,
-  Upload,
   UserCheck,
-  UserMinus,
   Users,
-  X,
 } from "lucide-react";
 
-type StaffRow = {
-  id: string;
-  name: string;
-  email: string;
-  contact: string;
-  address: string;
-  employeeId: string;
-  role: string;
-  branch: string;
-  identityProof?: string;
-  policeVerification?: string;
-  image?: string;
-};
+import AddEmployeeModal, { StaffRow } from "./AddEmployeeModal";
+import {
+  deleteStaff,
+  getApiError,
+  getStaffList,
+} from "../api/staff-management-api";
 
-type StaffForm = {
-  name: string;
-  email: string;
-  contact: string;
-  address: string;
-  employeeId: string;
-  role: string;
-  branch: string;
-  identityProof: string;
-  policeVerification: string;
-  image: string;
-};
-
-const initialRows: StaffRow[] = [
-  {
-    id: "1",
-    name: "John Dae",
-    email: "john.dae@gmail.com",
-    contact: "98675 24589",
-    address: "Flat 302, Maple Residency, Whitefield",
-    employeeId: "EMP1234",
-    role: "Manager",
-    branch: "Karnal District",
-    identityProof: "aadhaar_john.pdf",
-    policeVerification: "police_john.pdf",
-  },
-  {
-    id: "2",
-    name: "John Dae",
-    email: "john.dae@gmail.com",
-    contact: "98675 24589",
-    address: "Flat 302, Maple Residency, Whitefield",
-    employeeId: "EMP2234",
-    role: "Sales",
-    branch: "Model Town Store",
-    identityProof: "aadhaar_2.pdf",
-    policeVerification: "police_2.pdf",
-  },
-  {
-    id: "3",
-    name: "John Dae",
-    email: "john.dae@gmail.com",
-    contact: "98675 24589",
-    address: "Flat 302, Maple Residency, Whitefield",
-    employeeId: "EMP3234",
-    role: "Sales",
-    branch: "Model Town Store",
-    identityProof: "aadhaar_3.pdf",
-    policeVerification: "police_3.pdf",
-  },
-  {
-    id: "4",
-    name: "John Dae",
-    email: "john.dae@gmail.com",
-    contact: "98675 24589",
-    address: "Flat 302, Maple Residency, Whitefield",
-    employeeId: "EMP4234",
-    role: "Security Guard",
-    branch: "Karnal District",
-    identityProof: "aadhaar_4.pdf",
-    policeVerification: "police_4.pdf",
-  },
-  {
-    id: "5",
-    name: "John Dae",
-    email: "john.dae@gmail.com",
-    contact: "98675 24589",
-    address: "Flat 302, Maple Residency, Whitefield",
-    employeeId: "EMP5234",
-    role: "Security Guard",
-    branch: "Model Town Store",
-    identityProof: "aadhaar_5.pdf",
-    policeVerification: "police_5.pdf",
-  },
-  {
-    id: "6",
-    name: "John Dae",
-    email: "john.dae@gmail.com",
-    contact: "98675 24589",
-    address: "Flat 302, Maple Residency, Whitefield",
-    employeeId: "EMP6234",
-    role: "Security Guard",
-    branch: "Model Town Store",
-    identityProof: "aadhaar_6.pdf",
-    policeVerification: "police_6.pdf",
-  },
+const tableColumns = [
+  { label: "Staff Name", width: 170, align: "left" },
+  { label: "Email", width: 205, align: "left" },
+  { label: "Contact No.", width: 150, align: "left" },
+  { label: "Address", width: 230, align: "left" },
+  { label: "Emp. ID", width: 125, align: "left" },
+  { label: "Identity Proof", width: 145, align: "center" },
+  { label: "Police Verified", width: 155, align: "center" },
+  { label: "Role", width: 150, align: "center" },
+  { label: "Branch", width: 175, align: "left" },
+  { label: "Action", width: 105, align: "center" },
 ];
 
-const roleOptions = ["Manager", "Sales", "Security Guard", "Cashier", "HR"];
-const branchOptions = ["All Branches", "Karnal District", "Model Town Store"];
+const tableMinWidth = tableColumns.reduce((sum, col) => sum + col.width, 0);
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function getInitials(name: string) {
-  return name
-    .trim()
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
+function safeText(value: unknown, fallback = "N/A") {
+  if (value === null || value === undefined || value === "") return fallback;
+  return String(value);
 }
 
-function emptyForm(): StaffForm {
+function formatRole(role: string) {
+  return safeText(role)
+    .replace(/_/g, " ")
+    .replace(/-/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getInitials(name?: string) {
+  const clean = safeText(name, "U").trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+
+  if (!parts.length) return "U";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+function extractStaffList(res: any): any[] {
+  const possibleLists = [
+    res?.data?.users,
+    res?.data?.staff,
+    res?.data?.employees,
+    res?.data?.rows,
+    res?.data?.data,
+    res?.users,
+    res?.staff,
+    res?.employees,
+    res?.rows,
+    res?.data,
+  ];
+
+  for (const list of possibleLists) {
+    if (Array.isArray(list)) return list;
+  }
+
+  return [];
+}
+
+function normalizeEmployee(item: any): StaffRow {
+  const id =
+    item?.id ||
+    item?._id ||
+    item?.userId ||
+    item?.user_id ||
+    item?.employee_id ||
+    item?.empId ||
+    item?.userCode ||
+    item?.user_code ||
+    item?.email ||
+    "";
+
+  const organizationName =
+    item?.branch ||
+    item?.branch_name ||
+    item?.storeName ||
+    item?.store_name ||
+    item?.store ||
+    item?.organization_name ||
+    item?.store_code ||
+    "N/A";
+
   return {
-    name: "",
-    email: "",
-    contact: "",
-    address: "",
-    employeeId: "",
-    role: "",
-    branch: "",
-    identityProof: "",
-    policeVerification: "",
-    image: "",
+    id: String(id),
+    name: safeText(
+      item?.name || item?.username || item?.fullName || item?.full_name,
+      "N/A"
+    ),
+    email: safeText(item?.email),
+    contact: safeText(
+      item?.contact ||
+      item?.phoneNumber ||
+      item?.phone_number ||
+      item?.mobile ||
+      item?.phone
+    ),
+    role: safeText(item?.role || item?.designation),
+    branch: safeText(organizationName),
+    employeeId: safeText(
+      item?.employeeId ||
+      item?.employee_id ||
+      item?.emp_id ||
+      item?.userCode ||
+      item?.user_code ||
+      id
+    ),
+    address: safeText(item?.address),
+    identityProof: safeText(
+      item?.identityProof ||
+      item?.identity_proof ||
+      item?.identityProofUrl ||
+      item?.identity_proof_url ||
+      item?.aadhaarUrl ||
+      item?.aadhaar_url,
+      ""
+    ),
+    policeVerification: safeText(
+      item?.policeVerification ||
+      item?.police_verification ||
+      item?.policeVerificationUrl ||
+      item?.police_verification_url ||
+      item?.policeDocUrl ||
+      item?.police_doc_url,
+      ""
+    ),
+    image: safeText(
+      item?.image || item?.profileImage || item?.profile_image || item?.avatar,
+      ""
+    ),
+    organization_id: item?.organization_id || item?.organizationId || "",
+    organizationLevel: item?.organizationLevel || item?.organization_level || "",
   };
 }
 
-function formFromRow(row: StaffRow): StaffForm {
-  return {
-    name: row.name,
-    email: row.email,
-    contact: row.contact,
-    address: row.address,
-    employeeId: row.employeeId,
-    role: row.role,
-    branch: row.branch,
-    identityProof: row.identityProof || "",
-    policeVerification: row.policeVerification || "",
-    image: row.image || "",
-  };
-}
-
-function toRow(form: StaffForm, id: string): StaffRow {
-  return {
-    id,
-    name: form.name.trim(),
-    email: form.email.trim(),
-    contact: form.contact.trim(),
-    address: form.address.trim(),
-    employeeId: form.employeeId.trim(),
-    role: form.role.trim(),
-    branch: form.branch.trim(),
-    identityProof: form.identityProof.trim(),
-    policeVerification: form.policeVerification.trim(),
-    image: form.image.trim(),
-  };
-}
-
-function validateForm(form: StaffForm) {
-  const errors: Partial<Record<keyof StaffForm, string>> = {};
-
-  if (!form.name.trim()) errors.name = "Name is required";
-  if (!form.email.trim()) errors.email = "Email is required";
-  else if (!/\S+@\S+\.\S+/.test(form.email)) errors.email = "Invalid email";
-  if (!form.contact.trim()) errors.contact = "Contact number is required";
-  if (!form.employeeId.trim()) errors.employeeId = "Employee ID is required";
-  if (!form.role.trim()) errors.role = "Role is required";
-  if (!form.branch.trim()) errors.branch = "Branch is required";
-  if (!form.address.trim()) errors.address = "Address is required";
-
-  return errors;
-}
-
-function StatsCard({
+function TextCell({
+  children,
   title,
-  value,
-  icon: Icon,
-  iconWrap,
-  iconColor,
+  bold = false,
+  center = false,
+  twoLine = false,
 }: {
-  title: string;
-  value: string;
-  icon: React.ComponentType<{ className?: string }>;
-  iconWrap: string;
-  iconColor: string;
+  children: React.ReactNode;
+  title?: string;
+  bold?: boolean;
+  center?: boolean;
+  twoLine?: boolean;
 }) {
-  return (
-    <div className="rounded-[24px] border border-[#E5E7EB] bg-white px-5 py-5 shadow-[0px_4px_14px_rgba(15,23,42,0.035)] sm:rounded-[28px] sm:px-6 sm:py-6">
-      <div className="flex items-start gap-4">
-        <div
-          className={cn(
-            "flex h-[48px] w-[48px] items-center justify-center rounded-[16px] sm:h-[52px] sm:w-[52px]",
-            iconWrap
-          )}
-        >
-          <Icon className={cn("h-6 w-6", iconColor)} />
-        </div>
-
-        <div>
-          <p className="text-[15px] font-medium text-[#5B6472] sm:text-[16px]">
-            {title}
-          </p>
-          <h3 className="mt-1 text-[22px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[24px]">
-            {value}
-          </h3>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InputField({
-  label,
-  value,
-  onChange,
-  error,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-  placeholder?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[14px] font-medium text-[#202020] sm:text-[15px]">
-        {label}
-      </span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={cn(
-          "h-[44px] w-full rounded-[12px] border bg-[#F6F6F8] px-4 text-[14px] text-[#111827] outline-none transition",
-          error ? "border-[#EF4444]" : "border-[#F0F1F3] focus:border-[#CBD5E1]"
-        )}
-      />
-      {error ? <p className="mt-1 text-[12px] text-[#EF4444]">{error}</p> : null}
-    </label>
-  );
-}
-
-function TextAreaField({
-  label,
-  value,
-  onChange,
-  error,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  error?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[14px] font-medium text-[#202020] sm:text-[15px]">
-        {label}
-      </span>
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        rows={3}
-        className={cn(
-          "w-full resize-none rounded-[12px] border bg-[#F6F6F8] px-4 py-3 text-[14px] text-[#111827] outline-none transition",
-          error ? "border-[#EF4444]" : "border-[#F0F1F3] focus:border-[#CBD5E1]"
-        )}
-      />
-      {error ? <p className="mt-1 text-[12px] text-[#EF4444]">{error}</p> : null}
-    </label>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-  error,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: string[];
-  error?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[14px] font-medium text-[#202020] sm:text-[15px]">
-        {label}
-      </span>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={cn(
-            "h-[44px] w-full appearance-none rounded-[12px] border bg-[#F6F6F8] px-4 text-[14px] text-[#111827] outline-none transition",
-            error ? "border-[#EF4444]" : "border-[#F0F1F3] focus:border-[#CBD5E1]"
-          )}
-        >
-          <option value="">Select</option>
-          {options.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#52525B]" />
-      </div>
-      {error ? <p className="mt-1 text-[12px] text-[#EF4444]">{error}</p> : null}
-    </label>
-  );
-}
-
-function UploadField({
-  label,
-  value,
-  onFileChange,
-}: {
-  label: string;
-  value: string;
-  onFileChange: (fileName: string) => void;
-}) {
-  return (
-    <div>
-      <p className="mb-2 text-[14px] font-medium text-[#202020] sm:text-[15px]">
-        {label}
-      </p>
-
-      <label className="flex h-[44px] w-full cursor-pointer items-center justify-center gap-3 rounded-[12px] border border-[#F0F1F3] bg-[#F6F6F8] px-4 text-[14px] font-medium text-[#444]">
-        <Upload className="h-4 w-4" />
-        <span className="max-w-[180px] truncate">
-          {value || "Document"}
-        </span>
-        <input
-          type="file"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            onFileChange(file?.name || "");
-          }}
-        />
-      </label>
-    </div>
-  );
-}
-
-function EmployeeModal({
-  open,
-  mode,
-  form,
-  setForm,
-  errors,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  mode: "add" | "edit";
-  form: StaffForm;
-  setForm: React.Dispatch<React.SetStateAction<StaffForm>>;
-  errors: Partial<Record<keyof StaffForm, string>>;
-  onClose: () => void;
-  onSubmit: () => void;
-}) {
-  useEffect(() => {
-    if (!open) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(15,23,42,0.18)] px-3 py-4 backdrop-blur-[2px] sm:px-4 sm:py-6"
-      onClick={onClose}
+      title={title || (typeof children === "string" ? children : undefined)}
+      className={cn(
+        "max-w-full text-[14px] leading-[18px] tracking-[-0.02em] text-erp-text-soft",
+        bold && "font-semibold text-erp-text",
+        center && "text-center",
+        twoLine ? "line-clamp-2 break-words" : "truncate whitespace-nowrap"
+      )}
     >
-      <div
-        className="max-h-[95vh] w-full max-w-[560px] overflow-y-auto rounded-[28px] border border-[#E7E7E7] bg-white p-5 shadow-[0px_18px_40px_rgba(15,23,42,0.14)] sm:rounded-[34px] sm:p-7"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <h2 className="text-[22px] font-semibold tracking-[-0.03em] text-[#111827] sm:text-[24px]">
-            {mode === "add" ? "Add New Employee" : "Edit Employee"}
-          </h2>
+      {children}
+    </div>
+  );
+}
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-[#444] transition hover:bg-[#F3F4F6]"
+function StaffAvatar({ row }: { row: StaffRow }) {
+  if (row.image) {
+    return (
+      <img
+        src={row.image}
+        alt={row.name}
+        className="h-[46px] w-[46px] shrink-0 rounded-erp-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-erp-full bg-[#E6EBF2] text-[13px] font-semibold uppercase text-erp-text-soft">
+      {getInitials(row.name)}
+    </div>
+  );
+}
+
+function SummaryCards({ rows }: { rows: StaffRow[] }) {
+  const activeRows = rows.filter(
+    (row) =>
+      !String((row as any)?.status || "")
+        .toLowerCase()
+        .includes("leave")
+  );
+
+  const leaveRows = rows.filter((row) =>
+    String((row as any)?.status || "")
+      .toLowerCase()
+      .includes("leave")
+  );
+
+  const stats = [
+    {
+      label: "Total Staff",
+      value: rows.length,
+      icon: Users,
+      wrap: "bg-erp-primary-soft",
+      iconColor: "text-erp-primary",
+    },
+    {
+      label: "Active",
+      value: activeRows.length || rows.length,
+      icon: UserCheck,
+      wrap: "bg-erp-success-soft",
+      iconColor: "text-erp-success",
+    },
+    {
+      label: "On Leave",
+      value: leaveRows.length,
+      icon: CalendarMinus,
+      wrap: "bg-[#FFF0D9]",
+      iconColor: "text-[#FF6B00]",
+    },
+    {
+      label: "Departments",
+      value: new Set(rows.map((row) => row.role).filter(Boolean)).size,
+      icon: Users,
+      wrap: "bg-erp-purple-soft",
+      iconColor: "text-erp-purple",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {stats.map((card) => {
+        const Icon = card.icon;
+
+        return (
+          <div
+            key={card.label}
+            className="flex h-[110px] items-center gap-[10px] rounded-erp-2xl border border-erp-border bg-erp-card px-[14px] shadow-erp-card sm:gap-[14px] sm:px-[24px]"
           >
-            <X className="h-5 w-5" />
-          </button>
+            <div
+              className={cn(
+                "flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[12px] sm:h-[54px] sm:w-[54px]",
+                card.wrap
+              )}
+            >
+              <Icon
+                className={cn(
+                  "h-[22px] w-[22px] stroke-[2.2] sm:h-[24px] sm:w-[24px]",
+                  card.iconColor
+                )}
+              />
+            </div>
+
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-normal leading-[18px] tracking-[-0.02em] text-erp-muted sm:text-[16px] sm:leading-[20px]">
+                {card.label}
+              </p>
+
+              <p className="mt-[4px] truncate text-[20px] font-semibold leading-[24px] tracking-[-0.03em] text-erp-text sm:text-[28px] sm:leading-[34px]">
+                {card.value}
+              </p>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Toolbar({
+  search,
+  setSearch,
+  branches,
+  selectedBranch,
+  setSelectedBranch,
+  onAdd,
+}: {
+  search: string;
+  setSearch: (value: string) => void;
+  branches: string[];
+  selectedBranch: string;
+  setSelectedBranch: (value: string) => void;
+  onAdd: () => void;
+}) {
+  const [openBranch, setOpenBranch] = useState(false);
+  const branchRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const closeDropdown = (event: MouseEvent) => {
+      if (!branchRef.current) return;
+
+      if (!branchRef.current.contains(event.target as Node)) {
+        setOpenBranch(false);
+      }
+    };
+
+    document.addEventListener("mousedown", closeDropdown);
+    return () => document.removeEventListener("mousedown", closeDropdown);
+  }, []);
+
+  return (
+    <div className="rounded-[22px] border border-erp-border bg-erp-card px-3 py-3 shadow-erp-card sm:rounded-[30px] sm:px-[18px] sm:py-[17px]">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="relative w-full xl:max-w-[760px] 2xl:max-w-[860px]">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-[#8C96A6] sm:left-[18px] sm:h-[18px] sm:w-[18px]" />
+
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by name, employee ID....."
+            className="h-[40px] w-full rounded-erp-full border-0 bg-[#F4F4F5] pl-[44px] pr-4 text-[14px] font-normal leading-[20px] tracking-[-0.02em] text-erp-text outline-none transition placeholder:text-erp-muted focus:ring-2 focus:ring-erp-primary/10 sm:pl-[50px] sm:text-[15px]"
+          />
         </div>
 
-        <div className="rounded-[22px] bg-[#F8F8F9] p-4 sm:rounded-[28px] sm:p-6">
-          <h3 className="mb-4 text-[16px] font-semibold text-[#111827]">
-            Employee Details
-          </h3>
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:flex-wrap xl:flex-nowrap xl:items-center xl:justify-end">
+          <div ref={branchRef} className="relative min-w-0">
+            <button
+              type="button"
+              onClick={() => setOpenBranch((prev) => !prev)}
+              className="flex h-[40px] w-full items-center justify-between rounded-erp-full border border-erp-border bg-white px-4 text-[14px] font-medium leading-[20px] tracking-[-0.02em] text-erp-text shadow-erp-sm transition hover:bg-erp-card-soft sm:min-w-[148px] sm:px-[22px] sm:text-[15px]"
+            >
+              <span className="min-w-0 max-w-full truncate sm:max-w-[120px]">
+                {selectedBranch === "All" ? "Branch" : selectedBranch}
+              </span>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <InputField
-              label="Name"
-              value={form.name}
-              onChange={(value) => setForm((prev) => ({ ...prev, name: value }))}
-              error={errors.name}
-            />
+              <ChevronDown
+                className={cn(
+                  "ml-2 h-[17px] w-[17px] shrink-0 stroke-[2.2] transition-transform sm:h-[18px] sm:w-[18px]",
+                  openBranch && "rotate-180"
+                )}
+              />
+            </button>
 
-            <InputField
-              label="Upload Image"
-              value={form.image}
-              onChange={(value) => setForm((prev) => ({ ...prev, image: value }))}
-              placeholder="Image URL or file name"
-            />
+            {openBranch && (
+              <div className="absolute left-0 right-auto z-40 mt-2 max-h-[280px] w-[calc(100vw-32px)] overflow-y-auto rounded-erp-md border border-erp-border bg-white shadow-erp-card sm:right-0 sm:left-auto sm:w-[240px]">
+                {branches.map((branch) => {
+                  const active = branch === selectedBranch;
 
-            <SelectField
-              label="Role"
-              value={form.role}
-              onChange={(value) => setForm((prev) => ({ ...prev, role: value }))}
-              options={roleOptions}
-              error={errors.role}
-            />
-
-            <InputField
-              label="Email"
-              value={form.email}
-              onChange={(value) => setForm((prev) => ({ ...prev, email: value }))}
-              error={errors.email}
-            />
-
-            <InputField
-              label="Contact No."
-              value={form.contact}
-              onChange={(value) => setForm((prev) => ({ ...prev, contact: value }))}
-              error={errors.contact}
-            />
-
-            <InputField
-              label="Employee ID"
-              value={form.employeeId}
-              onChange={(value) =>
-                setForm((prev) => ({ ...prev, employeeId: value }))
-              }
-              error={errors.employeeId}
-            />
+                  return (
+                    <button
+                      key={branch}
+                      type="button"
+                      onClick={() => {
+                        setSelectedBranch(branch);
+                        setOpenBranch(false);
+                      }}
+                      className={cn(
+                        "w-full px-4 py-3 text-left text-[14px] font-medium leading-[18px] tracking-[-0.02em] transition",
+                        active
+                          ? "bg-erp-dark text-white"
+                          : "bg-white text-erp-text hover:bg-erp-card-soft"
+                      )}
+                    >
+                      {branch === "All" ? "Branch" : branch}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-
-          <div className="mt-4">
-            <TextAreaField
-              label="Address"
-              value={form.address}
-              onChange={(value) => setForm((prev) => ({ ...prev, address: value }))}
-              error={errors.address}
-            />
-          </div>
-
-          <div className="mt-4">
-            <SelectField
-              label="Branch/Store"
-              value={form.branch}
-              onChange={(value) => setForm((prev) => ({ ...prev, branch: value }))}
-              options={branchOptions.filter((item) => item !== "All Branches")}
-              error={errors.branch}
-            />
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <UploadField
-              label="Upload identity"
-              value={form.identityProof}
-              onFileChange={(fileName) =>
-                setForm((prev) => ({ ...prev, identityProof: fileName }))
-              }
-            />
-
-            <UploadField
-              label="Upload Police Verification"
-              value={form.policeVerification}
-              onFileChange={(fileName) =>
-                setForm((prev) => ({ ...prev, policeVerification: fileName }))
-              }
-            />
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-[48px] rounded-[14px] border border-[#E5E7EB] bg-white text-[16px] font-medium text-[#111827]"
-          >
-            Cancel
-          </button>
 
           <button
             type="button"
-            onClick={onSubmit}
-            className="h-[48px] rounded-[14px] bg-[#030521] text-[16px] font-medium text-white shadow-[0px_10px_18px_rgba(3,5,33,0.14)]"
+            onClick={onAdd}
+            className="flex h-[40px] min-w-0 items-center justify-center gap-[6px] rounded-erp-full bg-erp-dark px-3 text-[14px] font-semibold leading-[20px] tracking-[-0.02em] text-white transition hover:brightness-110 sm:gap-[8px] sm:px-[22px] sm:text-[15px]"
           >
-            {mode === "add" ? "Add Employee" : "Save Changes"}
+            <Plus className="h-[17px] w-[17px] shrink-0 stroke-[2.2] sm:h-[18px] sm:w-[18px]" />
+            <span className="truncate whitespace-nowrap">Add Employee</span>
           </button>
         </div>
       </div>
@@ -539,396 +395,531 @@ function EmployeeModal({
   );
 }
 
-function MobileEmployeeCard({
-  row,
+function DesktopTable({
+  rows,
+  loading,
+  refreshing,
   onEdit,
   onDelete,
 }: {
-  row: StaffRow;
+  rows: StaffRow[];
+  loading: boolean;
+  refreshing: boolean;
   onEdit: (row: StaffRow) => void;
   onDelete: (id: string) => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const dragState = useRef({
+    isDown: false,
+    startX: 0,
+    scrollLeft: 0,
+    moved: false,
+  });
+
+  const startDrag = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+
+    if (
+      target.closest("button") ||
+      target.closest("a") ||
+      target.closest("input")
+    ) {
+      return;
+    }
+
+    if (!scrollRef.current) return;
+
+    dragState.current = {
+      isDown: true,
+      startX: event.clientX,
+      scrollLeft: scrollRef.current.scrollLeft,
+      moved: false,
+    };
+
+    scrollRef.current.classList.add("cursor-grabbing");
+    scrollRef.current.classList.remove("cursor-grab");
+  };
+
+  const moveDrag = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!dragState.current.isDown || !scrollRef.current) return;
+
+    event.preventDefault();
+
+    const walk = event.clientX - dragState.current.startX;
+    if (Math.abs(walk) > 4) dragState.current.moved = true;
+
+    scrollRef.current.scrollLeft = dragState.current.scrollLeft - walk;
+  };
+
+  const stopDrag = () => {
+    if (scrollRef.current) {
+      scrollRef.current.classList.remove("cursor-grabbing");
+      scrollRef.current.classList.add("cursor-grab");
+    }
+
+    dragState.current.isDown = false;
+  };
+
   return (
-    <div className="rounded-[22px] border border-[#E5E7EB] bg-white p-4 shadow-[0px_4px_14px_rgba(15,23,42,0.03)]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-[40px] w-[40px] items-center justify-center rounded-full bg-[#E5E7EB] text-[13px] font-semibold text-[#111827]">
-            {getInitials(row.name)}
+    <div className="hidden overflow-hidden rounded-[30px] border border-erp-border bg-erp-card shadow-erp-card lg:block">
+      <div
+        ref={scrollRef}
+        className="table-drag-scroll cursor-grab overflow-x-auto select-none active:cursor-grabbing"
+        onMouseDown={startDrag}
+        onMouseMove={moveDrag}
+        onMouseUp={stopDrag}
+        onMouseLeave={stopDrag}
+      >
+        <table
+          className="w-full table-fixed border-separate border-spacing-0"
+          style={{ minWidth: `${tableMinWidth}px` }}
+        >
+          <colgroup>
+            {tableColumns.map((column) => (
+              <col
+                key={column.label}
+                style={{
+                  width: `${column.width}px`,
+                  minWidth: `${column.width}px`,
+                }}
+              />
+            ))}
+          </colgroup>
+
+          <thead>
+            <tr className="bg-black">
+              {tableColumns.map((column, index) => (
+                <th
+                  key={column.label}
+                  className={cn(
+                    "h-[58px] border-r border-black px-5 text-[15px] font-semibold leading-none tracking-[-0.02em] text-white whitespace-nowrap",
+                    column.align === "center" ? "text-center" : "text-left",
+                    index === 0 && "rounded-tl-[30px]",
+                    index === tableColumns.length - 1 &&
+                    "rounded-tr-[30px] border-r-0"
+                  )}
+                >
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={tableColumns.length} className="h-[320px]">
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-erp-muted" />
+                  </div>
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={tableColumns.length}
+                  className="h-[240px] text-center text-[15px] font-medium text-erp-muted"
+                >
+                  No staff members found.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className="bg-white transition hover:bg-erp-card-soft"
+                >
+                  <td className="h-[54px] border-b border-r border-erp-border px-5">
+                    <div className="flex min-w-0 items-center gap-[12px]">
+                      <StaffAvatar row={row} />
+                      <TextCell title={row.name} bold twoLine>
+                        {row.name}
+                      </TextCell>
+                    </div>
+                  </td>
+
+                  <td className="h-[54px] border-b border-r border-erp-border px-5">
+                    <TextCell title={row.email} twoLine>
+                      {row.email}
+                    </TextCell>
+                  </td>
+
+                  <td className="h-[54px] border-b border-r border-erp-border px-5">
+                    <TextCell title={row.contact}>{row.contact}</TextCell>
+                  </td>
+
+                  <td className="h-[54px] border-b border-r border-erp-border px-5">
+                    <TextCell title={row.address} twoLine>
+                      {row.address}
+                    </TextCell>
+                  </td>
+
+                  <td className="h-[54px] border-b border-r border-erp-border px-5">
+                    <TextCell title={row.employeeId} twoLine>
+                      {row.employeeId}
+                    </TextCell>
+                  </td>
+
+                  <td className="h-[54px] border-b border-r border-erp-border px-5 text-center">
+                    {row.identityProof ? (
+                      <a
+                        href={row.identityProof}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[14px] font-medium text-erp-primary underline underline-offset-2"
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span className="text-[14px] text-erp-muted">N/A</span>
+                    )}
+                  </td>
+
+                  <td className="h-[54px] border-b border-r border-erp-border px-5 text-center">
+                    {row.policeVerification ? (
+                      <a
+                        href={row.policeVerification}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[14px] font-medium text-erp-primary underline underline-offset-2"
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span className="text-[14px] text-erp-muted">N/A</span>
+                    )}
+                  </td>
+
+                  <td className="h-[54px] border-b border-r border-erp-border px-5">
+                    <TextCell title={row.role} center twoLine>
+                      {formatRole(row.role)}
+                    </TextCell>
+                  </td>
+
+                  <td className="h-[54px] border-b border-r border-erp-border px-5">
+                    <TextCell title={row.branch} twoLine>
+                      {row.branch}
+                    </TextCell>
+                  </td>
+
+                  <td className="h-[54px] border-b border-erp-border px-5">
+                    <div className="flex items-center justify-center gap-4">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(row)}
+                        className="text-erp-primary transition hover:text-erp-primary-hover"
+                        title="Edit"
+                      >
+                        <Edit3 className="h-[18px] w-[18px] stroke-[2.1]" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => onDelete(row.id)}
+                        className="text-erp-danger transition hover:opacity-75"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-[18px] w-[18px] stroke-[2.1]" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        {refreshing && !loading && (
+          <div className="border-t border-erp-border py-2 text-center text-[13px] font-medium text-erp-muted">
+            Refreshing...
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MobileCards({
+  rows,
+  loading,
+  onEdit,
+  onDelete,
+}: {
+  rows: StaffRow[];
+  loading: boolean;
+  onEdit: (row: StaffRow) => void;
+  onDelete: (id: string) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="grid w-full gap-4 lg:hidden">
+        {[1, 2, 3].map((item) => (
+          <div
+            key={item}
+            className="h-[230px] w-full animate-pulse rounded-[26px] border border-erp-border bg-erp-card shadow-erp-card"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid w-full gap-4 lg:hidden">
+      {rows.map((row) => (
+        <article
+          key={row.id}
+          className="w-full overflow-hidden rounded-[26px] border border-erp-border bg-erp-card shadow-erp-card"
+        >
+          <div className="p-5">
+            <div className="flex w-full items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <StaffAvatar row={row} />
+
+                <div className="min-w-0 flex-1">
+                  <h3 className="max-w-full truncate text-[18px] font-semibold leading-[23px] tracking-[-0.03em] text-erp-heading">
+                    {row.name}
+                  </h3>
+
+                  <p className="mt-[4px] max-w-full break-all text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-erp-text-soft">
+                    {row.email}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-3 pt-[2px]">
+                <button
+                  type="button"
+                  onClick={() => onEdit(row)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-erp-primary transition hover:bg-erp-primary-soft"
+                  title="Edit"
+                >
+                  <Edit3 className="h-[17px] w-[17px] stroke-[2.1]" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onDelete(row.id)}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-erp-danger transition hover:bg-erp-danger-soft"
+                  title="Delete"
+                >
+                  <Trash2 className="h-[17px] w-[17px] stroke-[2.1]" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-4">
+              <Info label="Contact" value={row.contact} />
+              <Info label="Emp. ID" value={row.employeeId} />
+              <Info label="Role" value={formatRole(row.role)} />
+              <Info label="Branch" value={row.branch} />
+
+              <div className="col-span-2">
+                <Info label="Address" value={row.address} full />
+              </div>
+            </div>
           </div>
 
-          <div>
-            <h3 className="text-[15px] font-semibold text-[#111827]">{row.name}</h3>
-            <p className="text-[13px] text-[#6B7280]">{row.role}</p>
-          </div>
+          {(row.identityProof || row.policeVerification) && (
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-erp-border px-5 py-4">
+              {row.identityProof ? (
+                <a
+                  href={row.identityProof}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="max-w-full truncate text-[15px] font-medium leading-[20px] tracking-[-0.02em] text-erp-primary underline underline-offset-2"
+                >
+                  Identity Proof
+                </a>
+              ) : null}
+
+              {row.policeVerification ? (
+                <a
+                  href={row.policeVerification}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="max-w-full truncate text-[15px] font-medium leading-[20px] tracking-[-0.02em] text-erp-primary underline underline-offset-2"
+                >
+                  Police Verified
+                </a>
+              ) : null}
+            </div>
+          )}
+        </article>
+      ))}
+
+      {!rows.length && (
+        <div className="w-full rounded-[26px] border border-erp-border bg-erp-card p-8 text-center text-[14px] font-medium text-erp-muted shadow-erp-card">
+          No staff members found.
         </div>
+      )}
+    </div>
+  );
+}
 
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={() => onEdit(row)} className="text-[#3B82F6]">
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(row.id)}
-            className="text-[#FF3B30]"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+function Info({
+  label,
+  value,
+  full = false,
+}: {
+  label: string;
+  value: string;
+  full?: boolean;
+}) {
+  return (
+    <div className={cn("min-w-0", full && "w-full")}>
+      <p className="text-[15px] font-medium leading-[20px] tracking-[-0.02em] text-[#51627A]">
+        {label}
+      </p>
 
-      <div className="mt-4 space-y-2 text-[13px] text-[#52525B]">
-        <p><span className="font-medium text-[#111827]">Email:</span> {row.email}</p>
-        <p><span className="font-medium text-[#111827]">Contact:</span> {row.contact}</p>
-        <p><span className="font-medium text-[#111827]">Emp. ID:</span> {row.employeeId}</p>
-        <p><span className="font-medium text-[#111827]">Branch:</span> {row.branch}</p>
-        <p><span className="font-medium text-[#111827]">Address:</span> {row.address}</p>
-      </div>
-
-      <div className="mt-4 flex gap-6 text-[13px]">
-        <button type="button" className="font-medium text-[#3B82F6] underline underline-offset-2">
-          Identity Proof
-        </button>
-        <button type="button" className="font-medium text-[#3B82F6] underline underline-offset-2">
-          Police Verified
-        </button>
-      </div>
+      <p
+        title={value}
+        className={cn(
+          "mt-[6px] text-[15px] font-semibold leading-[21px] tracking-[-0.02em] text-black",
+          full ? "break-words" : "truncate"
+        )}
+      >
+        {value || "N/A"}
+      </p>
     </div>
   );
 }
 
 export default function StaffManagementScreen() {
-  const [rows, setRows] = useState<StaffRow[]>(initialRows);
-  const [search, setSearch] = useState("");
-  const [branch, setBranch] = useState("All Branches");
-  const [openBranchMenu, setOpenBranchMenu] = useState(false);
+  const [rows, setRows] = useState<StaffRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<StaffForm>(emptyForm());
-  const [errors, setErrors] = useState<Partial<Record<keyof StaffForm, string>>>(
-    {}
-  );
+  const [editRow, setEditRow] = useState<StaffRow | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [selectedBranch, setSelectedBranch] = useState("All");
+
+  async function fetchEmployees(keepOldData = false) {
+    try {
+      keepOldData ? setRefreshing(true) : setLoading(true);
+
+      const res = await getStaffList({ page: 1, limit: 100 });
+      const list = extractStaffList(res);
+
+      setRows(list.map(normalizeEmployee).filter((item) => item.id));
+    } catch (err) {
+      console.error("STAFF LIST ERROR:", getApiError(err));
+
+      if (!keepOldData) {
+        setRows([]);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchEmployees(false);
+  }, []);
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete employee?")) return;
+
+    try {
+      await deleteStaff(id);
+      setRows((prev) => prev.filter((row) => row.id !== id));
+    } catch (err) {
+      alert(getApiError(err));
+    }
+  }
+
+  const branches = useMemo(() => {
+    const unique = Array.from(new Set(rows.map((row) => row.branch))).filter(
+      Boolean
+    );
+
+    return ["All", ...unique];
+  }, [rows]);
 
   const filteredRows = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
 
     return rows.filter((row) => {
-      const matchesSearch =
-        !term ||
-        row.name.toLowerCase().includes(term) ||
-        row.employeeId.toLowerCase().includes(term) ||
-        row.email.toLowerCase().includes(term) ||
-        row.role.toLowerCase().includes(term);
+      const branchMatch =
+        selectedBranch === "All" || row.branch === selectedBranch;
 
-      const matchesBranch =
-        branch === "All Branches" || row.branch.toLowerCase() === branch.toLowerCase();
+      if (!branchMatch) return false;
+      if (!query) return true;
 
-      return matchesSearch && matchesBranch;
+      return [
+        row.name,
+        row.email,
+        row.contact,
+        row.employeeId,
+        row.role,
+        row.branch,
+        row.address,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
     });
-  }, [rows, search, branch]);
-
-  const totalStaff = rows.length;
-  const activeStaff = rows.filter((row) => row.role !== "On Leave").length;
-  const onLeave = Math.max(totalStaff - activeStaff, 1);
-  const departments = new Set(rows.map((row) => row.role)).size;
-
-  const stats = [
-    {
-      title: "Total Staff",
-      value: String(totalStaff),
-      icon: Users,
-      iconWrap: "bg-[#DCEBFF]",
-      iconColor: "text-[#246BFD]",
-    },
-    {
-      title: "Active",
-      value: String(activeStaff),
-      icon: UserCheck,
-      iconWrap: "bg-[#DDF8E6]",
-      iconColor: "text-[#16A34A]",
-    },
-    {
-      title: "On Leave",
-      value: String(onLeave),
-      icon: UserMinus,
-      iconWrap: "bg-[#FFE8C7]",
-      iconColor: "text-[#F97316]",
-    },
-    {
-      title: "Departments",
-      value: String(departments),
-      icon: ShieldAlert,
-      iconWrap: "bg-[#F0DFFF]",
-      iconColor: "text-[#A855F7]",
-    },
-  ];
-
-  const openAddModal = () => {
-    setModalMode("add");
-    setEditingId(null);
-    setForm(emptyForm());
-    setErrors({});
-    setModalOpen(true);
-  };
-
-  const openEditModal = (row: StaffRow) => {
-    setModalMode("edit");
-    setEditingId(row.id);
-    setForm(formFromRow(row));
-    setErrors({});
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setErrors({});
-  };
-
-  const handleSubmit = () => {
-    const validation = validateForm(form);
-    setErrors(validation);
-
-    if (Object.keys(validation).length > 0) return;
-
-    if (modalMode === "add") {
-      const newRow = toRow(form, String(Date.now()));
-      setRows((prev) => [newRow, ...prev]);
-    } else if (editingId) {
-      setRows((prev) =>
-        prev.map((row) => (row.id === editingId ? toRow(form, editingId) : row))
-      );
-    }
-
-    closeModal();
-  };
-
-  const handleDelete = (id: string) => {
-    setRows((prev) => prev.filter((row) => row.id !== id));
-  };
+  }, [rows, search, selectedBranch]);
 
   return (
     <>
-      <main className="min-h-screen w-full bg-[#F3F4F6]">
-        <div className="mb-7">
-          <h1 className="text-[30px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[38px] xl:text-[46px]">
-            Staff Management
-          </h1>
-          <p className="mt-1 text-[15px] text-[#556070] sm:text-[18px]">
-            Manage your store team members
-          </p>
-        </div>
-
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
-          {stats.map((item) => (
-            <StatsCard key={item.title} {...item} />
-          ))}
-        </section>
-
-        <section className="mt-7 rounded-[24px] border border-[#E5E7EB] bg-white p-3 shadow-[0px_4px_14px_rgba(15,23,42,0.03)] sm:rounded-[32px] sm:p-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-            <div className="flex h-[54px] flex-1 items-center rounded-[18px] bg-[#F7F7F8] px-4 sm:h-[58px] sm:rounded-[20px] sm:px-5">
-              <Search className="mr-3 h-5 w-5 text-[#98A2B3]" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                type="text"
-                placeholder="Search by name, employee ID....."
-                className="h-full w-full bg-transparent text-[15px] text-[#111827] outline-none placeholder:text-[#8A94A6] sm:text-[16px]"
-              />
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row xl:ml-auto">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setOpenBranchMenu((prev) => !prev)}
-                  className="flex h-[54px] min-w-[160px] items-center justify-center gap-3 rounded-[18px] border border-[#E5E7EB] bg-white px-5 text-[15px] font-medium text-[#111827] sm:h-[58px] sm:rounded-[20px] sm:text-[16px]"
-                >
-                  <span>{branch === "All Branches" ? "Branch" : branch}</span>
-                  <ChevronDown className="h-5 w-5" />
-                </button>
-
-                {openBranchMenu ? (
-                  <div className="absolute right-0 top-[calc(100%+8px)] z-20 min-w-full overflow-hidden rounded-[16px] border border-[#E5E7EB] bg-white shadow-[0px_12px_24px_rgba(15,23,42,0.08)]">
-                    {branchOptions.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => {
-                          setBranch(option);
-                          setOpenBranchMenu(false);
-                        }}
-                        className="block w-full px-4 py-3 text-left text-[14px] text-[#111827] hover:bg-[#F8FAFC]"
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
-              <button
-                type="button"
-                onClick={openAddModal}
-                className="flex h-[54px] min-w-[180px] items-center justify-center gap-3 rounded-[18px] bg-[#030521] px-6 text-[15px] font-medium text-white shadow-[0px_10px_18px_rgba(3,5,33,0.14)] sm:h-[58px] sm:min-w-[192px] sm:rounded-[20px] sm:text-[16px]"
-              >
-                <BadgePlus className="h-5 w-5" />
-                <span>Add Employee</span>
-              </button>
-            </div>
+      <main className="w-full max-w-full overflow-hidden">
+        <section className="w-full max-w-full space-y-6 overflow-hidden">
+          <div>
+            <h1 className="text-[30px] font-semibold leading-[38px] tracking-[-0.04em] text-erp-heading sm:text-[34px] sm:leading-[42px]">
+              Staff Management
+            </h1>
+            <p className="mt-[2px] text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-erp-muted sm:text-[18px] sm:leading-[24px]">
+              Manage your store team members
+            </p>
           </div>
-        </section>
 
-        <section className="mt-6 hidden overflow-hidden rounded-[32px] border border-[#E5E7EB] bg-white shadow-[0px_4px_14px_rgba(15,23,42,0.035)] lg:block">
-          <div className="overflow-x-auto">
-            <table className="min-w-[1360px] w-full border-separate border-spacing-0">
-              <thead>
-                <tr className="bg-black">
-                  {[
-                    "Staff Name",
-                    "Email",
-                    "Contact No.",
-                    "Address",
-                    "Emp. ID",
-                    "Identity Proof",
-                    "Police Verified",
-                    "Role",
-                    "Branch",
-                    "Action",
-                  ].map((header, index, arr) => (
-                    <th
-                      key={header}
-                      className={cn(
-                        "px-6 py-5 text-left text-[15px] font-semibold text-white",
-                        index === 0 && "rounded-tl-[32px]",
-                        index === arr.length - 1 && "rounded-tr-[32px]"
-                      )}
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
+          <SummaryCards rows={rows} />
 
-              <tbody>
-                {filteredRows.map((row) => (
-                  <tr key={row.id} className="bg-white">
-                    <td className="border-b border-r border-[#EAECEF] px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#E5E7EB] text-[12px] font-semibold text-[#111827]">
-                          {getInitials(row.name)}
-                        </div>
-                        <span className="text-[15px] font-medium text-[#111827]">
-                          {row.name}
-                        </span>
-                      </div>
-                    </td>
+          <Toolbar
+            search={search}
+            setSearch={setSearch}
+            branches={branches}
+            selectedBranch={selectedBranch}
+            setSelectedBranch={setSelectedBranch}
+            onAdd={() => {
+              setEditRow(null);
+              setModalOpen(true);
+            }}
+          />
 
-                    <td className="border-b border-r border-[#EAECEF] px-5 py-4 text-[15px] text-[#52525B]">
-                      {row.email}
-                    </td>
+          <DesktopTable
+            rows={filteredRows}
+            loading={loading}
+            refreshing={refreshing}
+            onEdit={(row) => {
+              setEditRow(row);
+              setModalOpen(true);
+            }}
+            onDelete={handleDelete}
+          />
 
-                    <td className="border-b border-r border-[#EAECEF] px-5 py-4 text-[15px] text-[#52525B]">
-                      {row.contact}
-                    </td>
-
-                    <td className="max-w-[220px] border-b border-r border-[#EAECEF] px-5 py-4 text-[15px] leading-[1.35] text-[#52525B]">
-                      {row.address}
-                    </td>
-
-                    <td className="border-b border-r border-[#EAECEF] px-5 py-4 text-[15px] text-[#52525B]">
-                      {row.employeeId}
-                    </td>
-
-                    <td className="border-b border-r border-[#EAECEF] px-5 py-4 text-center">
-                      <button
-                        type="button"
-                        className="text-[15px] font-medium text-[#3B82F6] underline underline-offset-2"
-                      >
-                        View
-                      </button>
-                    </td>
-
-                    <td className="border-b border-r border-[#EAECEF] px-5 py-4 text-center">
-                      <button
-                        type="button"
-                        className="text-[15px] font-medium text-[#3B82F6] underline underline-offset-2"
-                      >
-                        View
-                      </button>
-                    </td>
-
-                    <td className="border-b border-r border-[#EAECEF] px-5 py-4 text-[15px] text-[#52525B]">
-                      {row.role}
-                    </td>
-
-                    <td className="max-w-[180px] border-b border-r border-[#EAECEF] px-5 py-4 text-[15px] leading-[1.35] text-[#52525B]">
-                      {row.branch}
-                    </td>
-
-                    <td className="border-b border-[#EAECEF] px-5 py-4">
-                      <div className="flex items-center justify-center gap-4">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(row)}
-                          className="text-[#3B82F6] transition hover:scale-105"
-                        >
-                          <Pencil className="h-5 w-5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(row.id)}
-                          className="text-[#FF3B30] transition hover:scale-105"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-
-                {filteredRows.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={10}
-                      className="px-6 py-10 text-center text-[15px] text-[#6B7280]"
-                    >
-                      No employees found.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className="mt-6 grid grid-cols-1 gap-4 lg:hidden">
-          {filteredRows.length > 0 ? (
-            filteredRows.map((row) => (
-              <MobileEmployeeCard
-                key={row.id}
-                row={row}
-                onEdit={openEditModal}
-                onDelete={handleDelete}
-              />
-            ))
-          ) : (
-            <div className="rounded-[22px] border border-[#E5E7EB] bg-white p-6 text-center text-[14px] text-[#6B7280]">
-              No employees found.
-            </div>
-          )}
+          <MobileCards
+            rows={filteredRows}
+            loading={loading}
+            onEdit={(row) => {
+              setEditRow(row);
+              setModalOpen(true);
+            }}
+            onDelete={handleDelete}
+          />
         </section>
       </main>
 
-      <EmployeeModal
+      <AddEmployeeModal
         open={modalOpen}
-        mode={modalMode}
-        form={form}
-        setForm={setForm}
-        errors={errors}
-        onClose={closeModal}
-        onSubmit={handleSubmit}
+        editRow={editRow}
+        onClose={() => {
+          setModalOpen(false);
+          setEditRow(null);
+        }}
+        onSuccess={() => fetchEmployees(true)}
       />
     </>
   );

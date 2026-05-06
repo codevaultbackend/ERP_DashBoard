@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Store } from "lucide-react";
+import { ArrowRight, Store } from "lucide-react";
 
 type GridItem = {
   id: string;
@@ -13,48 +13,61 @@ type Props =
   | {
       items: GridItem[];
       scope: "district";
+      emptyText?: string;
     }
   | {
       items: GridItem[];
       scope: "store";
       districtId: string;
+      emptyText?: string;
     };
 
 export default function StoreCardGrid(props: Props) {
   const getHref = (itemId: string) => {
     if (props.scope === "district") {
-      return `/head-office/store-management/${itemId}`;
+      return `/head-office/store-management/${encodeURIComponent(itemId)}`;
     }
 
-    return `/head-office/store-management/${props.districtId}/stores/${itemId}`;
+    return `/head-office/store-management/${encodeURIComponent(
+      props.districtId
+    )}/stores/${encodeURIComponent(itemId)}`;
   };
 
+  if (props.items.length === 0) {
+    return (
+      <div className="flex h-[180px] items-center justify-center rounded-[26px] border border-erp-border bg-erp-card text-[15px] font-semibold text-erp-muted shadow-erp-card">
+        {props.emptyText || "No stores found."}
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
       {props.items.map((item) => (
         <Link
           key={item.id}
           href={getHref(item.id)}
-          className="rounded-[28px] border border-[#E5E7EB] bg-white p-5 shadow-[0px_4px_14px_rgba(15,23,42,0.035)] transition-transform duration-200 hover:-translate-y-[1px]"
+          className="group flex min-h-[104px] items-center justify-between rounded-[24px] border border-erp-border bg-erp-card px-5 py-5 shadow-erp-card transition hover:-translate-y-[1px] hover:shadow-[0_8px_22px_rgba(15,23,42,0.09)] sm:min-h-[108px] sm:rounded-[26px] sm:px-6"
         >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-[18px] bg-[#EEF4FF]">
-                <Store className="h-8 w-8 text-[#1565D8]" />
-              </div>
-
-              <div className="min-w-0">
-                <h3 className="truncate text-[20px] font-semibold tracking-[-0.03em] text-[#111827]">
-                  {item.name}
-                </h3>
-                <p className="mt-1 text-[16px] text-[#6B7280]">{item.code}</p>
-              </div>
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-[18px] bg-[#EFF6FF]">
+              <Store className="h-8 w-8 text-[#0667D8]" />
             </div>
 
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-[#F4F4F5]">
-              <ChevronRight className="h-5 w-5 text-[#111827]" />
+            <div className="min-w-0">
+              <h3 className="truncate text-[18px] font-bold leading-tight tracking-[-0.02em] text-erp-text sm:text-[20px]">
+                {item.name}
+              </h3>
+
+              <p className="mt-1 truncate text-[14px] font-medium text-erp-muted sm:text-[15px]">
+                {item.code}
+              </p>
             </div>
           </div>
+
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-erp-card-soft transition group-hover:bg-[#EAF2FF]">
+            <ArrowRight className="h-4 w-4 text-erp-text" />
+          </span>
         </Link>
       ))}
     </div>

@@ -15,29 +15,37 @@ type Props =
       active: "districts" | "stores";
     };
 
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
+
 export default function ToggleTabs(props: Props) {
   const router = useRouter();
 
-  const baseBtn =
-    "min-w-[132px] rounded-full px-7 py-3 text-[15px] font-medium transition-all sm:px-8 sm:text-[16px]";
+  const districtsHref = `/head-office/store-management/${encodeURIComponent(
+    props.districtId
+  )}`;
 
-  const districtsHref = `/head-office/store-management/${props.districtId}`;
   const storesHref =
     props.scope === "district"
-      ? `/head-office/store-management/${props.districtId}/stores`
-      : `/head-office/store-management/${props.districtId}/stores/${props.storeId}`;
+      ? `/head-office/store-management/${encodeURIComponent(
+          props.districtId
+        )}/stores`
+      : `/head-office/store-management/${encodeURIComponent(
+          props.districtId
+        )}/stores/${encodeURIComponent(props.storeId)}`;
 
   return (
     <div className="flex flex-wrap items-center gap-3">
       <button
         type="button"
         onClick={() => router.push(districtsHref)}
-        className={[
-          baseBtn,
+        className={cn(
+          "flex h-[42px] min-w-[124px] items-center justify-center rounded-erp-full px-6 text-[14px] font-semibold transition sm:h-[44px] sm:min-w-[132px] sm:px-7 sm:text-[15px]",
           props.active === "districts"
-            ? "bg-[#020222] text-white"
-            : "border border-[#E5E7EB] bg-white text-[#111827]",
-        ].join(" ")}
+            ? "bg-erp-dark text-white"
+            : "border border-erp-border bg-erp-card text-erp-text hover:bg-erp-card-soft"
+        )}
       >
         Districts
       </button>
@@ -45,14 +53,14 @@ export default function ToggleTabs(props: Props) {
       <button
         type="button"
         onClick={() => router.push(storesHref)}
-        className={[
-          baseBtn,
+        className={cn(
+          "flex h-[42px] min-w-[124px] items-center justify-center rounded-erp-full px-6 text-[14px] font-semibold transition sm:h-[44px] sm:min-w-[132px] sm:px-7 sm:text-[15px]",
           props.active === "stores"
-            ? "bg-[#020222] text-white"
-            : "border border-[#E5E7EB] bg-white text-[#111827]",
-        ].join(" ")}
+            ? "bg-erp-dark text-white"
+            : "border border-erp-border bg-erp-card text-erp-text hover:bg-erp-card-soft"
+        )}
       >
-        Retail Stores
+        {props.scope === "district" ? "All Stores" : "Retail Stores"}
       </button>
     </div>
   );

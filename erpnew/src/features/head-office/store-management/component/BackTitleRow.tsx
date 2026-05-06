@@ -5,24 +5,34 @@ import { useRouter } from "next/navigation";
 
 type Props = {
   title: string;
+  subtitle?: string;
 };
 
-export default function BackTitleRow({ title }: Props) {
+export default function BackTitleRow({ title, subtitle }: Props) {
   const router = useRouter();
 
   return (
-    <div className="mb-5 flex items-center gap-4">
+    <div className="mb-5 flex items-start gap-4 sm:items-center">
       <button
         type="button"
         onClick={() => router.back()}
-        className="flex h-[54px] w-[54px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_4px_14px_rgba(15,23,42,0.04)]"
+        aria-label="Go back"
+        className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[16px] border border-erp-border bg-erp-card text-erp-text shadow-erp-card transition hover:bg-erp-card-soft sm:h-[54px] sm:w-[54px] sm:rounded-[18px]"
       >
         <ChevronLeft className="h-7 w-7" />
       </button>
 
-      <h1 className="text-[28px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[40px]">
-        {title}
-      </h1>
+      <div className="min-w-0">
+        <h1 className="truncate text-[28px] font-bold leading-tight tracking-[-0.04em] text-erp-text sm:text-[36px]">
+          {title}
+        </h1>
+
+        {subtitle ? (
+          <p className="mt-1 truncate text-[15px] font-medium text-erp-muted sm:text-[17px]">
+            {subtitle}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

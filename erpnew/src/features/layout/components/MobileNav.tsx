@@ -42,12 +42,18 @@ function getIcon(label: string) {
 
 export default function MobileNav({ items, pathname }: MobileNavProps) {
   return (
-    <div
-      className="sticky !top-[76px] bg-[#F6F8FA] z-[45]  pb-2 md:hidden"
+    <nav
+      className="sticky top-[76px] z-[45] md:hidden"
       data-search-ignore="true"
+      aria-label="Mobile navigation"
     >
-      <div className="overflow-hidden   border border-[#E6EAF2] ">
-        <div className="flex items-center gap-2 overflow-x-auto px-3 py-3 scrollbar-hide">
+      {/* Same bg cover style as topbar */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full bg-[#F4F7FB]/85 backdrop-blur-[18px]" />
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full bg-gradient-to-b from-[#F4F7FB] via-[#F4F7FB]/95 to-[#F4F7FB]/80" />
+
+      <div className="overflow-hidden  border-b border-[#E7E9EE]/70 bg-[#F4F7FB]/80  backdrop-blur-xl">
+        <div className="flex items-center gap-2 overflow-x-auto dashboard-hidden-scroll px-3 py-3 scrollbar-hide">
           {items.map((item) => {
             const Icon = getIcon(item.label);
             const active =
@@ -60,8 +66,8 @@ export default function MobileNav({ items, pathname }: MobileNavProps) {
                 className={cn(
                   "group flex min-h-[46px] shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[14px] border px-4 py-[11px] transition-all duration-200",
                   active
-                    ? "border-[#D7E5FF] bg-[#fff] text-[#245DDB] shadow-[0px_4px_14px_rgba(36,93,219,0.10)]"
-                    : "border-[#EEF2F6] bg-[#fff] text-[#4B5565]"
+                    ? "border-[#D7E5FF] bg-white text-[#245DDB] shadow-[0px_4px_14px_rgba(36,93,219,0.10)]"
+                    : "border-[#EEF2F6] bg-white text-[#4B5565] shadow-[0px_2px_8px_rgba(17,24,39,0.03)]"
                 )}
               >
                 <span
@@ -86,6 +92,6 @@ export default function MobileNav({ items, pathname }: MobileNavProps) {
           })}
         </div>
       </div>
-    </div>
+    </nav>
   );
 }

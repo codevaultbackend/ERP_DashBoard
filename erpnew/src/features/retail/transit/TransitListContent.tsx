@@ -120,7 +120,7 @@ export default function TransitListContent({
       <div className="w-full min-w-0 font-erp">
         <TransitPageHeader />
 
-        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-2 gap-5 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, index) => (
             <div
               key={index}
@@ -145,7 +145,7 @@ export default function TransitListContent({
           </div>
         ) : null}
 
-        <section className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-3">
+        <section className="mt-5 grid grid-cols-2 gap-5 xl:grid-cols-3">
           <StatCard
             icon={<Truck className="h-6 w-6" />}
             title="In Transit"

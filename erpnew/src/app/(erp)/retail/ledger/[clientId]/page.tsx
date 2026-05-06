@@ -9,6 +9,7 @@ import InvoicePreviewModal from "../../../../../features/retail/ledger/InvoicePr
 import { getPaymentsByCustomer } from "../../../../../features/retail/ledger/api";
 import { ClientInvoiceRow } from "../../../../../features/retail/ledger/types";
 import { mapCustomerLedgerToUi } from "../../../../../features/retail/ledger/utils";
+import { FaChevronLeft } from "react-icons/fa";
 
 export default function LedgerClientDetailPage() {
   const params = useParams<{ clientId: string }>();
@@ -75,12 +76,12 @@ export default function LedgerClientDetailPage() {
       <div className="mb-6 flex items-center gap-4">
         <Link
           href="/retail/ledger"
-          className="flex h-[58px] w-[58px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)]"
+          className="flex h-[50px] w-[50px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)]"
         >
-          <ArrowLeft className="h-7 w-7" />
+          <FaChevronLeft className="h-5 w-5" />
         </Link>
 
-        <h1 className="text-[34px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[42px]">
+        <h1 className="text-[30px] font-semibold tracking-[0.4px] text-[#101828] leading-[36px] ">
           {loading ? "Loading..." : customerName}
         </h1>
       </div>

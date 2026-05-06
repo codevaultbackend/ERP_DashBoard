@@ -45,13 +45,16 @@ export default function CategoryArticlesPage(props: Props) {
   const rows = getArticlesByCategory(props.categoryId);
 
   return (
-    <main className="min-h-screen w-full bg-[#F3F4F6] p-3 sm:p-4 lg:p-5">
-      <BackTitleRow title={getCategoryName(props.categoryId)} />
-      <SearchFilterBar />
+    <main className="min-h-screen bg-erp-bg text-erp-text">
+      <section className="mx-auto w-full max-w-[1500px]">
+        <BackTitleRow title={getCategoryName(props.categoryId)} />
 
-      <div className="mt-6">
-        <ArticleTable rows={rows} />
-      </div>
+        <SearchFilterBar withCategory placeholder="Search article..." />
+
+        <div className="mt-6">
+          <ArticleTable rows={rows} />
+        </div>
+      </section>
     </main>
   );
 }

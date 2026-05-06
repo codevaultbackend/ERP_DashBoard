@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Boxes,
@@ -15,7 +14,10 @@ import {
   LogOut,
   type LucideIcon,
 } from "lucide-react";
+
 import type { NavItem } from "./AppShell";
+import { logoutAuthSession } from "../../../core/auth/storage";
+
 
 type AppSidebarProps = {
   items: NavItem[];
@@ -43,84 +45,37 @@ function getIcon(label: string) {
   return iconMap[label] || LayoutDashboard;
 }
 
-function clearCookie(name: string) {
-  const expires = "Thu, 01 Jan 1970 00:00:00 GMT";
-
-  document.cookie = `${name}=; expires=${expires}; path=/`;
-  document.cookie = `${name}=; expires=${expires}; path=/; SameSite=Lax`;
-  document.cookie = `${name}=; expires=${expires}; path=/; SameSite=Lax; Secure`;
-
-  const hostnameParts = window.location.hostname.split(".");
-  if (hostnameParts.length >= 2) {
-    const rootDomain = `.${hostnameParts.slice(-2).join(".")}`;
-    document.cookie = `${name}=; expires=${expires}; path=/; domain=${rootDomain}`;
-    document.cookie = `${name}=; expires=${expires}; path=/; domain=${rootDomain}; SameSite=Lax`;
-    document.cookie = `${name}=; expires=${expires}; path=/; domain=${rootDomain}; SameSite=Lax; Secure`;
-  }
-}
-
 export default function AppSidebar({
   items,
   pathname,
   collapsed,
 }: AppSidebarProps) {
-  const router = useRouter();
-
   const handleLogout = () => {
-    try {
-      const storageKeys = [
-        "token",
-        "accessToken",
-        "authToken",
-        "ims_token",
-        "imsToken",
-        "jwt",
-        "refreshToken",
-        "user",
-        "authUser",
-        "auth",
-        "role",
-        "normalized_role",
-        "level",
-      ];
-
-      storageKeys.forEach((key) => {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-      });
-
-      clearCookie("token");
-      clearCookie("role");
-
-      router.replace("/login");
-      router.refresh();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+    logoutAuthSession();
   };
 
   return (
     <aside
       data-search-ignore="true"
       className={cn(
-        "fixed left-4 top-[96px] z-40 h-[calc(100vh-112px)] transition-all duration-300 ease-out ",
+        "fixed left-4 top-[96px] z-40 h-[calc(100vh-112px)] transition-all duration-300 ease-out",
         collapsed ? "w-[88px]" : "w-[260px]"
       )}
     >
       <div
         className="
           flex h-full flex-col overflow-hidden rounded-[34px]
-          border border-[#E7E9EE] bg-[#FCFCFD] 
+          border border-[#E7E9EE] bg-[#FCFCFD]
           shadow-[0px_10px_30px_rgba(17,24,39,0.04),0px_2px_8px_rgba(17,24,39,0.03)]
         "
       >
         <div
           className={cn(
-            "flex h-full flex-col pt-[18px] pb-[18px] ",
+            "flex h-full flex-col pt-[18px] pb-[18px]",
             collapsed ? "px-[10px]" : "px-[16px]"
           )}
         >
-          <nav className="flex flex-1 flex-col gap-[6px] custom-scrollbar overflow-y-auto">
+          <nav className="dashboard-hidden-scroll custom-scrollbar flex flex-1 flex-col gap-[6px] overflow-y-auto">
             {items.map((item) => {
               const Icon = getIcon(item.label);
               const active =
@@ -157,10 +112,6 @@ export default function AppSidebar({
                     >
                       {item.label}
                     </span>
-                  )}
-
-                  {active && !collapsed && (
-                    <span className="absolute right-[16px] top-1/2 h-[8px] w-[8px] -translate-y-1/2 rounded-full bg-[#245DDB]" />
                   )}
                 </Link>
               );

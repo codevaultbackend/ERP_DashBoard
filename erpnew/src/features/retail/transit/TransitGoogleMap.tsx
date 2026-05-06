@@ -109,7 +109,6 @@ export default function TransitGoogleMap({
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!key) return "";
 
-  // 🎯 decide focus point
   const focusLat = liveLocation.latitude ?? destination.latitude;
   const focusLng = liveLocation.longitude ?? destination.longitude;
 
@@ -151,7 +150,7 @@ export default function TransitGoogleMap({
             allowFullScreen
           />
 
-          {/* 🔥 THIS FIXES YOUR CLICK ISSUE */}
+        
           {preview && (
             <div
               onClick={onClick}

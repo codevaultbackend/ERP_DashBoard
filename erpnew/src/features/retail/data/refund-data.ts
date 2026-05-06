@@ -23,6 +23,12 @@ export type RefundRequest = {
   refundMethod: string;
   refundAmount: string;
   deduction: string;
+  newProductName: string;
+newProductCode: string;
+newValue: string;
+makingCharges: string;
+difference: string;
+exchangeDate: string;
   finalRefund: string;
   productName: string;
   productCode: string;
@@ -34,25 +40,25 @@ export type RefundRequest = {
 
 export const refundStats: RefundStat[] = [
   {
-    title: "Total Refunds",
+    title: "Total Exchanges",
     value: "8",
     iconType: "total",
     iconWrapClassName: "bg-[#DBEAFE]",
   },
   {
-    title: "Approved",
+    title: "Within 7 days",
     value: "5",
     iconType: "approved",
     iconWrapClassName: "bg-[#DCFCE7]",
   },
   {
-    title: "Pending",
+    title: "After 7 days",
     value: "2",
     iconType: "pending",
     iconWrapClassName: "bg-[#FDEAD7]",
   },
   {
-    title: "Refund Amount",
+    title: "Making Charges",
     value: "₹35K",
     iconType: "amount",
     iconWrapClassName: "bg-[#F3E8FF]",

@@ -1,107 +1,164 @@
 "use client";
 
-import React from "react";
+import { AlertCircle, RefreshCw } from "lucide-react";
+
+import ReportsHeader from "./ReportsHeader";
+import ReportsMetricGrid from "./ReportsMetricGrid";
 import CashReconciliationChart from "./CashReconciliationChart";
-import CategorySalesChart from "./CategorySalesChart";
-import MetalTypeChart from "./MetalTypeChart";
+import CategoryWiseSalesChart from "./CategoryWiseSalesChart";
+import MetalTypeDistributionChart from "./MetalTypeDistributionChart";
 import TopProductsTable from "./TopProductsTable";
-import ReportsMetricCards from "./ReportsMetricCards";
+import ReportsSkeleton from "./ReportsSkeleton";
+import MonthlySalesProfitChart from "./MonthlySalesProfitChart";
+import DailySalesTrendChart from "./DailySalesTrendChart";
+
 import { useReportsAnalytics } from "../hooks/useReportsAnalytics";
 
-export default function ReportsAnalyticsContent() {
+type ReportsContentType = "head" | "district" | "retail";
+
+type Props = {
+  type: ReportsContentType;
+  id?: number | string;
+  range?: "daily" | "monthly" | "yearly";
+};
+
+export default function ReportsAnalyticsContent({
+  type,
+  id,
+  range = "daily",
+}: Props) {
   const {
     summary,
     cashVsAccountData,
     categorySalesData,
     typeDistributionData,
     topProductsData,
+    monthlyTrendData,
+    dailyTrendData,
+    inventoryAuditData,
+    meta,
     loading,
     error,
     refetch,
-  } = useReportsAnalytics("daily");
+  } = useReportsAnalytics(type, id, range);
 
   if (loading) {
     return (
-      <div className="w-full pb-8">
-        <div className="mb-6">
-          <h1 className="text-[26px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[28px]">
-            Reports &amp; Analytics
-          </h1>
-          <p className="mt-2 text-[15px] text-[#6B7280]">
-            Comprehensive business insights and performance metrics
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-[112px] animate-pulse rounded-[22px] border border-[#E5E7EB] bg-white"
-            />
-          ))}
-        </div>
-
-        <div className="mt-5 h-[470px] animate-pulse rounded-[24px] border border-[#E5E7EB] bg-white" />
-        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
-          <div className="h-[365px] animate-pulse rounded-[24px] border border-[#E5E7EB] bg-white" />
-          <div className="h-[365px] animate-pulse rounded-[24px] border border-[#E5E7EB] bg-white" />
-        </div>
-        <div className="mt-5 h-[420px] animate-pulse rounded-[24px] border border-[#E5E7EB] bg-white" />
-      </div>
+      <main className="w-full min-w-0 bg-erp-page pb-10">
+        <ReportsSkeleton />
+      </main>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full pb-8">
-        <div className="mb-6">
-          <h1 className="text-[26px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[28px]">
-            Reports &amp; Analytics
-          </h1>
-          <p className="mt-2 text-[15px] text-[#6B7280]">
-            Comprehensive business insights and performance metrics
-          </p>
-        </div>
+      <main className="w-full min-w-0 bg-erp-page pb-10">
+        <ReportsHeader />
 
-        <div className="rounded-[22px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-4 text-[#991B1B] shadow-[0px_4px_18px_rgba(15,23,42,0.03)]">
-          <p className="text-[15px] font-semibold">Failed to load reports</p>
-          <p className="mt-1 text-[13px]">{error}</p>
+        <section className="mt-6 flex min-h-[320px] flex-col items-center justify-center rounded-xl border bg-white px-4 text-center shadow">
+          <AlertCircle className="h-10 w-10 text-red-500" />
+
+          <h2 className="mt-3 text-lg font-semibold">
+            Failed to load reports
+          </h2>
+
+          <p className="text-sm text-gray-500">{error}</p>
+
           <button
+            type="button"
             onClick={refetch}
-            className="mt-4 inline-flex h-[38px] items-center justify-center rounded-[12px] bg-[#111827] px-4 text-[13px] font-medium text-white"
+            className="mt-4 flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-white"
           >
+            <RefreshCw className="h-4 w-4" />
             Retry
           </button>
-        </div>
-      </div>
+        </section>
+      </main>
     );
   }
 
+  const hasHeadStyleData =
+    monthlyTrendData.length > 0 ||
+    categorySalesData.length > 0 ||
+    typeDistributionData.length > 0 ||
+    dailyTrendData.length > 0 ||
+    inventoryAuditData.length > 0;
+
+  const isEmpty = !hasHeadStyleData && !cashVsAccountData.length;
+
   return (
-    <div className="w-full pb-8">
-      <div className="mb-6">
-        <h1 className="text-[26px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[28px]">
-          Reports &amp; Analytics
-        </h1>
-        <p className="mt-2 text-[15px] text-[#6B7280]">
-          Comprehensive business insights and performance metrics
-        </p>
-      </div>
+    <main className="w-full min-w-0 bg-erp-page pb-10">
+      <ReportsHeader />
 
-      <ReportsMetricCards summary={summary} />
+      {type === "district" && meta?.stores_count ? (
+        <section className="mt-3 rounded-[18px] border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+          District report showing data from{" "}
+          <b>{meta.stores_count}</b> mapped retail stores.
+        </section>
+      ) : null}
 
-      <div className="mt-5">
-        <CashReconciliationChart data={cashVsAccountData} />
-      </div>
+      {type === "head" ? (
+        <section className="mt-3 rounded-[18px] border border-purple-100 bg-purple-50 px-4 py-3 text-sm text-purple-700">
+          Head Office report showing consolidated business analytics.
+        </section>
+      ) : null}
 
-      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
-        <CategorySalesChart data={categorySalesData} />
-        <MetalTypeChart data={typeDistributionData} />
-      </div>
+      {isEmpty ? (
+        <section className="mt-6 flex min-h-[300px] items-center justify-center rounded-xl border bg-white px-4">
+          <p className="text-sm text-gray-500">No analytics data available</p>
+        </section>
+      ) : (
+        <>
+          <section className="mt-4 min-w-0">
+            <ReportsMetricGrid
+              summary={summary}
+              typeDistributionData={typeDistributionData}
+            />
+          </section>
 
-      <div className="mt-5">
-        <TopProductsTable products={topProductsData} />
-      </div>
-    </div>
+          {type === "district" ? (
+            <>
+              <section className="mt-6 min-w-0">
+                <MonthlySalesProfitChart data={monthlyTrendData} />
+              </section>
+
+              <section className="mt-6 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
+                <div className="min-w-0">
+                  <CategoryWiseSalesChart data={categorySalesData} />
+                </div>
+
+                <div className="min-w-0">
+                  <MetalTypeDistributionChart data={typeDistributionData} />
+                </div>
+              </section>
+
+              <section className="mt-6 min-w-0">
+                <DailySalesTrendChart data={dailyTrendData} />
+              </section>
+            </>
+          ) : (
+            <>
+              <section className="mt-6 min-w-0">
+                <CashReconciliationChart data={cashVsAccountData} />
+              </section>
+
+              <section className="mt-6 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
+                <div className="min-w-0">
+                  <CategoryWiseSalesChart data={categorySalesData} />
+                </div>
+
+                <div className="min-w-0">
+                  <MetalTypeDistributionChart data={typeDistributionData} />
+                </div>
+              </section>
+
+              <section className="mt-6 min-w-0">
+                <TopProductsTable data={topProductsData} />
+              </section>
+            </>
+          )}
+        </>
+      )}  
+    </main>
   );
 }
