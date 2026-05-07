@@ -16,7 +16,7 @@ import {
   getBillingScannerChannelName,
   sendScannedItemToDesktop,
 } from "@/features/retail/billing/billing-realtime";
-import { parseExistingQrValue } from "@/features/retail/billing/parse-existing-qr";
+import { scanBillingItemByCode } from "@/features/retail/billing/billing-api";
 import type { LiveScannedBillingItem } from "@/features/retail/billing/live-scanner-types";
 
 export default function MobileLiveScannerPage() {
@@ -54,7 +54,6 @@ function MobileLiveScannerInner() {
     return () => {
       stopCamera();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function startCamera() {
@@ -119,7 +118,7 @@ function MobileLiveScannerInner() {
 
       await scannerRef.current.clear();
     } catch {
-      // ignore cleanup error
+      // cleanup ignore
     } finally {
       scannerRef.current = null;
       setCameraStarted(false);
@@ -135,7 +134,7 @@ function MobileLiveScannerInner() {
 
     if (
       lastScanValueRef.current === cleanQr &&
-      now - lastScanAtRef.current < 2200
+      now - lastScanAtRef.current < 2500
     ) {
       return;
     }
@@ -150,11 +149,12 @@ function MobileLiveScannerInner() {
       setPreviewItem(null);
       setLastQrValue(cleanQr);
 
-      const item = parseExistingQrValue(cleanQr);
+      const realItem = await scanBillingItemByCode(cleanQr);
 
-      setPreviewItem(item);
-      setStatusMessage("Preview ready. Send to desktop billing page.");
+      setPreviewItem(realItem);
+      setStatusMessage("Item scanned from backend. Review and send to desktop.");
     } catch (error: any) {
+      setPreviewItem(null);
       setErrorMessage(error?.message || "QR scan failed.");
     } finally {
       setScanLoading(false);
@@ -222,7 +222,8 @@ function MobileLiveScannerInner() {
             Mobile Billing Scanner
           </h1>
           <p className="mt-1 text-[13px] text-[#6B7280]">
-            Existing QR scan karo, preview dekho, desktop pe send karo.
+            QR scan karo, backend se real item fetch hoga, phir desktop par send
+            karo.
           </p>
         </div>
 
@@ -259,7 +260,7 @@ function MobileLiveScannerInner() {
               {scanLoading ? (
                 <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[12px] text-white">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Reading
+                  Fetching
                 </div>
               ) : null}
             </div>
@@ -278,8 +279,8 @@ function MobileLiveScannerInner() {
                   </p>
 
                   <p className="mt-1 max-w-[260px] text-[12px] text-white/70">
-                    Start dabao, camera permission allow karo, existing product
-                    QR scan karo.
+                    Start dabao, camera permission allow karo, product QR scan
+                    karo.
                   </p>
                 </div>
               ) : null}
@@ -328,47 +329,56 @@ function MobileLiveScannerInner() {
           </div>
 
           {previewItem ? (
-            <div className="rounded-[26px] border border-[#E5E7EB] bg-white p-4 shadow-sm">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#7C3AED]">
-                Preview
-              </p>
+            <div className="rounded-[26px] border border-[#D1FAE5] bg-white p-4 shadow-sm">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
+                <CheckCircle2 className="h-4 w-4" />
+                Backend Verified
+              </div>
 
-              <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-[#111827]">
-                {previewItem.description ||
-                  previewItem.item_name ||
+              <h2 className="text-[22px] font-semibold tracking-[-0.03em] text-[#111827]">
+                {previewItem.item_name ||
+                  previewItem.description ||
                   previewItem.name ||
-                  previewItem.product_code ||
-                  previewItem.article_code ||
-                  previewItem.raw_qr_value ||
                   "Scanned Item"}
               </h2>
 
-              <p className="mt-1 break-all text-[13px] text-[#6B7280]">
+              <p className="mt-1 break-all text-[13px] font-medium text-[#6B7280]">
                 {previewItem.product_code ||
                   previewItem.article_code ||
                   previewItem.sku_code ||
                   previewItem.code ||
-                  previewItem.raw_qr_value ||
                   "-"}
               </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <PreviewBox label="Item ID" value={previewItem.item_id || "-"} />
-                <PreviewBox
-                  label="Category"
-                  value={previewItem.category || "-"}
-                />
-                <PreviewBox label="Metal" value={previewItem.metal_type || "-"} />
                 <PreviewBox label="Purity" value={previewItem.purity || "-"} />
-                <PreviewBox label="Unit" value={previewItem.unit || "pcs"} />
-                <PreviewBox label="Qty" value={previewItem.qty || 1} />
                 <PreviewBox
-                  label="Net Weight"
+                  label="Metal"
+                  value={previewItem.metal_type || "-"}
+                />
+                <PreviewBox
+                  label="Gross Wt"
+                  value={`${Number(previewItem.gross_weight || 0)} g`}
+                />
+                <PreviewBox
+                  label="Net Wt"
                   value={`${Number(previewItem.net_weight || 0)} g`}
                 />
                 <PreviewBox
                   label="Rate"
                   value={`₹${Number(previewItem.rate || 0)}`}
+                />
+                <PreviewBox
+                  label="Making"
+                  value={`₹${Number(previewItem.making_charge_value || 0)}`}
+                />
+                <PreviewBox
+                  label="Available"
+                  value={Number(previewItem.available_qty || 0)}
+                />
+                <PreviewBox
+                  label="Total"
+                  value={`₹${Number(previewItem.total_amount || 0)}`}
                 />
               </div>
 
