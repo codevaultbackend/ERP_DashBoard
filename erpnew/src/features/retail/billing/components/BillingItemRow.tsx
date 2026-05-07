@@ -1,22 +1,22 @@
 import { Trash2 } from "lucide-react";
-import { formatCurrency, formatWeight } from "../../../../features/retail/utils/billing-utils";
-
-type CartItem = {
-  id: number;
-  code: string;
-  name: string;
-  metalValue: number;
-  makingCharges: number;
-  weight: number;
-  qty: number;
-};
+import { formatCurrency } from "../../utils/billing-utils";
+import type { BillingCartItem } from "./BillingPageContent";
 
 type Props = {
-  item: CartItem;
+  item: BillingCartItem;
   onIncrease: () => void;
   onDecrease: () => void;
   onRemove: () => void;
 };
+
+function toNumber(value: unknown, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function fixed(value: unknown, digits = 2) {
+  return toNumber(value).toFixed(digits);
+}
 
 export default function BillingItemRow({
   item,
@@ -24,66 +24,94 @@ export default function BillingItemRow({
   onDecrease,
   onRemove,
 }: Props) {
-  const itemTotal = (item.metalValue + item.makingCharges) * item.qty;
+  const grossWeight = toNumber(item.gross_weight, item.weight);
+  const netWeight = toNumber(item.net_weight, item.weight);
+  const rate = toNumber(item.rate);
+  const makingPercent = toNumber(item.making_charge_percent);
+  const makingValue = toNumber(item.makingCharges);
+  const itemTotal = (toNumber(item.metalValue) + makingValue) * item.qty;
 
   return (
-    <div className="rounded-[24px] border border-[#E7ECF2] bg-[#FBFCFD] p-4 shadow-[0px_2px_10px_rgba(15,23,42,0.03)]">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <article className="rounded-[28px] border border-[#E5E7EB] bg-white px-[24px] pb-[18px] pt-[22px] shadow-[0px_2px_8px_rgba(15,23,42,0.04)]">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-[17px] font-semibold text-[#111827]">
-              {item.name}
-            </h3>
-            <span className="rounded-full bg-[#EEF2FF] px-3 py-1 text-[12px] font-semibold text-[#4F46E5]">
-              {item.code}
-            </span>
-          </div>
+          <h3 className="truncate text-[22px] font-semibold leading-[27px] tracking-[-0.03em] text-[#171717]">
+            {item.name}
+          </h3>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[14px] font-medium text-[#667085]">
-            <span>Metal: {formatCurrency(item.metalValue)}</span>
-            <span>Making: {formatCurrency(item.makingCharges)}</span>
-            <span>Weight: {formatWeight(item.weight)}</span>
-          </div>
+          <p className="mt-[6px] break-all text-[13px] font-normal leading-[18px] text-[#6B7280]">
+            {item.code}
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex h-[42px] items-center rounded-full border border-[#E4E7EC] bg-white px-2 shadow-sm">
-            <button
-              type="button"
-              onClick={onDecrease}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[18px] font-semibold text-[#111827] transition hover:bg-[#F3F4F6]"
-            >
-              -
-            </button>
+        <div className="shrink-0 text-right">
+          <p className="text-[24px] font-semibold leading-[30px] tracking-[0.04em] text-[#171717]">
+            {formatCurrency(itemTotal)}
+          </p>
 
-            <span className="min-w-[28px] text-center text-[15px] font-semibold text-[#111827]">
-              {item.qty}
-            </span>
+          <p className="mt-[3px] text-[12px] font-normal leading-[16px] text-[#6B7280]">
+            Value (Incl. Making)
+          </p>
+        </div>
+      </div>
 
-            <button
-              type="button"
-              onClick={onIncrease}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[18px] font-semibold text-[#111827] transition hover:bg-[#F3F4F6]"
-            >
-              +
-            </button>
-          </div>
+      <div className="mt-[26px] grid grid-cols-2 gap-x-5 gap-y-5 sm:grid-cols-3 lg:grid-cols-6">
+        <Spec label="Purity" value={item.purity || "-"} />
+        <Spec label="Gross Wt" value={`${fixed(grossWeight)} g`} />
+        <Spec label="Net Wt" value={`${fixed(netWeight)} g`} />
+        <Spec label="Rate" value={fixed(rate)} />
+        <Spec label="Making Charges" value={`${fixed(makingPercent, 0)}%`} />
+        <Spec label="Making Value" value={fixed(makingValue)} />
+      </div>
 
-          <div className="min-w-[110px] text-right">
-            <p className="text-[18px] font-semibold text-[#111827]">
-              {formatCurrency(itemTotal)}
-            </p>
-          </div>
+      <div className="mt-[20px] flex items-center justify-between border-t border-dashed border-[#D1D5DB] pt-[18px]">
+        <div className="flex h-[34px] items-center rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-[6px] shadow-[0px_2px_6px_rgba(15,23,42,0.04)]">
+          <button
+            type="button"
+            onClick={onDecrease}
+            className="flex h-[24px] w-[24px] items-center justify-center rounded-full text-[16px] font-semibold text-[#111827] transition hover:bg-white"
+            aria-label="Decrease quantity"
+          >
+            -
+          </button>
+
+          <span className="min-w-[34px] text-center text-[14px] font-semibold text-[#111827]">
+            {item.qty}
+          </span>
 
           <button
             type="button"
-            onClick={onRemove}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#F1D4D4] bg-[#FFF5F5] text-[#DC2626] transition hover:bg-[#FEECEC]"
+            onClick={onIncrease}
+            className="flex h-[24px] w-[24px] items-center justify-center rounded-full text-[16px] font-semibold text-[#111827] transition hover:bg-white"
+            aria-label="Increase quantity"
           >
-            <Trash2 className="h-4.5 w-4.5" />
+            +
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={onRemove}
+          className="flex h-[28px] w-[28px] items-center justify-center rounded-full text-[#6B7280] transition hover:bg-red-50 hover:text-red-600"
+          aria-label="Remove item"
+        >
+          <Trash2 className="h-[17px] w-[17px]" />
+        </button>
       </div>
+    </article>
+  );
+}
+
+function Spec({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] font-semibold uppercase leading-[14px] tracking-[0.12em] text-[#6B7280]">
+        {label}
+      </p>
+
+      <p className="mt-[9px] truncate text-[15px] font-semibold leading-[19px] text-[#171717]">
+        {value}
+      </p>
     </div>
   );
 }

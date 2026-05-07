@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { CheckCircle2, Loader2, ScanLine } from "lucide-react";
+import { CheckCircle2, Loader2, ScanLine, X } from "lucide-react";
 import BillingHeader from "./BillingHeader";
 import BillingSearchBar from "./BillingSearchBar";
 import BillingCustomerFields from "./BillingCustomerFields";
@@ -11,23 +11,31 @@ import DesktopBillingScannerReceiver from "./DesktopBillingScannerReceiver";
 import type { LiveScannedBillingItem } from "../live-scanner-types";
 import { scanBillingItemByCode } from "../billing-api";
 import { PRODUCT_DB, type Product } from "../../data/billing-data";
-import {
-  formatCurrency,
-  formatWeight,
-} from "../../utils/billing-utils";
+import { formatCurrency, formatWeight } from "../../utils/billing-utils";
 
-type CartItem = Product & {
+export type BillingCartItem = {
+  id: number;
+  code: string;
+  name: string;
+  metalValue: number;
+  makingCharges: number;
+  weight: number;
   qty: number;
+
   item_id?: number | string | null;
   raw_qr_value?: string;
   scanned_raw?: LiveScannedBillingItem;
   available_qty?: number;
+
   purity?: string | null;
   metal_type?: string | null;
   gross_weight?: number;
   net_weight?: number;
+  stone_weight?: number;
   rate?: number;
   making_charge_percent?: number;
+  hsn_code?: string | null;
+  unit?: string | null;
 };
 
 function toNumber(value: unknown, fallback = 0) {
@@ -38,25 +46,39 @@ function toNumber(value: unknown, fallback = 0) {
 function getScannedCode(item: LiveScannedBillingItem) {
   return String(
     item.product_code ||
-      item.article_code ||
-      item.sku_code ||
-      item.code ||
-      item.barcode ||
-      item.raw_qr_value ||
-      item.item_id ||
-      ""
+    item.article_code ||
+    item.sku_code ||
+    item.code ||
+    item.barcode ||
+    item.raw_qr_value ||
+    item.item_id ||
+    ""
   ).trim();
 }
 
-function mapScannedItemToCartItem(item: LiveScannedBillingItem): CartItem {
+function mapProductToCartItem(product: Product): BillingCartItem {
+  return {
+    id: product.id,
+    code: product.code,
+    name: product.name,
+    metalValue: product.metalValue,
+    makingCharges: product.makingCharges,
+    weight: product.weight,
+    qty: 1,
+    net_weight: product.weight,
+  };
+}
+
+function mapScannedItemToCartItem(item: LiveScannedBillingItem): BillingCartItem {
   const code = getScannedCode(item);
-  const weight = toNumber(item.net_weight ?? item.weight, 0);
+  const netWeight = toNumber(item.net_weight ?? item.weight, 0);
+  const grossWeight = toNumber(item.gross_weight, netWeight);
   const rate = toNumber(item.rate ?? item.sale_rate, 0);
 
   const metalValue =
     item.metal_value !== undefined
       ? toNumber(item.metal_value)
-      : rate * weight;
+      : rate * netWeight;
 
   const makingCharges =
     item.making_charge_value !== undefined
@@ -76,17 +98,20 @@ function mapScannedItemToCartItem(item: LiveScannedBillingItem): CartItem {
       "Scanned Item",
     metalValue,
     makingCharges,
-    weight,
+    weight: netWeight,
     qty: toNumber(item.qty, 1),
     raw_qr_value: item.raw_qr_value,
     scanned_raw: item,
     available_qty: toNumber(item.available_qty, 1),
     purity: item.purity || null,
     metal_type: item.metal_type || null,
-    gross_weight: toNumber(item.gross_weight, 0),
-    net_weight: toNumber(item.net_weight, weight),
+    gross_weight: grossWeight,
+    net_weight: netWeight,
+    stone_weight: toNumber(item.stone_weight, 0),
     rate,
     making_charge_percent: toNumber(item.making_charge_percent, 0),
+    hsn_code: item.hsn_code || null,
+    unit: item.unit || null,
   };
 }
 
@@ -94,7 +119,7 @@ export default function BillingPageContent() {
   const [query, setQuery] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<BillingCartItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [scanLoading, setScanLoading] = useState(false);
@@ -144,16 +169,18 @@ export default function BillingPageContent() {
   );
 
   function addProduct(product: Product) {
+    const cartItem = mapProductToCartItem(product);
+
     setItems((prev) => {
-      const existing = prev.find((item) => item.code === product.code);
+      const existing = prev.find((item) => item.code === cartItem.code);
 
       if (existing) {
         return prev.map((item) =>
-          item.code === product.code ? { ...item, qty: item.qty + 1 } : item
+          item.code === cartItem.code ? { ...item, qty: item.qty + 1 } : item
         );
       }
 
-      return [...prev, { ...product, qty: 1 }];
+      return [...prev, cartItem];
     });
 
     setQuery("");
@@ -244,6 +271,7 @@ export default function BillingPageContent() {
         if (item.code !== code) return item;
 
         const maxQty = toNumber(item.available_qty, 999999);
+
         return {
           ...item,
           qty: Math.min(item.qty + 1, maxQty),
@@ -264,29 +292,31 @@ export default function BillingPageContent() {
 
   function createBill() {
     const payload = {
-      customerName,
-      customerPhone,
+      customer_name: customerName || null,
+      customer_phone: customerPhone || null,
       items: items.map((item) => ({
         item_id: item.item_id,
         product_code: item.code,
         item_name: item.name,
         qty: item.qty,
+        purity: item.purity,
+        metal_type: item.metal_type,
         gross_weight: item.gross_weight,
         net_weight: item.net_weight || item.weight,
+        stone_weight: item.stone_weight,
         rate: item.rate,
         metal_value: item.metalValue,
         making_charge_percent: item.making_charge_percent,
         making_charge_value: item.makingCharges,
         total_amount: (item.metalValue + item.makingCharges) * item.qty,
-        scanned_raw: item.scanned_raw,
       })),
       summary: {
-        totalItems,
-        totalWeight,
-        metalValue,
-        makingCharges,
+        total_items: totalItems,
+        total_weight: totalWeight,
+        metal_value: metalValue,
+        making_charges: makingCharges,
         gst,
-        grandTotal,
+        grand_total: grandTotal,
       },
     };
 
@@ -295,63 +325,69 @@ export default function BillingPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] p-1">
-      <BillingHeader />
-
+    <div className="min-h-screen bg-[#F6F7F9]">
       <DesktopBillingScannerReceiver onItemReceived={handleLiveScannedItem} />
 
-      <BillingSearchBar
-        query={query}
-        setQuery={setQuery}
-        showSuggestions={showSuggestions}
-        setShowSuggestions={setShowSuggestions}
-        suggestions={suggestions}
-        onSubmit={handleSearchSubmit}
-        onSelectProduct={addProduct}
-      />
+      <div className="mx-auto w-full max-w-[1510px] ">
+        <BillingHeader />
 
-      {scanLoading ? (
-        <div className="mx-auto mb-4 flex w-full max-w-[1600px] items-center gap-3 rounded-[18px] border border-[#DBEAFE] bg-[#EFF6FF] px-4 py-3 text-[14px] font-semibold text-[#1D4ED8]">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Fetching item from backend...
-        </div>
-      ) : null}
+        <BillingSearchBar
+          query={query}
+          setQuery={setQuery}
+          showSuggestions={showSuggestions}
+          setShowSuggestions={setShowSuggestions}
+          suggestions={suggestions}
+          onSubmit={handleSearchSubmit}
+          onSelectProduct={addProduct}
+          scanLoading={scanLoading}
+          onCreateBill={createBill}
+        />
 
-      {scanError ? (
-        <div className="mx-auto mb-4 w-full max-w-[1600px] rounded-[18px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-semibold text-red-700">
-          {scanError}
-        </div>
-      ) : null}
-
-      {lastScannedItem ? (
-        <ScanSummaryCard item={lastScannedItem} />
-      ) : null}
-
-      <BillingCustomerFields
-        customerName={customerName}
-        customerPhone={customerPhone}
-        setCustomerName={setCustomerName}
-        setCustomerPhone={setCustomerPhone}
-      />
-
-      <div className="mx-auto w-full max-w-[1600px]">
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_370px]">
-          <div className="min-w-0">
-            <BillingItemsCard
-              items={items}
-              totalItems={totalItems}
-              totalWeight={totalWeight}
-              onTryScan={() => {
-                const input = document.querySelector<HTMLInputElement>(
-                  'input[placeholder*="Scan or enter"]'
-                );
-                input?.focus();
-              }}
-              onIncrease={increaseQty}
-              onDecrease={decreaseQty}
-              onRemove={removeProduct}
-            />
+        {scanLoading ? (
+          <div className="mb-4 flex h-[46px] items-center gap-3 rounded-[18px] border border-[#DBEAFE] bg-[#EFF6FF] px-4 text-[14px] font-semibold text-[#1D4ED8]">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Fetching item from backend...
           </div>
+        ) : null}
+
+        {scanError ? (
+          <div className="mb-4 flex min-h-[46px] items-center justify-between gap-3 rounded-[18px] border border-red-200 bg-red-50 px-4 text-[14px] font-semibold text-red-700">
+            <span>{scanError}</span>
+            <button type="button" onClick={() => setScanError("")}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
+
+        {lastScannedItem ? (
+          <ScanSummaryCard
+            item={lastScannedItem}
+            onClose={() => setLastScannedItem(null)}
+          />
+        ) : null}
+
+        <BillingCustomerFields
+          customerName={customerName}
+          customerPhone={customerPhone}
+          setCustomerName={setCustomerName}
+          setCustomerPhone={setCustomerPhone}
+        />
+
+        <div className="grid grid-cols-1 gap-[28px] xl:grid-cols-[minmax(0,1fr)_376px]">
+          <BillingItemsCard
+            items={items}
+            totalItems={totalItems}
+            totalWeight={totalWeight}
+            onTryScan={() => {
+              const input = document.querySelector<HTMLInputElement>(
+                'input[placeholder*="Scan or enter"]'
+              );
+              input?.focus();
+            }}
+            onIncrease={increaseQty}
+            onDecrease={decreaseQty}
+            onRemove={removeProduct}
+          />
 
           <BillSummaryCard
             items={items}
@@ -374,35 +410,39 @@ export default function BillingPageContent() {
   );
 }
 
-function ScanSummaryCard({ item }: { item: LiveScannedBillingItem }) {
-  const name =
-    item.item_name || item.description || item.name || "Scanned Item";
+function ScanSummaryCard({
+  item,
+  onClose,
+}: {
+  item: LiveScannedBillingItem;
+  onClose: () => void;
+}) {
+  const name = item.item_name || item.description || item.name || "Scanned Item";
 
   const code =
     item.product_code || item.article_code || item.sku_code || item.code || "-";
 
   return (
-    <div className="mx-auto mb-4 w-full max-w-[1600px] rounded-[26px] border border-[#BBF7D0] bg-white p-4 shadow-[0px_8px_24px_rgba(15,23,42,0.05)] sm:p-5">
+    <div className="mb-5 rounded-[24px] border border-[#BBF7D0] bg-white px-4 py-4 shadow-[0px_8px_24px_rgba(15,23,42,0.05)] sm:px-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0">
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
-            <CheckCircle2 className="h-4 w-4" />
-            Item Scanned Successfully
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[14px] bg-[#F5F3FF] text-[#8B5CF6]">
+            <ScanLine className="h-6 w-6" />
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[#F5F3FF] text-[#7C3AED]">
-              <ScanLine className="h-6 w-6" />
+          <div className="min-w-0">
+            <div className="mb-1 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" />
+              Item Scanned Successfully
             </div>
 
-            <div className="min-w-0">
-              <h3 className="truncate text-[20px] font-semibold tracking-[-0.03em] text-[#111827]">
-                {name}
-              </h3>
-              <p className="mt-1 break-all text-[13px] font-medium text-[#667085]">
-                {code}
-              </p>
-            </div>
+            <h3 className="truncate text-[20px] font-semibold tracking-[-0.03em] text-[#111827]">
+              {name}
+            </h3>
+
+            <p className="mt-1 break-all text-[13px] font-medium text-[#667085]">
+              {code}
+            </p>
           </div>
         </div>
 
@@ -421,6 +461,14 @@ function ScanSummaryCard({ item }: { item: LiveScannedBillingItem }) {
             value={formatCurrency(toNumber(item.total_amount))}
           />
         </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 hidden h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#667085] hover:bg-[#E5E7EB] lg:flex"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
