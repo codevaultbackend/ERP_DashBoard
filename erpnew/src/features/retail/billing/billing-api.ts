@@ -112,7 +112,7 @@ export async function createBillingInvoice(payload: CreateBillPayload) {
 
   const storeCode = getStoreCode();
 
-  const res = await fetch(`${API_BASE_URL}/bill/billing/create`, {
+  const res = await fetch(`${API_BASE_URL}/bill/create-bill`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
