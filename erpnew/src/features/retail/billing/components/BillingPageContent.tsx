@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Loader2, ScanLine, X } from "lucide-react";
 import BillingHeader from "./BillingHeader";
 import BillingSearchBar from "./BillingSearchBar";
@@ -8,10 +8,19 @@ import BillingCustomerFields from "./BillingCustomerFields";
 import BillingItemsCard from "./BillingItemsCard";
 import BillSummaryCard from "./BillSummaryCard";
 import DesktopBillingScannerReceiver from "./DesktopBillingScannerReceiver";
+import CreateInvoiceModal, {
+  type InvoiceCustomerForm,
+} from "./CreateInvoiceModal";
 import type { LiveScannedBillingItem } from "../live-scanner-types";
-import { scanBillingItemByCode } from "../billing-api";
+import {
+  createBillingInvoice,
+  scanBillingItemByCode,
+  type CreateBillItemPayload,
+} from "../billing-api";
 import { PRODUCT_DB, type Product } from "../../data/billing-data";
 import { formatCurrency, formatWeight } from "../../utils/billing-utils";
+
+const BILLING_SESSION_STORAGE_KEY = "erp_billing_active_session_v1";
 
 export type BillingCartItem = {
   id: number;
@@ -38,6 +47,14 @@ export type BillingCartItem = {
   unit?: string | null;
 };
 
+type StoredBillingSession = {
+  items: BillingCartItem[];
+  customerName: string;
+  customerPhone: string;
+  lastScannedItem: LiveScannedBillingItem | null;
+  updatedAt: string;
+};
+
 function toNumber(value: unknown, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -46,13 +63,13 @@ function toNumber(value: unknown, fallback = 0) {
 function getScannedCode(item: LiveScannedBillingItem) {
   return String(
     item.product_code ||
-    item.article_code ||
-    item.sku_code ||
-    item.code ||
-    item.barcode ||
-    item.raw_qr_value ||
-    item.item_id ||
-    ""
+      item.article_code ||
+      item.sku_code ||
+      item.code ||
+      item.barcode ||
+      item.raw_qr_value ||
+      item.item_id ||
+      ""
   ).trim();
 }
 
@@ -115,7 +132,49 @@ function mapScannedItemToCartItem(item: LiveScannedBillingItem): BillingCartItem
   };
 }
 
+function readStoredBillingSession(): StoredBillingSession | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = localStorage.getItem(BILLING_SESSION_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as StoredBillingSession;
+
+    if (!parsed || !Array.isArray(parsed.items)) return null;
+
+    return {
+      items: parsed.items || [],
+      customerName: parsed.customerName || "",
+      customerPhone: parsed.customerPhone || "",
+      lastScannedItem: parsed.lastScannedItem || null,
+      updatedAt: parsed.updatedAt || new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredBillingSession(session: StoredBillingSession) {
+  if (typeof window === "undefined") return;
+
+  localStorage.setItem(BILLING_SESSION_STORAGE_KEY, JSON.stringify(session));
+}
+
+function clearStoredBillingSession() {
+  if (typeof window === "undefined") return;
+
+  localStorage.removeItem(BILLING_SESSION_STORAGE_KEY);
+}
+
+function sanitizeText(value: string) {
+  const clean = String(value || "").trim();
+  return clean || null;
+}
+
 export default function BillingPageContent() {
+  const hydratedRef = useRef(false);
+
   const [query, setQuery] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -126,6 +185,46 @@ export default function BillingPageContent() {
   const [scanError, setScanError] = useState("");
   const [lastScannedItem, setLastScannedItem] =
     useState<LiveScannedBillingItem | null>(null);
+
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [createBillLoading, setCreateBillLoading] = useState(false);
+  const [createBillError, setCreateBillError] = useState("");
+  const [billSuccess, setBillSuccess] = useState("");
+
+  useEffect(() => {
+    const stored = readStoredBillingSession();
+
+    if (stored) {
+      setItems(stored.items);
+      setCustomerName(stored.customerName);
+      setCustomerPhone(stored.customerPhone);
+      setLastScannedItem(stored.lastScannedItem);
+    }
+
+    hydratedRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+
+    if (
+      items.length === 0 &&
+      !customerName &&
+      !customerPhone &&
+      !lastScannedItem
+    ) {
+      clearStoredBillingSession();
+      return;
+    }
+
+    writeStoredBillingSession({
+      items,
+      customerName,
+      customerPhone,
+      lastScannedItem,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [items, customerName, customerPhone, lastScannedItem]);
 
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -185,6 +284,7 @@ export default function BillingPageContent() {
 
     setQuery("");
     setShowSuggestions(false);
+    setBillSuccess("");
   }
 
   const addScannedItemToCart = useCallback(
@@ -225,6 +325,7 @@ export default function BillingPageContent() {
 
       setLastScannedItem(scannedItem);
       setScanError("");
+      setBillSuccess("");
       setQuery("");
       setShowSuggestions(false);
     },
@@ -242,6 +343,7 @@ export default function BillingPageContent() {
     try {
       setScanLoading(true);
       setScanError("");
+      setBillSuccess("");
 
       const realItem = await scanBillingItemByCode(code);
       addScannedItemToCart(realItem);
@@ -263,6 +365,7 @@ export default function BillingPageContent() {
 
   function removeProduct(code: string) {
     setItems((prev) => prev.filter((item) => item.code !== code));
+    setBillSuccess("");
   }
 
   function increaseQty(code: string) {
@@ -290,45 +393,114 @@ export default function BillingPageContent() {
     );
   }
 
-  function createBill() {
-    const payload = {
-      customer_name: customerName || null,
-      customer_phone: customerPhone || null,
-      items: items.map((item) => ({
-        item_id: item.item_id,
-        product_code: item.code,
-        item_name: item.name,
-        qty: item.qty,
-        purity: item.purity,
-        metal_type: item.metal_type,
-        gross_weight: item.gross_weight,
-        net_weight: item.net_weight || item.weight,
-        stone_weight: item.stone_weight,
-        rate: item.rate,
-        metal_value: item.metalValue,
-        making_charge_percent: item.making_charge_percent,
-        making_charge_value: item.makingCharges,
-        total_amount: (item.metalValue + item.makingCharges) * item.qty,
-      })),
-      summary: {
-        total_items: totalItems,
-        total_weight: totalWeight,
-        metal_value: metalValue,
-        making_charges: makingCharges,
-        gst,
-        grand_total: grandTotal,
-      },
-    };
+  function endBillingSession() {
+    setItems([]);
+    setCustomerName("");
+    setCustomerPhone("");
+    setLastScannedItem(null);
+    setScanError("");
+    setBillSuccess("");
+    setInvoiceModalOpen(false);
+    setCreateBillError("");
+    clearStoredBillingSession();
+  }
 
-    console.log("Create Bill Payload:", payload);
-    alert("Bill payload ready. Connect this with create bill API.");
+  function openCreateInvoiceModal() {
+    setCreateBillError("");
+
+    if (items.length === 0) {
+      setScanError("Please scan or add at least one item before creating bill.");
+      return;
+    }
+
+    setInvoiceModalOpen(true);
+  }
+
+  function buildBillItems(): CreateBillItemPayload[] {
+    return items.map((item) => {
+      const itemId = item.item_id || item.id;
+
+      if (!itemId) {
+        throw new Error(`item_id missing for ${item.name}`);
+      }
+
+      const rate = toNumber(item.rate);
+      const netWeight = toNumber(item.net_weight || item.weight);
+      const makingPercent = toNumber(item.making_charge_percent);
+
+      if (rate <= 0) {
+        throw new Error(`Invalid rate for ${item.name}`);
+      }
+
+      return {
+        item_id: itemId,
+        product_code: item.code,
+        description: item.name,
+        qty: toNumber(item.qty, 1),
+        net_weight: netWeight,
+        rate,
+        making_charge_percent: makingPercent,
+        unit: item.unit || undefined,
+      };
+    });
+  }
+
+  async function submitCreateInvoice(form: InvoiceCustomerForm) {
+    try {
+      setCreateBillLoading(true);
+      setCreateBillError("");
+
+      const billItems = buildBillItems();
+
+      const customerPayload = {
+        name: sanitizeText(form.name),
+        phone: sanitizeText(form.phone || customerPhone),
+        pan_card_number: sanitizeText(form.pan_card_number),
+        pincode: sanitizeText(form.pincode),
+        address: sanitizeText(form.address),
+      };
+
+      const hasCustomer =
+        customerPayload.name ||
+        customerPayload.phone ||
+        customerPayload.pan_card_number ||
+        customerPayload.pincode ||
+        customerPayload.address;
+
+      if (
+        hasCustomer &&
+        !customerPayload.name &&
+        !customerPayload.phone &&
+        !customerPayload.pan_card_number
+      ) {
+        throw new Error("Customer name, phone or PAN is required.");
+      }
+
+      const response = await createBillingInvoice({
+        customer: hasCustomer ? customerPayload : null,
+        items: billItems,
+        paid_amount: 0,
+        notes: null,
+      });
+
+      const billNumber =
+        response?.data?.bill_number || response?.data?.bill_no || "created";
+
+      setBillSuccess(`Invoice ${billNumber} created successfully.`);
+      setInvoiceModalOpen(false);
+      endBillingSession();
+    } catch (error: any) {
+      setCreateBillError(error?.message || "Failed to create invoice");
+    } finally {
+      setCreateBillLoading(false);
+    }
   }
 
   return (
     <div className="min-h-screen bg-[#F6F7F9]">
       <DesktopBillingScannerReceiver onItemReceived={handleLiveScannedItem} />
 
-      <div className="mx-auto w-full max-w-[1510px] ">
+      <div className="mx-auto w-full max-w-[1510px] px-4 pb-8 pt-5 sm:px-6 lg:px-7">
         <BillingHeader />
 
         <BillingSearchBar
@@ -340,7 +512,7 @@ export default function BillingPageContent() {
           onSubmit={handleSearchSubmit}
           onSelectProduct={addProduct}
           scanLoading={scanLoading}
-          onCreateBill={createBill}
+          onCreateBill={openCreateInvoiceModal}
         />
 
         {scanLoading ? (
@@ -356,6 +528,13 @@ export default function BillingPageContent() {
             <button type="button" onClick={() => setScanError("")}>
               <X className="h-4 w-4" />
             </button>
+          </div>
+        ) : null}
+
+        {billSuccess ? (
+          <div className="mb-4 flex min-h-[46px] items-center gap-3 rounded-[18px] border border-emerald-200 bg-emerald-50 px-4 text-[14px] font-semibold text-emerald-700">
+            <CheckCircle2 className="h-4 w-4" />
+            {billSuccess}
           </div>
         ) : null}
 
@@ -397,15 +576,24 @@ export default function BillingPageContent() {
             grandTotal={grandTotal}
             totalItems={totalItems}
             totalWeight={totalWeight}
-            onCreateBill={createBill}
-            onClearAll={() => {
-              setItems([]);
-              setLastScannedItem(null);
-              setScanError("");
-            }}
+            onCreateBill={openCreateInvoiceModal}
+            onClearAll={endBillingSession}
           />
         </div>
       </div>
+
+      <CreateInvoiceModal
+        open={invoiceModalOpen}
+        loading={createBillLoading}
+        error={createBillError}
+        onClose={() => {
+          if (!createBillLoading) {
+            setInvoiceModalOpen(false);
+            setCreateBillError("");
+          }
+        }}
+        onSubmit={submitCreateInvoice}
+      />
     </div>
   );
 }
@@ -423,7 +611,7 @@ function ScanSummaryCard({
     item.product_code || item.article_code || item.sku_code || item.code || "-";
 
   return (
-    <div className="mb-5 rounded-[24px] border border-[#BBF7D0] bg-white px-4 py-4 shadow-[0px_8px_24px_rgba(15,23,42,0.05)] sm:px-5">
+    <div className="relative mb-5 rounded-[24px] border border-[#BBF7D0] bg-white px-4 py-4 shadow-[0px_8px_24px_rgba(15,23,42,0.05)] sm:px-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[14px] bg-[#F5F3FF] text-[#8B5CF6]">
@@ -465,7 +653,7 @@ function ScanSummaryCard({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 hidden h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#667085] hover:bg-[#E5E7EB] lg:flex"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#667085] hover:bg-[#E5E7EB]"
         >
           <X className="h-4 w-4" />
         </button>

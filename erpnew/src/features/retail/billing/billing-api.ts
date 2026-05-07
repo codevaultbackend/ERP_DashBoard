@@ -1,7 +1,7 @@
 import type { LiveScannedBillingItem } from "./live-scanner-types";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
   "https://erp-backend-w3pb.onrender.com";
 
 function getAuthToken() {
@@ -16,6 +16,28 @@ function getAuthToken() {
     localStorage.getItem("jwt") ||
     ""
   );
+}
+
+function getStoreCode() {
+  if (typeof window === "undefined") return "";
+
+  return (
+    localStorage.getItem("store_code") ||
+    localStorage.getItem("storeCode") ||
+    ""
+  );
+}
+
+async function parseApiResponse(res: Response) {
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok || json?.success === false) {
+    throw new Error(
+      json?.message || json?.error || "Something went wrong. Please try again."
+    );
+  }
+
+  return json;
 }
 
 export async function scanBillingItemByCode(
@@ -45,17 +67,62 @@ export async function scanBillingItemByCode(
     }
   );
 
-  const json = await res.json().catch(() => null);
-
-  if (!res.ok || !json?.success) {
-    throw new Error(
-      json?.message || json?.error || "Failed to fetch scanned item"
-    );
-  }
+  const json = await parseApiResponse(res);
 
   return {
     ...json.data,
     raw_qr_value: code,
     scanned_at: new Date().toISOString(),
   };
+}
+
+export type CreateBillCustomerPayload = {
+  name?: string | null;
+  phone?: string | null;
+  pan_card_number?: string | null;
+  pincode?: string | null;
+  address?: string | null;
+};
+
+export type CreateBillItemPayload = {
+  item_id: number | string;
+  product_code?: string | null;
+  description?: string | null;
+  qty: number;
+  net_weight: number;
+  rate: number;
+  making_charge_percent: number;
+  unit?: string | null;
+};
+
+export type CreateBillPayload = {
+  store_code?: string | null;
+  customer?: CreateBillCustomerPayload | null;
+  items: CreateBillItemPayload[];
+  paid_amount?: number;
+  notes?: string | null;
+};
+
+export async function createBillingInvoice(payload: CreateBillPayload) {
+  const token = getAuthToken();
+
+  if (!token) {
+    throw new Error("Login token missing. Please login again.");
+  }
+
+  const storeCode = getStoreCode();
+
+  const res = await fetch(`${API_BASE_URL}/bill/billing/create`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      ...payload,
+      store_code: payload.store_code || storeCode || undefined,
+    }),
+  });
+
+  return parseApiResponse(res);
 }
