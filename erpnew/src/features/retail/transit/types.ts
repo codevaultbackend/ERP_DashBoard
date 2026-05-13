@@ -7,6 +7,8 @@ export type TransitStatus =
   | "delivered"
   | "cancelled";
 
+export type TransitDirection = "incoming" | "outgoing";
+
 export type DriverDetails = {
   driver_name?: string | null;
   driver_phone?: string | null;
@@ -71,6 +73,10 @@ export type TransitTransfer = {
   created_at?: string;
   updated_at?: string;
 
+  driver_name?: string | null;
+  driver_phone?: string | null;
+  vehicle_number?: string | null;
+
   driver_details?: DriverDetails;
   media?: TransitMedia;
 
@@ -85,7 +91,7 @@ export type TransitTransfer = {
 
   route_points?: TransitLocationPoint[];
 
-  direction?: "incoming" | "outgoing";
+  direction?: TransitDirection;
 };
 
 export type TransitSummary = {

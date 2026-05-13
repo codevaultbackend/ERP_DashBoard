@@ -60,7 +60,6 @@ export const storeStats: StoreStat[] = [
   {
     title: "Total Stores",
     value: "18",
-    change: "+12.5%",
     changeColor: "text-[#22C55E]",
     icon: Building2,
     iconWrap: "bg-[#F9E8B4]",

@@ -125,7 +125,6 @@ export default function HeadOfficeStoreManagementPage() {
       {
         title: "Total Stores",
         value: String(summary.totalStores),
-        change: "+12.5%",
         icon: Store,
         wrap: "bg-[#FFF3D8]",
         iconColor: "text-[#D99A00]",
@@ -134,7 +133,6 @@ export default function HeadOfficeStoreManagementPage() {
       {
         title: "Active Stores",
         value: String(summary.activeStores),
-        change: "↗ +12.5%",
         icon: Warehouse,
         wrap: "bg-[#DDFBE5]",
         iconColor: "text-[#16A34A]",

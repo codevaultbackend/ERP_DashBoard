@@ -1,5 +1,5 @@
-import ReportsAnalyticsContent from "../../../../features/retail/reports-analytics/components/ReportsAnalyticsContent";
+import DistrictReportsAnalytics from "@/features/district/reportsAnalytics/DistrictReportsAnalytics";
 
 export default function DistrictReportsAnalyticsPage() {
-  return <ReportsAnalyticsContent type="district" range="monthly" />;
+  return <DistrictReportsAnalytics />;
 }

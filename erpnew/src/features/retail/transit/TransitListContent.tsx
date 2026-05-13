@@ -7,21 +7,25 @@ import {
   CheckCircle2,
   ChevronRight,
   Package2,
+  RefreshCw,
   Truck,
 } from "lucide-react";
+
 import { getTransitTransfers, markTransferReceived } from "./api";
 import {
   DateInfo,
   DeliveryPartnerDetails,
+  DirectionPill,
   LocationRow,
   RoutePill,
   StatCard,
   StatusPill,
+  TransitDirectionToggle,
   TransitPageHeader,
 } from "./TransitShared";
 import TransitGoogleMap from "./TransitGoogleMap";
 import TransitMapModal from "./TransitMapModal";
-import type { TransitTransfer } from "./types";
+import type { TransitDirection, TransitTransfer } from "./types";
 import {
   canMarkDelivered,
   formatDate,
@@ -37,15 +41,25 @@ type SummaryState = {
   goods_receipt: number;
 };
 
-const getMovementLabel = (item: TransitTransfer) => {
-  const type = (item as any).movement_type;
-  if (type === "receive") return "Incoming";
-  if (type === "send") return "Outgoing";
-  return "";
-};
+function getTrackingValue(item: TransitTransfer) {
+  return item.tracking_number || item.transfer_no || `TRK-${item.id}`;
+}
 
-const isReceive = (item: TransitTransfer) =>
-  (item as any).movement_type === "receive";
+function isIncoming(item: TransitTransfer) {
+  return item.direction === "incoming";
+}
+
+function isOutgoing(item: TransitTransfer) {
+  return item.direction === "outgoing";
+}
+
+function getEmptyMessage(activeTab: TransitDirection) {
+  if (activeTab === "incoming") {
+    return "No arriving stock is currently available.";
+  }
+
+  return "No dispatched stock is currently available.";
+}
 
 export default function TransitListContent({
   basePath = "/retail/transit",
@@ -59,6 +73,8 @@ export default function TransitListContent({
     shipments: 0,
     goods_receipt: 0,
   });
+
+  const [activeTab, setActiveTab] = useState<TransitDirection>("incoming");
   const [error, setError] = useState("");
   const [markingId, setMarkingId] = useState<number | null>(null);
   const [selectedMapItem, setSelectedMapItem] =
@@ -80,6 +96,12 @@ export default function TransitListContent({
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load transfers");
+      setItems([]);
+      setSummary({
+        in_transit: 0,
+        shipments: 0,
+        goods_receipt: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -89,11 +111,24 @@ export default function TransitListContent({
     loadTransfers();
   }, []);
 
-  const activeShipments = useMemo(() => {
-    return items.filter(
-      (item) => isInTransitStatus(item.status) || isDeliveredStatus(item.status)
-    );
+  const incomingCount = useMemo(() => {
+    return items.filter((item) => isIncoming(item)).length;
   }, [items]);
+
+  const outgoingCount = useMemo(() => {
+    return items.filter((item) => isOutgoing(item)).length;
+  }, [items]);
+
+  const activeShipments = useMemo(() => {
+    return items.filter((item) => {
+      const directionMatch =
+        activeTab === "incoming" ? isIncoming(item) : isOutgoing(item);
+
+      if (!directionMatch) return false;
+
+      return isInTransitStatus(item.status) || isDeliveredStatus(item.status);
+    });
+  }, [items, activeTab]);
 
   const handleMarkDelivered = async (
     event: MouseEvent<HTMLButtonElement>,
@@ -102,10 +137,13 @@ export default function TransitListContent({
     event.preventDefault();
     event.stopPropagation();
 
+    if (!isIncoming(item)) return;
     if (!canMarkDelivered(item.status)) return;
 
     try {
       setMarkingId(item.id);
+      setError("");
+
       await markTransferReceived(item.id);
       await loadTransfers();
     } catch (err) {
@@ -120,16 +158,16 @@ export default function TransitListContent({
       <div className="w-full min-w-0 font-erp">
         <TransitPageHeader />
 
-        <div className="mt-5 grid grid-cols-2 gap-5 xl:grid-cols-3">
+        <section className="mt-[22px] grid grid-cols-1 gap-[28px] md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 3 }).map((_, index) => (
             <div
               key={index}
-              className="h-[108px] animate-pulse rounded-erp-xl border border-erp-border bg-white shadow-erp-card"
+              className="h-[108px] animate-pulse rounded-[28px] border border-erp-border bg-white shadow-erp-card"
             />
           ))}
-        </div>
+        </section>
 
-        <div className="mt-7 h-[260px] animate-pulse rounded-erp-2xl border border-erp-border bg-white shadow-erp-card" />
+        <div className="mt-[28px] h-[244px] animate-pulse rounded-[28px] border border-erp-border bg-white shadow-erp-card" />
       </div>
     );
   }
@@ -140,14 +178,23 @@ export default function TransitListContent({
         <TransitPageHeader />
 
         {error ? (
-          <div className="mt-5 rounded-erp-lg border border-red-200 bg-red-50 p-4 text-[14px] font-medium text-red-700">
-            {error}
+          <div className="mt-[18px] flex items-start justify-between gap-3 rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
+            <span>{error}</span>
+
+            <button
+              type="button"
+              onClick={loadTransfers}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-red-700 shadow-sm"
+            >
+              <RefreshCw className="h-[14px] w-[14px]" />
+              Retry
+            </button>
           </div>
         ) : null}
 
-        <section className="mt-5 grid grid-cols-2 gap-5 xl:grid-cols-3">
+        <section className="mt-[22px] grid grid-cols-1 gap-[28px] md:grid-cols-2 xl:grid-cols-3">
           <StatCard
-            icon={<Truck className="h-6 w-6" />}
+            icon={<Truck className="h-[24px] w-[24px]" />}
             title="In Transit"
             value={summary.in_transit}
             iconWrapClass="bg-erp-purple-soft"
@@ -155,7 +202,7 @@ export default function TransitListContent({
           />
 
           <StatCard
-            icon={<CheckCircle2 className="h-6 w-6" />}
+            icon={<CheckCircle2 className="h-[24px] w-[24px]" />}
             title="Shipments"
             value={summary.shipments}
             iconWrapClass="bg-erp-success-soft"
@@ -163,7 +210,7 @@ export default function TransitListContent({
           />
 
           <StatCard
-            icon={<Package2 className="h-6 w-6" />}
+            icon={<Package2 className="h-[24px] w-[24px]" />}
             title="Goods Receipt"
             value={summary.goods_receipt}
             iconWrapClass="bg-erp-blue-soft"
@@ -171,27 +218,36 @@ export default function TransitListContent({
           />
         </section>
 
-        <section className="mt-7">
-          <h2 className="erp-section-title">Active Shipments</h2>
+        <section className="mt-[32px]">
+          <div className="flex flex-col gap-[18px] lg:flex-row lg:items-center lg:justify-between">
+            <h2 className="erp-section-title">Active Shipments</h2>
 
-          <div className="mt-5 space-y-5">
+            <TransitDirectionToggle
+              value={activeTab}
+              onChange={setActiveTab}
+              incomingCount={incomingCount}
+              outgoingCount={outgoingCount}
+            />
+          </div>
+
+          <div className="mt-[28px] space-y-[20px]">
             {activeShipments.length ? (
               activeShipments.map((item) => {
                 const delivered = isDeliveredStatus(item.status);
-                const trackingValue =
-                  item.tracking_number || item.transfer_no || `TRK-${item.id}`;
+                const trackingValue = getTrackingValue(item);
+                const incoming = isIncoming(item);
 
                 return (
                   <article
-                    key={item.id}
-                    className="rounded-erp-2xl border border-erp-border bg-white px-6 py-6 shadow-erp-card"
+                    key={`${item.direction}-${item.id}`}
+                    className="rounded-[28px] border border-erp-border bg-white px-[26px] py-[24px] shadow-erp-card"
                   >
-                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+                    <div className="grid grid-cols-1 gap-[24px] xl:grid-cols-[minmax(0,1fr)_390px]">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-[12px]">
                           <Link
                             href={`${basePath}/${item.id}`}
-                            className="break-all text-[20px] font-semibold leading-[30px] tracking-[-0.03em] text-erp-heading md:text-[22px]"
+                            className="break-all text-[20px] font-semibold leading-[26px] tracking-[-0.04em] text-erp-heading transition hover:text-erp-primary"
                           >
                             Tracking: {trackingValue}
                           </Link>
@@ -200,20 +256,19 @@ export default function TransitListContent({
                             {getStatusLabel(item.status)}
                           </StatusPill>
 
-                          {/* ✅ UPDATED */}
-                          <RoutePill>
-                            {getRouteLabel(item)} • {getMovementLabel(item)}
-                          </RoutePill>
+                          <DirectionPill direction={item.direction} />
+
+                          <RoutePill>{getRouteLabel(item)}</RoutePill>
                         </div>
 
-                        <div className="mt-5">
+                        <div className="mt-[20px] max-w-[650px]">
                           <LocationRow
                             from={item.from_organization_name || "—"}
                             to={item.to_organization_name || "—"}
                           />
                         </div>
 
-                        <div className="mt-5">
+                        <div className="mt-[20px] max-w-[650px]">
                           <DateInfo
                             shippedDate={formatDate(
                               item.dispatch_date || item.transfer_date
@@ -224,23 +279,22 @@ export default function TransitListContent({
                           />
                         </div>
 
-                        <div className="mt-7">
+                        <div className="mt-[26px]">
                           <DeliveryPartnerDetails item={item} />
                         </div>
 
                         <Link
                           href={`${basePath}/${item.id}`}
-                          className="mt-5 inline-flex items-center gap-1 text-[14px] font-semibold text-erp-primary"
+                          className="mt-[16px] inline-flex items-center gap-[4px] text-[14px] font-semibold leading-[18px] text-erp-primary transition hover:text-erp-primary-hover"
                         >
                           View Details
-                          <ChevronRight className="h-4 w-4" />
+                          <ChevronRight className="h-[15px] w-[15px]" />
                         </Link>
                       </div>
 
-                      <div className="flex min-w-0 flex-col gap-5">
-                        <div className="flex justify-start xl:justify-end">
-                          {/* ✅ ONLY FOR RECEIVE */}
-                          {isReceive(item) && (
+                      <div className="flex min-w-0 flex-col gap-[22px]">
+                        <div className="flex h-[44px] items-center justify-start xl:justify-end">
+                          {incoming ? (
                             <button
                               type="button"
                               onClick={(event) =>
@@ -251,7 +305,7 @@ export default function TransitListContent({
                                 markingId === item.id ||
                                 !canMarkDelivered(item.status)
                               }
-                              className="inline-flex h-[44px] items-center justify-center gap-2 rounded-erp-sm bg-erp-success px-5 text-[15px] font-semibold text-white shadow-erp-card transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                              className="inline-flex h-[42px] items-center justify-center gap-[8px] rounded-[12px] bg-erp-success px-[18px] text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-white shadow-erp-card transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               <BadgeCheck className="h-[18px] w-[18px]" />
                               {markingId === item.id
@@ -260,16 +314,20 @@ export default function TransitListContent({
                                 ? "Delivered"
                                 : "Mark Delivered"}
                             </button>
+                          ) : (
+                            <span className="inline-flex h-[42px] items-center justify-center rounded-[12px] border border-erp-border bg-erp-card-soft px-[18px] text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-erp-muted">
+                              Dispatched Stock
+                            </span>
                           )}
                         </div>
 
                         <button
                           type="button"
                           onClick={() => setSelectedMapItem(item)}
-                          className="block h-[250px] w-full overflow-hidden rounded-[24px] bg-white text-left shadow-[0_8px_24px_rgba(15,23,42,0.08)] transition hover:scale-[1.01]"
+                          className="block h-[132px] w-full overflow-hidden rounded-[24px] bg-white text-left shadow-[0px_8px_24px_rgba(15,23,42,0.08)] transition hover:scale-[1.01]"
                           aria-label={`Open live map for ${trackingValue}`}
                         >
-                          <TransitGoogleMap item={item} height={250} preview />
+                          <TransitGoogleMap item={item} height={132} preview />
                         </button>
                       </div>
                     </div>
@@ -277,8 +335,8 @@ export default function TransitListContent({
                 );
               })
             ) : (
-              <div className="rounded-erp-2xl border border-dashed border-erp-border bg-white p-8 text-[15px] text-erp-muted shadow-erp-card">
-                No active shipments available.
+              <div className="rounded-[28px] border border-dashed border-erp-border bg-white p-[28px] text-[15px] font-medium text-erp-muted shadow-erp-card">
+                {getEmptyMessage(activeTab)}
               </div>
             )}
           </div>

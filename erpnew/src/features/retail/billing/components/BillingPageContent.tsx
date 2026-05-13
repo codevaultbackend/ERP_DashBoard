@@ -500,7 +500,7 @@ export default function BillingPageContent() {
     <div className="min-h-screen bg-[#F6F7F9]">
       <DesktopBillingScannerReceiver onItemReceived={handleLiveScannedItem} />
 
-      <div className="mx-auto w-full max-w-[1510px] px-4 pb-8 pt-5 sm:px-6 lg:px-7">
+      <div className="mx-auto w-full max-w-[1510px] ">
         <BillingHeader />
 
         <BillingSearchBar

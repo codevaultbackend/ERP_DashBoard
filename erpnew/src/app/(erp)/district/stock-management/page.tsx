@@ -6,6 +6,9 @@ import axios from "axios";
 import StockStatCards from "../../../../features/retail/StockManagement/components/StockStatCards";
 import StockManagementToolbar from "../../../../features/retail/StockManagement/components/StockManagementToolbar";
 import StockManagementTable from "../../../../features/retail/StockManagement/components/StockManagementTable";
+import DistrictAddStockPopup, {
+  type DistrictAddStockFormPayload,
+} from "../../../../features/district/stock/component/DistrictAddStockPopup";
 
 import {
   createDailyAudit,
@@ -15,6 +18,7 @@ import {
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
   "https://erp-backend-w3pb.onrender.com";
 
 const stockApi = axios.create({
@@ -24,7 +28,12 @@ const stockApi = axios.create({
 
 stockApi.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("ims_token") ||
+      localStorage.getItem("erp_token") ||
+      sessionStorage.getItem("token") ||
+      "";
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -67,8 +76,6 @@ type StockCategoryItemApi = {
   quantity?: number;
   image?: string;
   image_url?: string;
-
-  // ✅ audit fields from backend
   isItemAudit?: boolean;
   itemAuditAt?: string | null;
 };
@@ -79,6 +86,23 @@ type StockListResponse = {
   summary?: StockSummaryApi;
   count?: number;
   data?: StockCategoryRowApi[];
+};
+
+type AddStockResponse = {
+  success: boolean;
+  message?: string;
+  data?: unknown;
+  error?: string;
+};
+
+type LoggedInUser = {
+  id?: number;
+  email?: string;
+  role?: string;
+  organization_id?: number | string;
+  organizationId?: number | string;
+  organization_level?: string;
+  store_code?: string;
 };
 
 export type StockArticle = {
@@ -92,8 +116,6 @@ export type StockArticle = {
   stoneWeight: string;
   grossWeight: string;
   category: string;
-
-  // ✅ used by table to show Audit Done
   isItemAudit?: boolean;
   itemAuditAt?: string | null;
 };
@@ -135,6 +157,95 @@ function safeWeight(value: unknown) {
 function safePrice(value: unknown) {
   if (value === null || value === undefined || value === "") return "--";
   return `₹${value}`;
+}
+
+function normalizeText(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function normalizeStoreCode(value: unknown) {
+  const clean = normalizeText(value).toUpperCase();
+  return clean || "";
+}
+
+function normalizeNumber(value: unknown) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : NaN;
+}
+
+function getLoggedInUser(): LoggedInUser | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const rawUser = localStorage.getItem("user");
+    return rawUser ? JSON.parse(rawUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function getDistrictScope() {
+  const user = getLoggedInUser();
+
+  const storeCode = normalizeStoreCode(
+    user?.store_code ||
+    localStorage.getItem("store_code") ||
+    localStorage.getItem("selected_store_code")
+  );
+
+  const organizationId =
+    user?.organization_id ||
+    user?.organizationId ||
+    localStorage.getItem("organization_id") ||
+    "";
+
+  return {
+    store_code: storeCode,
+    organization_id: organizationId,
+  };
+}
+
+function getStockApiErrorMessage(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as
+      | {
+        message?: string;
+        error?: string;
+        errors?: unknown;
+      }
+      | undefined;
+
+    if (Array.isArray(data?.errors)) {
+      const errors = data.errors
+        .map((item) => {
+          if (typeof item === "string") return item;
+
+          if (
+            typeof item === "object" &&
+            item !== null &&
+            "message" in item
+          ) {
+            return String((item as { message?: string }).message || "");
+          }
+
+          return "";
+        })
+        .filter(Boolean);
+
+      if (errors.length > 0) return errors.join(", ");
+    }
+
+    return (
+      data?.message ||
+      data?.error ||
+      error.message ||
+      "Failed to process stock request"
+    );
+  }
+
+  if (error instanceof Error) return error.message;
+
+  return "Failed to process stock request";
 }
 
 function isAuditDoneToday(article: StockArticle) {
@@ -182,21 +293,105 @@ function mapCategoryItemsToArticles(
     stoneWeight: safeWeight(row.stone_weight),
     grossWeight: safeWeight(row.gross_weight),
     category,
-
-    // ✅ important: backend audit state
     isItemAudit: Boolean(row.isItemAudit),
     itemAuditAt: row.itemAuditAt || null,
   }));
 }
 
 async function getDistrictStockCategories(): Promise<StockListResponse> {
-  const res = await stockApi.get("/stock/getdistrict");
+  const scope = getDistrictScope();
+
+  const res = await stockApi.get("/stock/list", {
+    params: {
+      store_code: scope.store_code || undefined,
+      organization_id: scope.organization_id || undefined,
+    },
+  });
+
   return res.data;
 }
 
 async function getDistrictStockItemsByCategory(category: string) {
+  const scope = getDistrictScope();
+
   const res = await stockApi.get(
-    `/stock/category/${encodeURIComponent(category)}`
+    `/stock/category/${encodeURIComponent(category)}`,
+    {
+      params: {
+        store_code: scope.store_code || undefined,
+        organization_id: scope.organization_id || undefined,
+      },
+    }
+  );
+
+  return res.data;
+}
+
+function validateAddStockPayload(payload: {
+  item_name: string;
+  metal_type: "Gold" | "Silver";
+  category: string;
+  purity: string;
+  qty: number;
+  net_weight: number;
+}) {
+  if (!payload.item_name) {
+    throw new Error("Item name is required");
+  }
+
+  if (!["Gold", "Silver"].includes(payload.metal_type)) {
+    throw new Error("Metal type must be Gold or Silver");
+  }
+
+  if (!payload.category) {
+    throw new Error("Category is required");
+  }
+
+  if (!payload.purity) {
+    throw new Error("Purity is required");
+  }
+
+  if (!Number.isFinite(payload.qty) || payload.qty <= 0) {
+    throw new Error("Quantity must be greater than 0");
+  }
+
+  if (!Number.isFinite(payload.net_weight) || payload.net_weight <= 0) {
+    throw new Error("Net weight must be greater than 0");
+  }
+}
+
+async function addDistrictStockItem(payload: DistrictAddStockFormPayload) {
+  const scope = getDistrictScope();
+
+  if (!scope.store_code) {
+    throw new Error("District store_code missing. Please login again.");
+  }
+
+  if (!scope.organization_id) {
+    throw new Error("District organization_id missing. Please login again.");
+  }
+
+  const cleanPayload = {
+    item_name: normalizeText(payload.item_name),
+    metal_type: payload.metal_type,
+    category: normalizeText(payload.category),
+    purity: normalizeText(payload.purity),
+    qty: normalizeNumber(payload.qty),
+    net_weight: normalizeNumber(payload.net_weight),
+    store_code: scope.store_code,
+    organization_id: scope.organization_id,
+  };
+
+  validateAddStockPayload(cleanPayload);
+
+  const res = await stockApi.post<AddStockResponse>(
+    "/stock/stock-in",
+    cleanPayload,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
   );
 
   return res.data;
@@ -204,6 +399,8 @@ async function getDistrictStockItemsByCategory(category: string) {
 
 export default function StockManagementPage() {
   const [rows, setRows] = useState<StockRow[]>([]);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const [summary, setSummary] = useState<StockSummaryApi>({
     total_stock_items: 0,
@@ -213,9 +410,11 @@ export default function StockManagementPage() {
   });
 
   const [loading, setLoading] = useState(true);
+
   const [loadingRowCategory, setLoadingRowCategory] = useState<string | null>(
     null
   );
+
   const [pageError, setPageError] = useState("");
 
   const [searchValue, setSearchValue] = useState("");
@@ -227,6 +426,10 @@ export default function StockManagementPage() {
 
   const [auditMap, setAuditMap] = useState<AuditMap>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const [addStockOpen, setAddStockOpen] = useState(false);
+  const [addStockLoading, setAddStockLoading] = useState(false);
+  const [addStockError, setAddStockError] = useState("");
 
   const loadDistrictRows = useCallback(async () => {
     try {
@@ -246,12 +449,8 @@ export default function StockManagementPage() {
 
       setRows(mapCategoryRowsToStockRows(apiRows));
       setSummary(apiSummary);
-    } catch (err: any) {
-      setPageError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load district stock"
-      );
+    } catch (error) {
+      setPageError(getStockApiErrorMessage(error));
 
       setRows([]);
       setSummary({
@@ -268,6 +467,48 @@ export default function StockManagementPage() {
   useEffect(() => {
     loadDistrictRows();
   }, [loadDistrictRows]);
+
+
+  async function uploadDistrictStockFile(file: File) {
+    const scope = getDistrictScope();
+
+    if (!scope.store_code) {
+      throw new Error("District store_code missing. Please login again.");
+    }
+
+    if (!scope.organization_id) {
+      throw new Error("District organization_id missing. Please login again.");
+    }
+
+    if (!file) {
+      throw new Error("Please select a file.");
+    }
+
+    const allowedExtensions = ["xlsx", "xls", "csv", "pdf"];
+    const extension = file.name.split(".").pop()?.toLowerCase();
+
+    if (!extension || !allowedExtensions.includes(extension)) {
+      throw new Error("Only Excel, CSV, or PDF files are allowed.");
+    }
+
+    const formData = new FormData();
+
+    formData.append("file", file);
+    formData.append("store_code", scope.store_code);
+    formData.append("organization_id", String(scope.organization_id));
+
+    const res = await stockApi.post(
+      "/stock/inventory/stock-in/upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    return res.data;
+  }
 
   useEffect(() => {
     const storedReported = sessionStorage.getItem("submitted-audit-items");
@@ -326,6 +567,55 @@ export default function StockManagementPage() {
     }).length;
   }, [auditMap]);
 
+  const handleAddStockSubmit = async (payload: DistrictAddStockFormPayload) => {
+    try {
+      if (addStockLoading) return;
+
+      setAddStockLoading(true);
+      setAddStockError("");
+      setPageError("");
+
+      const result = await addDistrictStockItem(payload);
+
+      if (!result?.success) {
+        throw new Error(result?.message || "Failed to add stock item");
+      }
+
+      setAddStockOpen(false);
+      setAddStockError("");
+
+      await loadDistrictRows();
+    } catch (error) {
+      setAddStockError(getStockApiErrorMessage(error));
+    } finally {
+      setAddStockLoading(false);
+    }
+  };
+  const handleUploadStock = async (file: File) => {
+    try {
+      if (uploadLoading) return;
+
+      setUploadLoading(true);
+      setUploadError("");
+      setPageError("");
+
+      const result = await uploadDistrictStockFile(file);
+
+      if (!result?.success) {
+        throw new Error(result?.message || "Failed to upload stock file");
+      }
+
+      await loadDistrictRows();
+    } catch (error) {
+      const message = getStockApiErrorMessage(error);
+
+      setUploadError(message);
+      setPageError(message);
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
   const handleLoadArticles = async (category: string) => {
     const existingRow = rows.find(
       (row) =>
@@ -349,14 +639,14 @@ export default function StockManagementPage() {
         prev.map((row) =>
           row.category?.toLowerCase().trim() === category?.toLowerCase().trim()
             ? {
-                ...row,
-                articles,
-              }
+              ...row,
+              articles,
+            }
             : row
         )
       );
-    } catch (err) {
-      console.error("Failed to load district category items", err);
+    } catch (error) {
+      console.error("Failed to load district category items", error);
     } finally {
       setLoadingRowCategory(null);
     }
@@ -377,10 +667,10 @@ export default function StockManagementPage() {
       selectedCategory === "All"
         ? rows
         : rows.filter(
-            (row) =>
-              row.category?.toLowerCase().trim() ===
-              selectedCategory?.toLowerCase().trim()
-          );
+          (row) =>
+            row.category?.toLowerCase().trim() ===
+            selectedCategory?.toLowerCase().trim()
+        );
 
     const hydratedRows: StockRow[] = [];
 
@@ -415,7 +705,6 @@ export default function StockManagementPage() {
 
   const validateAuditRows = (articles: StockArticle[]) => {
     const pendingArticles = articles.filter((article) => {
-      // ✅ already audited today, no radio required
       if (isAuditDoneToday(article)) return false;
 
       const audit = auditMap[article.id];
@@ -438,8 +727,6 @@ export default function StockManagementPage() {
   };
 
   const handleCreateReport = async () => {
-    console.log("🔵 AUDIT DEBUG START");
-
     try {
       if (submitting) return;
 
@@ -447,20 +734,11 @@ export default function StockManagementPage() {
 
       const auditRows = await getRowsForAudit();
 
-      console.log("✅ Selected Category:", selectedCategory);
-      console.log(
-        "✅ Audit Rows:",
-        auditRows.map((row) => row.category)
-      );
-
       if (!auditRows.length) {
         throw new Error("No category found for audit");
       }
 
       const articles = auditRows.flatMap((row) => row.articles || []);
-
-      console.log("✅ Articles Count:", articles.length);
-      console.log("✅ Articles:", articles);
 
       if (!articles.length) {
         throw new Error("No frontend articles found for audit");
@@ -471,7 +749,6 @@ export default function StockManagementPage() {
       }
 
       const items = articles
-        // ✅ do not submit already audited today items
         .filter((article) => !isAuditDoneToday(article))
         .map((article) => {
           const audit = auditMap[article.id];
@@ -498,16 +775,15 @@ export default function StockManagementPage() {
       }
 
       const payload = {
-        // ✅ updated backend does not need category
         submit: false,
         items,
       };
 
-      console.log("✅ FINAL AUDIT PAYLOAD:", JSON.stringify(payload, null, 2));
+      console.log("FINAL AUDIT PAYLOAD:", JSON.stringify(payload, null, 2));
 
       const result = await createDailyAudit(payload);
 
-      console.log("✅ AUDIT RESPONSE:", result);
+      console.log("AUDIT RESPONSE:", result);
 
       const auditedAt = new Date().toISOString();
 
@@ -521,29 +797,48 @@ export default function StockManagementPage() {
         return next;
       });
 
-      // ✅ update UI immediately after success
       setRows((prev) =>
         prev.map((row) => ({
           ...row,
           articles: row.articles?.map((article) =>
             items.some((item) => String(item.item_id) === article.id)
               ? {
-                  ...article,
-                  isItemAudit: true,
-                  itemAuditAt: auditedAt,
-                }
+                ...article,
+                isItemAudit: true,
+                itemAuditAt: auditedAt,
+              }
               : article
           ),
         }))
       );
 
       alert(result?.message || "Audit saved successfully");
-    } catch (err: any) {
-      console.error("❌ AUDIT ERROR:", err?.message || err);
-      alert(err?.message || "Failed to save audit");
+    } catch (error) {
+      console.error("AUDIT ERROR:", error);
+      alert(error instanceof Error ? error.message : "Failed to save audit");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleOpenAddStock = () => {
+    const scope = getDistrictScope();
+
+    setAddStockError("");
+
+    if (!scope.store_code) {
+      setAddStockError("District store_code missing. Please login again.");
+      setAddStockOpen(true);
+      return;
+    }
+
+    if (!scope.organization_id) {
+      setAddStockError("District organization_id missing. Please login again.");
+      setAddStockOpen(true);
+      return;
+    }
+
+    setAddStockOpen(true);
   };
 
   return (
@@ -556,7 +851,6 @@ export default function StockManagementPage() {
             value: summary.total_stock_items,
             tone: "gold",
             icon: "box",
-            change: "+12.5%",
             changeTone: "green",
           },
           {
@@ -565,7 +859,6 @@ export default function StockManagementPage() {
             value: summary.dead_stock_items,
             tone: "red",
             icon: "badge",
-            change: "+12.5%",
             changeTone: "red",
           },
           {
@@ -588,12 +881,15 @@ export default function StockManagementPage() {
       <StockManagementToolbar
         selectedCount={auditedCount}
         onCreateReport={handleCreateReport}
+        onAddItem={handleOpenAddStock}
+        onUploadStock={handleUploadStock}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         categories={categories}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
         submitting={submitting}
+        uploadLoading={uploadLoading}
       />
 
       {pageError ? (
@@ -612,6 +908,19 @@ export default function StockManagementPage() {
         searchValue={searchValue}
         selectedCategory={selectedCategory}
         onLoadArticles={handleLoadArticles}
+      />
+
+      <DistrictAddStockPopup
+        open={addStockOpen}
+        loading={addStockLoading}
+        error={addStockError}
+        onClose={() => {
+          if (addStockLoading) return;
+
+          setAddStockOpen(false);
+          setAddStockError("");
+        }}
+        onSubmit={handleAddStockSubmit}
       />
     </div>
   );

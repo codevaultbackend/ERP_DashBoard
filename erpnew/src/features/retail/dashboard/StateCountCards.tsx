@@ -167,42 +167,6 @@ export default function StateCountCards({ data, loading = false }: Props) {
                     >
                       {formatValue(value, card.money)}
                     </h2>
-
-                    <div
-                      className={`
-                        mb-[2px]
-                        hidden
-                        shrink-0
-                        items-center
-                        gap-[4px]
-                        text-[13px]
-                        font-semibold
-                        leading-none
-                        sm:flex
-                        xl:text-[15px]
-                        ${card.danger ? "text-[#FF1F1F]" : "text-[#20C94F]"}
-                      `}
-                    >
-                      <TrendingUp className="h-[14px] w-[14px] xl:h-[16px] xl:w-[16px]" />
-                      <span>+12.5%</span>
-                    </div>
-                  </div>
-
-                  <div
-                    className={`
-                      mt-[8px]
-                      flex
-                      items-center
-                      gap-[4px]
-                      text-[12px]
-                      font-semibold
-                      leading-none
-                      sm:hidden
-                      ${card.danger ? "text-[#FF1F1F]" : "text-[#20C94F]"}
-                    `}
-                  >
-                    <TrendingUp className="h-[13px] w-[13px]" />
-                    <span>+12.5%</span>
                   </div>
                 </div>
               </>

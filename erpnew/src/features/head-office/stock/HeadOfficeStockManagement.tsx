@@ -10,6 +10,7 @@ import {
   ChevronUp,
   Eye,
   MoveDownRight,
+  Pencil,
   Plus,
   Search,
   Truck,
@@ -21,6 +22,9 @@ import {
   type HeadOfficeCategoryItem,
   type HeadOfficeDashboardTableItem,
 } from "./api/head-office-stock-api";
+import EditStockPricingModal, {
+  type EditableStockPricingItem,
+} from "./pricing/EditStockPricingModal";
 
 type StockCards = {
   totalStocksItems: number;
@@ -32,7 +36,6 @@ type StockCards = {
 type CategoryRow = {
   id: string;
   category: string;
-  code: string;
   quantity: number;
   purchasePrice: string;
   sellingPrice: string;
@@ -44,7 +47,7 @@ type CategoryRow = {
   articles?: ArticleRow[];
 };
 
-type ArticleRow = {
+type ArticleRow = EditableStockPricingItem & {
   id: string;
   article: string;
   code: string;
@@ -77,7 +80,6 @@ const CATEGORY_KEYWORDS = [
 
 const parentColumns = [
   { label: "Item", width: 150, align: "left" },
-  { label: "Code", width: 122, align: "center" },
   { label: "Quantity", width: 112, align: "center" },
   { label: "Purchase Price", width: 162, align: "center" },
   { label: "Selling Price", width: 158, align: "center" },
@@ -100,6 +102,7 @@ const childColumns = [
   { label: "Net Wt.", width: 132, align: "center" },
   { label: "Stone Wt.", width: 132, align: "center" },
   { label: "Gross Wt.", width: 132, align: "center" },
+  { label: "Action", width: 110, align: "center" },
 ];
 
 const parentMinWidth = parentColumns.reduce(
@@ -204,7 +207,6 @@ function mapDashboardRowsToCategoryRows(
     return {
       id: `${category}-${index}`,
       category,
-      code: `${items.length} items`,
       quantity: items.reduce((sum, item) => sum + toNumber(item.quantity), 0),
       purchasePrice:
         purchaseRate === "Mixed" ? "Mixed" : formatPrice(purchaseRate),
@@ -227,23 +229,91 @@ function mapDashboardRowsToCategoryRows(
   });
 }
 
+function getStrictNumericId(...values: unknown[]) {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+
+    const raw = String(value).trim();
+
+    // SKU-DIST-7-... reject hoga
+    if (!/^\d+$/.test(raw)) continue;
+
+    const id = Number(raw);
+
+    if (Number.isSafeInteger(id) && id > 0) {
+      return id;
+    }
+  }
+
+  return null;
+}
+
 function mapCategoryItemsToArticleRows(rows: HeadOfficeCategoryItem[]) {
   return rows.map((row, index): ArticleRow => {
     const articleName = row.article || row.item || row.item_name || "Item";
     const code = row.code || row.article_code || row.sku_code || "--";
 
+    /**
+     * IMPORTANT:
+     * Backend ko numeric DB item id chahiye.
+     * SKU/code ko item_id mat banao.
+     */
+    const numericItemId = getStrictNumericId(
+      row.item_id,
+      row.itemId,
+      row.id,
+      row.raw?.item_id,
+      row.raw?.id,
+      row.Item?.id,
+      row.itemData?.id,
+      row.item?.id
+    );
+
     return {
-      id: String(row.id || code || `${articleName}-${index}`),
+      /**
+       * React row key ke liye safe fallback okay hai.
+       * But backend item_id ke liye SKU fallback nahi karna.
+       */
+      id: numericItemId ? String(numericItemId) : `missing-db-id-${code}-${index}`,
+
+      /**
+       * Modal/backend ke liye ye required hai.
+       */
+      item_id: numericItemId || "",
+      itemId: numericItemId || "",
+
       article: safeText(articleName),
+      item_name: safeText(articleName),
+      name: safeText(articleName),
+
       code: safeText(code),
+      sku_code: row.sku_code || null,
+      article_code: row.article_code || row.code || code,
+
       quantity: toNumber(row.available_qty ?? row.quantity),
+
       purchasePrice: formatPrice(row.purchase_price ?? row.purchase_rate),
       sellingPrice: formatPrice(row.selling_price ?? row.sale_rate),
       makingCharge: formatPrice(row.making_charge),
+
+      purchase_price: row.purchase_price ?? row.purchase_rate,
+      purchase_rate: row.purchase_price ?? row.purchase_rate,
+
+      selling_price: row.selling_price ?? row.sale_rate,
+      sale_rate: row.selling_price ?? row.sale_rate,
+
+      making_charge: row.making_charge,
+
       purity: safeText(row.purity),
       netWeight: formatWeight(row.net_weight),
       stoneWeight: formatWeight(row.stone_weight),
       grossWeight: formatWeight(row.gross_weight),
+
+      net_weight: row.net_weight,
+      stone_weight: row.stone_weight,
+      gross_weight: row.gross_weight,
+
+      raw: row,
     };
   });
 }
@@ -281,7 +351,6 @@ function StockStatCards({ cards }: { cards: StockCards }) {
       value: cards.totalStocksItems,
       tone: "gold",
       icon: "box",
-      change: "+12.5%",
       changeTone: "green",
     },
     {
@@ -290,7 +359,6 @@ function StockStatCards({ cards }: { cards: StockCards }) {
       value: cards.deadStockItems,
       tone: "red",
       icon: "badge",
-      change: "+12.5%",
       changeTone: "red",
     },
     {
@@ -329,7 +397,7 @@ function StockStatCards({ cards }: { cards: StockCards }) {
       {stats.map((item) => (
         <div
           key={item.id}
-          className="flex min-h-[153px]  flex-col justify-between rounded-erp-2xl border border-erp-border bg-erp-card px-[18px] py-[16px] !shadow-erp-card"
+          className="flex min-h-[153px] flex-col justify-between rounded-erp-2xl border border-erp-border bg-erp-card px-[18px] py-[16px] shadow-erp-card"
         >
           <div
             className={cn(
@@ -341,7 +409,7 @@ function StockStatCards({ cards }: { cards: StockCards }) {
           </div>
 
           <div>
-            <p className="text-[14px] font-normal leading-[20px] tracking-[-0.02em] text-[#282828] mt-[22px]">
+            <p className="mt-[22px] text-[14px] font-normal leading-[20px] tracking-[-0.02em] text-[#282828]">
               {item.title}
             </p>
 
@@ -349,20 +417,6 @@ function StockStatCards({ cards }: { cards: StockCards }) {
               <h3 className="text-[28px] font-semibold leading-[28px] tracking-[-0.06em] text-black">
                 {item.value}
               </h3>
-
-              {item.change ? (
-                <div
-                  className={cn(
-                    "mb-[6px] flex shrink-0 items-center gap-[4px] text-[15px] font-semibold leading-none tracking-[-0.02em]",
-                    item.changeTone === "red"
-                      ? "text-erp-danger"
-                      : "text-erp-success"
-                  )}
-                >
-                  <ArrowUpRight className="h-[16px] w-[16px] stroke-[2.2]" />
-                  <span>{item.change}</span>
-                </div>
-              ) : null}
             </div>
           </div>
         </div>
@@ -474,6 +528,7 @@ function StockTable({
   selectedCategory,
   loadingCategory,
   onLoadArticles,
+  onPricingUpdated,
 }: {
   rows: CategoryRow[];
   loading: boolean;
@@ -481,9 +536,11 @@ function StockTable({
   selectedCategory: string;
   loadingCategory: string | null;
   onLoadArticles: (category: string) => Promise<void>;
+  onPricingUpdated: () => Promise<void>;
 }) {
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [parentViewportWidth, setParentViewportWidth] = useState(0);
+  const [pricingItem, setPricingItem] = useState<ArticleRow | null>(null);
 
   const parentScrollRef = useRef<HTMLDivElement | null>(null);
   const childScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -630,270 +687,295 @@ function StockTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-[30px] border border-erp-border bg-erp-card shadow-erp-card">
-      <div
-        ref={parentScrollRef}
-        className="table-drag-scroll max-w-full cursor-grab overflow-x-auto select-none active:cursor-grabbing"
-        onMouseDown={(event) => startDrag(event, parentScrollRef.current)}
-        onMouseMove={moveDrag}
-        onMouseUp={stopDrag}
-        onMouseLeave={stopDrag}
-      >
-        <table
-          className="w-full table-fixed border-separate border-spacing-0"
-          style={{ minWidth: `${parentMinWidth}px` }}
+    <>
+      <div className="overflow-hidden rounded-[30px] border border-erp-border bg-erp-card shadow-erp-card">
+        <div
+          ref={parentScrollRef}
+          className="table-drag-scroll max-w-full cursor-grab overflow-x-auto select-none active:cursor-grabbing"
+          onMouseDown={(event) => startDrag(event, parentScrollRef.current)}
+          onMouseMove={moveDrag}
+          onMouseUp={stopDrag}
+          onMouseLeave={stopDrag}
         >
-          <colgroup>
-            {parentColumns.map((column) => (
-              <col
-                key={column.label}
-                style={{
-                  width: `${column.width}px`,
-                  minWidth: `${column.width}px`,
-                }}
-              />
-            ))}
-          </colgroup>
-
-          <thead>
-            <tr className="bg-black">
-              {parentColumns.map((column, index) => (
-                <th
+          <table
+            className="w-full table-fixed border-separate border-spacing-0"
+            style={{ minWidth: `${parentMinWidth}px` }}
+          >
+            <colgroup>
+              {parentColumns.map((column) => (
+                <col
                   key={column.label}
-                  className={cn(
-                    "h-[56px] border-r border-black px-5 text-[15px] font-semibold leading-none text-white whitespace-nowrap",
-                    column.align === "center" ? "text-center" : "text-left",
-                    index === 0 && "rounded-tl-[30px]",
-                    index === parentColumns.length - 1 &&
-                      "rounded-tr-[30px] border-r-0"
-                  )}
-                >
-                  {column.label}
-                </th>
+                  style={{
+                    width: `${column.width}px`,
+                    minWidth: `${column.width}px`,
+                  }}
+                />
               ))}
-            </tr>
-          </thead>
+            </colgroup>
 
-          <tbody>
-            {filteredRows.map((row) => {
-              const isOpen = openRowId === row.id;
-              const isRowLoading = loadingCategory === row.category;
+            <thead>
+              <tr className="bg-black">
+                {parentColumns.map((column, index) => (
+                  <th
+                    key={column.label}
+                    className={cn(
+                      "h-[56px] whitespace-nowrap border-r border-black px-5 text-[15px] font-semibold leading-none text-white",
+                      column.align === "center" ? "text-center" : "text-left",
+                      index === 0 && "rounded-tl-[30px]",
+                      index === parentColumns.length - 1 &&
+                        "rounded-tr-[30px] border-r-0"
+                    )}
+                  >
+                    {column.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-              return (
-                <Fragment key={row.id}>
-                  <tr className="bg-white transition hover:bg-erp-card-soft">
-                    {[
-                      row.category,
-                      row.code,
-                      formatCompactNumber(row.quantity, 0),
-                      row.purchasePrice,
-                      row.sellingPrice,
-                      row.makingCharge,
-                      row.purity,
-                      row.netWeight,
-                      row.stoneWeight,
-                      row.grossWeight,
-                    ].map((value, index) => (
-                      <td
-                        key={`${row.id}-${index}`}
-                        className="h-[58px] border-b border-r border-erp-border px-5"
-                      >
-                        <TableText
-                          center={index !== 0}
-                          bold={index === 0 || index >= 3}
-                          title={String(value)}
+            <tbody>
+              {filteredRows.map((row) => {
+                const isOpen = openRowId === row.id;
+                const isRowLoading = loadingCategory === row.category;
+
+                return (
+                  <Fragment key={row.id}>
+                    <tr className="bg-white transition hover:bg-erp-card-soft">
+                      {[
+                        row.category,
+                        formatCompactNumber(row.quantity, 0),
+                        row.purchasePrice,
+                        row.sellingPrice,
+                        row.makingCharge,
+                        row.purity,
+                        row.netWeight,
+                        row.stoneWeight,
+                        row.grossWeight,
+                      ].map((value, index) => (
+                        <td
+                          key={`${row.id}-${index}`}
+                          className="h-[58px] border-b border-r border-erp-border px-5"
                         >
-                          {value}
-                        </TableText>
-                      </td>
-                    ))}
+                          <TableText
+                            center={index !== 0}
+                            bold={index === 0 || index >= 3}
+                            title={String(value)}
+                          >
+                            {value}
+                          </TableText>
+                        </td>
+                      ))}
 
-                    <td className="h-[58px] border-b border-erp-border px-5">
-                      <div className="flex items-center justify-center">
-                        <button
-                          type="button"
-                          onClick={() => handleView(row)}
-                          className={cn(
-                            "inline-flex h-[34px] items-center justify-center gap-1 rounded-erp-full border px-3 text-[13px] font-semibold leading-none transition",
-                            isOpen
-                              ? "border-erp-primary bg-erp-primary-soft text-erp-primary"
-                              : "border-erp-border bg-white text-erp-primary hover:bg-erp-primary-soft"
-                          )}
-                        >
-                          <Eye size={15} strokeWidth={2.2} />
-                          <span>View</span>
-                          {isOpen ? (
-                            <ChevronUp size={14} strokeWidth={2.4} />
-                          ) : (
-                            <ChevronDown size={14} strokeWidth={2.4} />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-
-                  {isOpen && (
-                    <tr>
-                      <td colSpan={11} className="bg-erp-bg p-0">
-                        <div
-                          className="sticky left-0 z-[2] bg-erp-bg px-3 py-4 sm:px-5"
-                          style={{
-                            width: parentViewportWidth
-                              ? `${parentViewportWidth}px`
-                              : "100%",
-                            maxWidth: parentViewportWidth
-                              ? `${parentViewportWidth}px`
-                              : "100%",
-                          }}
-                        >
-                          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <h4 className="text-[15px] font-semibold tracking-[-0.02em] text-erp-heading">
-                                {row.category} Items
-                              </h4>
-                              <p className="mt-1 text-[13px] font-medium text-erp-muted">
-                                Hold and drag horizontally to scroll item list
-                              </p>
-                            </div>
-
-                            <span className="w-fit rounded-erp-full bg-white px-3 py-1 text-[12px] font-semibold text-erp-primary shadow-erp-sm">
-                              {row.articles?.length || 0} items
-                            </span>
-                          </div>
-
-                          {isRowLoading ? (
-                            <div className="rounded-erp-md bg-white px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
-                              Loading category items...
-                            </div>
-                          ) : row.articles?.length ? (
-                            <div
-                              ref={(el) => {
-                                childScrollRefs.current[row.id] = el;
-                              }}
-                              className="table-drag-scroll w-full max-w-full cursor-grab overflow-x-auto rounded-erp-lg border border-erp-border bg-white select-none active:cursor-grabbing"
-                              onMouseDown={(event) =>
-                                startDrag(
-                                  event,
-                                  childScrollRefs.current[row.id]
-                                )
-                              }
-                              onMouseMove={moveDrag}
-                              onMouseUp={stopDrag}
-                              onMouseLeave={stopDrag}
-                            >
-                              <table
-                                className="table-fixed border-separate border-spacing-0"
-                                style={{
-                                  width: `${childMinWidth}px`,
-                                  minWidth: `${childMinWidth}px`,
-                                }}
-                              >
-                                <colgroup>
-                                  {childColumns.map((column) => (
-                                    <col
-                                      key={column.label}
-                                      style={{
-                                        width: `${column.width}px`,
-                                        minWidth: `${column.width}px`,
-                                      }}
-                                    />
-                                  ))}
-                                </colgroup>
-
-                                <thead>
-                                  <tr className="bg-[#EEF3F7]">
-                                    {childColumns.map((column, index) => (
-                                      <th
-                                        key={column.label}
-                                        className={cn(
-                                          "h-[48px] border-b border-r border-erp-border px-5 text-[14px] font-semibold text-erp-text whitespace-nowrap",
-                                          column.align === "center"
-                                            ? "text-center"
-                                            : "text-left",
-                                          index === childColumns.length - 1 &&
-                                            "border-r-0"
-                                        )}
-                                      >
-                                        {column.label}
-                                      </th>
-                                    ))}
-                                  </tr>
-                                </thead>
-
-                                <tbody>
-                                  {row.articles.map((article) => {
-                                    const values = [
-                                      article.article,
-                                      article.code,
-                                      formatCompactNumber(article.quantity, 0),
-                                      article.purchasePrice,
-                                      article.sellingPrice,
-                                      article.makingCharge,
-                                      article.purity,
-                                      article.netWeight,
-                                      article.stoneWeight,
-                                      article.grossWeight,
-                                    ];
-
-                                    return (
-                                      <tr
-                                        key={article.id}
-                                        className="bg-white transition hover:bg-erp-card-soft"
-                                      >
-                                        {values.map((value, index) => (
-                                          <td
-                                            key={`${article.id}-${index}`}
-                                            className={cn(
-                                              "h-[54px] border-b border-erp-border px-5",
-                                              index !== values.length - 1 &&
-                                                "border-r"
-                                            )}
-                                          >
-                                            <TableText
-                                              center={index >= 2}
-                                              bold={
-                                                index === 0 ||
-                                                (index >= 3 && index <= 5)
-                                              }
-                                              title={String(value)}
-                                            >
-                                              {value}
-                                            </TableText>
-                                          </td>
-                                        ))}
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
-                            </div>
-                          ) : (
-                            <div className="rounded-erp-md bg-white px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
-                              No category items found.
-                            </div>
-                          )}
+                      <td className="h-[58px] border-b border-erp-border px-5">
+                        <div className="flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handleView(row)}
+                            className={cn(
+                              "inline-flex h-[34px] items-center justify-center gap-1 rounded-erp-full border px-3 text-[13px] font-semibold leading-none transition",
+                              isOpen
+                                ? "border-erp-primary bg-erp-primary-soft text-erp-primary"
+                                : "border-erp-border bg-white text-erp-primary hover:bg-erp-primary-soft"
+                            )}
+                          >
+                            <Eye size={15} strokeWidth={2.2} />
+                            <span>View</span>
+                            {isOpen ? (
+                              <ChevronUp size={14} strokeWidth={2.4} />
+                            ) : (
+                              <ChevronDown size={14} strokeWidth={2.4} />
+                            )}
+                          </button>
                         </div>
                       </td>
                     </tr>
-                  )}
-                </Fragment>
-              );
-            })}
 
-            {filteredRows.length === 0 && (
-              <tr>
-                <td
-                  colSpan={11}
-                  className="px-6 py-10 text-center text-[15px] font-medium text-erp-muted"
-                >
-                  No inventory items found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                    {isOpen && (
+                      <tr>
+                        <td colSpan={11} className="bg-erp-bg p-0">
+                          <div
+                            className="sticky left-0 z-[2] bg-erp-bg px-3 py-4 sm:px-5"
+                            style={{
+                              width: parentViewportWidth
+                                ? `${parentViewportWidth}px`
+                                : "100%",
+                              maxWidth: parentViewportWidth
+                                ? `${parentViewportWidth}px`
+                                : "100%",
+                            }}
+                          >
+                            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <h4 className="text-[15px] font-semibold tracking-[-0.02em] text-erp-heading">
+                                  {row.category} Items
+                                </h4>
+                                <p className="mt-1 text-[13px] font-medium text-erp-muted">
+                                  Hold and drag horizontally to scroll item list
+                                </p>
+                              </div>
+
+                              <span className="w-fit rounded-erp-full bg-white px-3 py-1 text-[12px] font-semibold text-erp-primary shadow-erp-sm">
+                                {row.articles?.length || 0} items
+                              </span>
+                            </div>
+
+                            {isRowLoading ? (
+                              <div className="rounded-erp-md bg-white px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
+                                Loading category items...
+                              </div>
+                            ) : row.articles?.length ? (
+                              <div
+                                ref={(el) => {
+                                  childScrollRefs.current[row.id] = el;
+                                }}
+                                className="table-drag-scroll w-full max-w-full cursor-grab overflow-x-auto rounded-erp-lg border border-erp-border bg-white select-none active:cursor-grabbing"
+                                onMouseDown={(event) =>
+                                  startDrag(
+                                    event,
+                                    childScrollRefs.current[row.id]
+                                  )
+                                }
+                                onMouseMove={moveDrag}
+                                onMouseUp={stopDrag}
+                                onMouseLeave={stopDrag}
+                              >
+                                <table
+                                  className="table-fixed border-separate border-spacing-0"
+                                  style={{
+                                    width: `${childMinWidth}px`,
+                                    minWidth: `${childMinWidth}px`,
+                                  }}
+                                >
+                                  <colgroup>
+                                    {childColumns.map((column) => (
+                                      <col
+                                        key={column.label}
+                                        style={{
+                                          width: `${column.width}px`,
+                                          minWidth: `${column.width}px`,
+                                        }}
+                                      />
+                                    ))}
+                                  </colgroup>
+
+                                  <thead>
+                                    <tr className="bg-[#EEF3F7]">
+                                      {childColumns.map((column, index) => (
+                                        <th
+                                          key={column.label}
+                                          className={cn(
+                                            "h-[48px] whitespace-nowrap border-b border-r border-erp-border px-5 text-[14px] font-semibold text-erp-text",
+                                            column.align === "center"
+                                              ? "text-center"
+                                              : "text-left",
+                                            index === childColumns.length - 1 &&
+                                              "border-r-0"
+                                          )}
+                                        >
+                                          {column.label}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+
+                                  <tbody>
+                                    {row.articles.map((article) => {
+                                      const values = [
+                                        article.article,
+                                        article.code,
+                                        formatCompactNumber(
+                                          article.quantity,
+                                          0
+                                        ),
+                                        article.purchasePrice,
+                                        article.sellingPrice,
+                                        article.makingCharge,
+                                        article.purity,
+                                        article.netWeight,
+                                        article.stoneWeight,
+                                        article.grossWeight,
+                                      ];
+
+                                      return (
+                                        <tr
+                                          key={article.id}
+                                          className="bg-white transition hover:bg-erp-card-soft"
+                                        >
+                                          {values.map((value, index) => (
+                                            <td
+                                              key={`${article.id}-${index}`}
+                                              className="h-[54px] border-b border-r border-erp-border px-5"
+                                            >
+                                              <TableText
+                                                center={index >= 2}
+                                                bold={
+                                                  index === 0 ||
+                                                  (index >= 3 && index <= 5)
+                                                }
+                                                title={String(value)}
+                                              >
+                                                {value}
+                                              </TableText>
+                                            </td>
+                                          ))}
+
+                                          <td className="h-[54px] border-b border-erp-border px-5">
+                                            <div className="flex items-center justify-center">
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setPricingItem(article)
+                                                }
+                                                className="inline-flex h-9 w-9 items-center justify-center rounded-erp-full text-erp-primary transition hover:bg-erp-primary-soft hover:text-erp-primary-hover"
+                                                title="Edit stock pricing"
+                                              >
+                                                <Pencil className="h-4 w-4" />
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <div className="rounded-erp-md bg-white px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
+                                No category items found.
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+
+              {filteredRows.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={11}
+                    className="px-6 py-10 text-center text-[15px] font-medium text-erp-muted"
+                  >
+                    No inventory items found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      <EditStockPricingModal
+        open={!!pricingItem}
+        item={pricingItem}
+        onClose={() => setPricingItem(null)}
+        onUpdated={async () => {
+          setPricingItem(null);
+          await onPricingUpdated();
+        }}
+      />
+    </>
   );
 }
 
@@ -996,6 +1078,7 @@ export default function HeadOfficeStockManagement() {
         selectedCategory={selectedCategory}
         loadingCategory={loadingCategory}
         onLoadArticles={loadArticles}
+        onPricingUpdated={fetchDashboard}
       />
     </div>
   );

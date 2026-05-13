@@ -23,8 +23,8 @@ type StockArticle = {
   stoneWeight: string;
   grossWeight: string;
   category: string;
-
-  // ✅ backend audit fields
+  sellingPrice?: string;
+  makingCharge?: string;
   isItemAudit?: boolean;
   itemAuditAt?: string | null;
 };
@@ -67,7 +67,6 @@ type Props = {
 
 const headers = [
   "Category",
-  "Code",
   "Quantity",
   "Selling Price",
   "Making Chg.",
@@ -83,6 +82,8 @@ const childHeaders = [
   "Article",
   "Code",
   "Quantity",
+  "Selling Price",
+  "Making Chg.",
   "Purity",
   "Net Wt.",
   "Stone Wt.",
@@ -90,8 +91,15 @@ const childHeaders = [
   "Checklist",
 ];
 
+const FALLBACK_IMAGE = "/placeholder-product.png";
+
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function safeValue(value: unknown, fallback = "--") {
+  if (value === null || value === undefined || value === "") return fallback;
+  return String(value);
 }
 
 function isAuditDoneToday(article: StockArticle) {
@@ -133,6 +141,7 @@ export default function StockManagementTable({
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const isDraggingRef = useRef(false);
+  const didDragRef = useRef(false);
   const startXRef = useRef(0);
   const scrollLeftRef = useRef(0);
 
@@ -164,6 +173,8 @@ export default function StockManagementTable({
   }, [rows, searchValue, selectedCategory]);
 
   const toggleRow = async (row: StockRow) => {
+    if (didDragRef.current) return;
+
     const nextOpen = openRowId === row.id ? null : row.id;
     setOpenRowId(nextOpen);
 
@@ -173,7 +184,7 @@ export default function StockManagementTable({
   };
 
   const isArticleCompletedAfterApi = (articleId: string) => {
-    return !!reportedArticles[articleId];
+    return Boolean(reportedArticles[articleId]);
   };
 
   const isArticleDone = (article: StockArticle) => {
@@ -193,7 +204,6 @@ export default function StockManagementTable({
 
   const isRowFullyReported = (row: StockRow) => {
     if (!row.articles?.length) return false;
-
     return row.articles.every((article) => isArticleValidForAudit(article));
   };
 
@@ -246,7 +256,11 @@ export default function StockManagementTable({
   };
 
   const openImagePreview = (images: string[], index: number) => {
-    setPreviewImages(images);
+    const safeImages = images.filter(Boolean);
+
+    if (!safeImages.length) return;
+
+    setPreviewImages(safeImages);
     setPreviewIndex(index);
   };
 
@@ -277,7 +291,11 @@ export default function StockManagementTable({
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewImages.length]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -285,6 +303,7 @@ export default function StockManagementTable({
     if (!container) return;
 
     isDraggingRef.current = true;
+    didDragRef.current = false;
     startXRef.current = e.pageX - container.offsetLeft;
     scrollLeftRef.current = container.scrollLeft;
   };
@@ -293,15 +312,22 @@ export default function StockManagementTable({
     const container = scrollRef.current;
     if (!container || !isDraggingRef.current) return;
 
-    e.preventDefault();
-
     const x = e.pageX - container.offsetLeft;
     const walk = x - startXRef.current;
+
+    if (Math.abs(walk) > 5) {
+      didDragRef.current = true;
+    }
+
     container.scrollLeft = scrollLeftRef.current - walk;
   };
 
   const stopDragging = () => {
     isDraggingRef.current = false;
+
+    window.setTimeout(() => {
+      didDragRef.current = false;
+    }, 0);
   };
 
   if (loading) {
@@ -319,20 +345,20 @@ export default function StockManagementTable({
       <div className="overflow-hidden rounded-[30px] border border-erp-border bg-erp-card shadow-erp-card">
         <div
           ref={scrollRef}
-          className="dashboard-hidden-scroll overflow-x-auto cursor-grab select-none active:cursor-grabbing"
+          className="dashboard-hidden-scroll cursor-grab select-none overflow-x-auto active:cursor-grabbing"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={stopDragging}
           onMouseLeave={stopDragging}
         >
-          <table className="w-full min-w-[1180px] border-separate border-spacing-0">
+          <table className="w-full min-w-[1320px] border-separate border-spacing-0">
             <thead>
               <tr className="bg-black">
                 {headers.map((header, index) => (
                   <th
                     key={header}
                     className={cn(
-                      "h-[56px] border-r border-black px-6 text-left text-[15px] font-semibold leading-none text-white whitespace-nowrap",
+                      "h-[56px] border-r border-black px-6 text-left text-[15px] font-semibold leading-none whitespace-nowrap text-white",
                       index === 0 && "rounded-tl-[30px]",
                       index === headers.length - 1 &&
                         "rounded-tr-[30px] border-r-0",
@@ -359,46 +385,42 @@ export default function StockManagementTable({
                 const isOpen = openRowId === row.id;
                 const rowCompleted = isRowFullyReported(row);
                 const rowImages =
-                  row.articles?.map((article) => article.image) ?? [];
+                  row.articles?.map((article) => article.image || FALLBACK_IMAGE) ??
+                  [];
                 const isRowLoading = loadingRowCategory === row.category;
 
                 return (
                   <Fragment key={row.id}>
                     <tr className="bg-white transition hover:bg-[#FAFBFC]">
                       <td className="h-[54px] border-b border-r border-erp-border px-6 text-[15px] font-normal text-[#111827]">
-                        {row.category}
+                        {safeValue(row.category)}
                       </td>
-
                       <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-normal text-[#111827]">
-                        {row.code}
-                      </td>
-
-                      <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-normal text-[#111827]">
-                        {row.quantity}
+                        {safeValue(row.quantity, "0")}
                       </td>
 
                       <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
-                        {row.sellingPrice}
+                        {safeValue(row.sellingPrice)}
                       </td>
 
                       <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
-                        {row.makingCharge}
+                        {safeValue(row.makingCharge)}
                       </td>
 
                       <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
-                        {row.purity}
+                        {safeValue(row.purity)}
                       </td>
 
                       <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
-                        {row.netWeight}
+                        {safeValue(row.netWeight)}
                       </td>
 
                       <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
-                        {row.stoneWeight}
+                        {safeValue(row.stoneWeight)}
                       </td>
 
                       <td className="h-[54px] border-b border-r border-erp-border px-6 text-center text-[15px] font-semibold text-[#111827]">
-                        {row.grossWeight}
+                        {safeValue(row.grossWeight)}
                       </td>
 
                       <td className="h-[54px] border-b border-erp-border px-6 text-center">
@@ -428,23 +450,26 @@ export default function StockManagementTable({
 
                     {isOpen && (
                       <tr>
-                        <td colSpan={10} className="bg-[#F4F7FA] p-0">
+                        <td colSpan={headers.length} className="bg-[#F4F7FA] p-0">
                           {isRowLoading ? (
                             <div className="px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
                               Loading category items...
                             </div>
                           ) : row.articles?.length ? (
-                            <div className="w-full overflow-hidden">
-                              <table className="w-full border-separate border-spacing-0">
+                            <div className="w-full overflow-x-auto">
+                              <table className="w-full min-w-[1320px] border-separate border-spacing-0">
                                 <thead>
                                   <tr className="bg-[#EEF3F7]">
                                     {childHeaders.map((header, index) => (
                                       <th
                                         key={header}
                                         className={cn(
-                                          "h-[48px] border-b border-r border-erp-border px-6 text-left text-[14px] font-semibold text-[#161616] whitespace-nowrap",
+                                          "h-[48px] border-b border-r border-erp-border px-6 text-left text-[14px] font-semibold whitespace-nowrap text-[#161616]",
                                           [
+                                            "Code",
                                             "Quantity",
+                                            "Selling Price",
+                                            "Making Chg.",
                                             "Purity",
                                             "Net Wt.",
                                             "Stone Wt.",
@@ -468,6 +493,8 @@ export default function StockManagementTable({
                                     const isMissing =
                                       audit?.status === "missing";
                                     const isCompleted = isArticleDone(article);
+                                    const articleImage =
+                                      article.image || FALLBACK_IMAGE;
 
                                     return (
                                       <tr
@@ -487,9 +514,13 @@ export default function StockManagementTable({
                                           >
                                             <div className="relative h-[28px] w-[76px] overflow-hidden rounded-[6px] bg-[#F4DCE6] transition hover:opacity-90">
                                               <Image
-                                                src={article.image}
-                                                alt={article.article}
+                                                src={articleImage}
+                                                alt={safeValue(
+                                                  article.article,
+                                                  "Article image"
+                                                )}
                                                 fill
+                                                sizes="76px"
                                                 className="object-cover"
                                                 draggable={false}
                                               />
@@ -498,31 +529,45 @@ export default function StockManagementTable({
                                         </td>
 
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-[14px] font-medium text-[#1F2937]">
-                                          {article.article}
-                                        </td>
-
-                                        <td className="border-b border-r border-erp-border px-6 py-4 text-[14px] font-medium text-[#1F2937]">
-                                          {article.code}
+                                          {safeValue(article.article)}
                                         </td>
 
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {article.quantity}
+                                          {safeValue(article.code)}
                                         </td>
 
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {article.purity}
+                                          {safeValue(article.quantity, "0")}
                                         </td>
 
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {article.netWeight}
+                                          {safeValue(
+                                            article.sellingPrice ||
+                                              row.sellingPrice
+                                          )}
                                         </td>
 
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {article.stoneWeight}
+                                          {safeValue(
+                                            article.makingCharge ||
+                                              row.makingCharge
+                                          )}
                                         </td>
 
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
-                                          {article.grossWeight}
+                                          {safeValue(article.purity)}
+                                        </td>
+
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
+                                          {safeValue(article.netWeight)}
+                                        </td>
+
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
+                                          {safeValue(article.stoneWeight)}
+                                        </td>
+
+                                        <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
+                                          {safeValue(article.grossWeight)}
                                         </td>
 
                                         <td className="border-b border-erp-border px-6 py-4 text-center">
@@ -623,7 +668,7 @@ export default function StockManagementTable({
               {filteredRows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={headers.length}
                     className="px-6 py-10 text-center text-[15px] font-medium text-erp-muted"
                   >
                     No inventory items found.
@@ -657,9 +702,10 @@ export default function StockManagementTable({
 
           <div className="relative h-[70vh] w-full max-w-[900px] overflow-hidden rounded-[24px] bg-white">
             <Image
-              src={previewImages[previewIndex]}
+              src={previewImages[previewIndex] || FALLBACK_IMAGE}
               alt={`Preview ${previewIndex + 1}`}
               fill
+              sizes="900px"
               className="object-contain"
               priority
             />
@@ -679,7 +725,7 @@ export default function StockManagementTable({
 
       {reasonPopup && (
         <StockAuditPopup
-          open={!!reasonPopup}
+          open={Boolean(reasonPopup)}
           itemName={reasonPopup.name}
           remark={reasonPopup.remark}
           onChange={(value) =>

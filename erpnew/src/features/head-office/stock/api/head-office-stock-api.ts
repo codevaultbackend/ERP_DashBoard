@@ -43,24 +43,47 @@ export type HeadOfficeDashboardTableItem = {
 };
 
 export type HeadOfficeCategoryItem = {
-  id?: number | string | null;
-  article?: string | null;
-  item?: string | null;
-  item_name?: string | null;
-  code?: string | null;
-  article_code?: string | null;
+  id?: number | string;
+  item_id?: number | string;
+  itemId?: number | string;
+
+  article?: string;
+  item?: string;
+  item_name?: string;
+
+  code?: string;
+  article_code?: string;
   sku_code?: string | null;
-  quantity?: number | string | null;
-  available_qty?: number | string | null;
+
+  available_qty?: number | string;
+  quantity?: number | string;
+
   purchase_price?: number | string | null;
   purchase_rate?: number | string | null;
+
   selling_price?: number | string | null;
   sale_rate?: number | string | null;
+
   making_charge?: number | string | null;
+
   purity?: string | null;
   net_weight?: number | string | null;
   stone_weight?: number | string | null;
   gross_weight?: number | string | null;
+
+  Item?: {
+    id?: number | string;
+  };
+
+  item?: {
+    id?: number | string;
+  };
+
+  itemData?: {
+    id?: number | string;
+  };
+
+  raw?: any;
 };
 
 export type HeadOfficeDashboardResponse = {

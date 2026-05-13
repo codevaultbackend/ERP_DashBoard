@@ -11,17 +11,18 @@ type Props = {
 export default function FinanceSearchBar({
   value,
   onChange,
-  placeholder = "Search by name...",
+  placeholder = "Search by name, store code...",
 }: Props) {
   return (
-    <div className="rounded-[26px] border border-[#E6E8ED] bg-white p-[10px] shadow-[0px_2px_10px_rgba(15,23,42,0.02)]">
-      <div className="flex h-[52px] items-center gap-3 rounded-[18px] bg-[#F7F7F8] px-4 sm:h-[56px] sm:px-5">
-        <Search className="h-[18px] w-[18px] text-[#8B94A7]" />
+    <div className="w-full rounded-[31px] border border-[#E5E7EB] bg-white p-[12px] shadow-[0px_4px_14px_rgba(15,23,42,0.04)]">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-[24px] top-1/2 h-[20px] w-[20px] -translate-y-1/2 text-[#94A3B8]" />
+
         <input
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="h-full w-full bg-transparent text-[15px] font-medium text-[#111827] outline-none placeholder:text-[#8B94A7] sm:text-[16px]"
+          className="h-[58px] w-full rounded-[24px] border border-transparent bg-[#F8FAFC] pl-[60px] pr-5 text-[16px] font-medium leading-[20px] tracking-[-0.03em] text-[#111827] outline-none placeholder:text-[#8B95A5] focus:bg-white focus:ring-2 focus:ring-[#E0E7FF]"
         />
       </div>
     </div>

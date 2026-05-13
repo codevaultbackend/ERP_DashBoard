@@ -19,7 +19,6 @@ const stats = [
     title: "Total Requests",
     tone: "gold",
     icon: Box,
-    change: "+12.5%",
     changeTone: "green",
   },
   {
@@ -27,7 +26,6 @@ const stats = [
     title: "Approved Requests",
     tone: "green",
     icon: CircleCheck,
-    change: "+12.5%",
     changeTone: "red",
   },
   {
@@ -65,7 +63,7 @@ export default function RequestStatCards({
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+    <div className="grid grid-cols-2 gap-4  xl:grid-cols-4 lg:grid-cols-4 xl:gap-5">
       {stats.map((item) => {
         const Icon = item.icon;
 

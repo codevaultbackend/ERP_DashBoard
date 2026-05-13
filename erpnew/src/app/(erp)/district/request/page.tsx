@@ -8,7 +8,7 @@ import RequestTopHeader from "@/features/retail/request/components/RequestTopHea
 import LowStockAlert from "@/features/retail/request/components/LowStockAlert";
 import EmptyStockRequests from "@/features/retail/request/components/EmptyStockRequests";
 import StockRequestCard from "@/features/retail/request/components/StockRequestCard";
-import RequestStockModal from "@/features/retail/request/components/RequestStockModal";
+import DistrictRequestStockModal from "@/features/district/request/components/DistrictRequestStockModal";
 import ApproveDispatchModal from "@/features/retail/request/components/ApproveDispatchModal";
 
 import {
@@ -352,21 +352,21 @@ export default function DistrictRequestPage() {
             ) : filteredReceivedRequests.length > 0 ? (
               <div className="max-h-[680px] space-y-4 overflow-y-auto pr-1">
                 {filteredReceivedRequests.map((item) => (
-                 <StockRequestCard
-  key={item.requestId}
-  item={item}
-  onDispatch={() => {
-    const alreadyDispatched =
-      item.raw?.transfer?.status === "in_transit" ||
-      item.raw?.transfer?.status === "received" ||
-      item.status === "dispatch";
+                  <StockRequestCard
+                    key={item.requestId}
+                    item={item}
+                    onDispatch={() => {
+                      const alreadyDispatched =
+                        item.raw?.transfer?.status === "in_transit" ||
+                        item.raw?.transfer?.status === "received" ||
+                        item.status === "dispatch";
 
-    if (alreadyDispatched) return;
+                      if (alreadyDispatched) return;
 
-    setSelectedDispatchRequest(item.raw);
-    setOpenApproveDispatch(true);
-  }}
-/>
+                      setSelectedDispatchRequest(item.raw);
+                      setOpenApproveDispatch(true);
+                    }}
+                  />
                 ))}
               </div>
             ) : (
@@ -378,12 +378,9 @@ export default function DistrictRequestPage() {
         </div>
       </div>
 
-      <RequestStockModal
+      <DistrictRequestStockModal
         open={openNewRequest}
         onClose={() => setOpenNewRequest(false)}
-        storeId={storeId}
-        submitting={submittingRequest}
-        setSubmitting={setSubmittingRequest}
         onSuccess={loadAllRequests}
       />
 

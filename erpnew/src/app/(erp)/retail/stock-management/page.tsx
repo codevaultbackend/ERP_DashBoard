@@ -6,7 +6,15 @@ import axios from "axios";
 import StockStatCards from "../../../../features/retail/StockManagement/components/StockStatCards";
 import StockManagementToolbar from "../../../../features/retail/StockManagement/components/StockManagementToolbar";
 import StockManagementTable from "../../../../features/retail/StockManagement/components/StockManagementTable";
+import AddStockPopup, {
+  type AddStockFormPayload,
+} from "../../../../features/retail/StockManagement/components/AddStockPopup";
 
+import {
+  addStockItem,
+  getStockApiErrorMessage,
+  uploadStockInFile
+} from "../../../../features/retail/StockManagement/api/stock-management-api";
 import {
   createDailyAudit,
   type AuditStatus,
@@ -67,8 +75,6 @@ type StockCategoryItemApi = {
   available_qty?: number;
   image?: string;
   image_url?: string;
-
-  // ✅ backend audit state
   isItemAudit?: boolean;
   itemAuditAt?: string | null;
 };
@@ -93,7 +99,7 @@ export type StockArticle = {
   grossWeight: string;
   category: string;
 
-  // ✅ frontend audit state
+
   isItemAudit?: boolean;
   itemAuditAt?: string | null;
 };
@@ -169,8 +175,6 @@ function mapCategoryItemsToArticles(
     stoneWeight: safeWeight(row.stone_weight),
     grossWeight: safeWeight(row.gross_weight),
     category,
-
-    // ✅ important
     isItemAudit: Boolean(row.isItemAudit),
     itemAuditAt: row.itemAuditAt || null,
   }));
@@ -211,6 +215,30 @@ export default function StockManagementPage() {
     transit_goods: 0,
   });
 
+  const handleAddStockSubmit = async (payload: AddStockFormPayload) => {
+    try {
+      if (addStockLoading) return;
+
+      setAddStockLoading(true);
+      setAddStockError("");
+
+      const result = await addStockItem(payload);
+
+      if (!result?.success) {
+        throw new Error(result?.message || "Failed to add stock item");
+      }
+
+      setAddStockOpen(false);
+      setAddStockError("");
+
+      await loadRetailRows();
+    } catch (error) {
+      setAddStockError(getStockApiErrorMessage(error));
+    } finally {
+      setAddStockLoading(false);
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [loadingRowCategory, setLoadingRowCategory] = useState<string | null>(
     null
@@ -226,6 +254,11 @@ export default function StockManagementPage() {
 
   const [auditMap, setAuditMap] = useState<AuditMap>({});
   const [submitting, setSubmitting] = useState(false);
+  const [addStockOpen, setAddStockOpen] = useState(false);
+  const [addStockLoading, setAddStockLoading] = useState(false);
+  const [addStockError, setAddStockError] = useState("");
+  const [uploadStockLoading, setUploadStockLoading] = useState(false);
+  const [uploadStockError, setUploadStockError] = useState("");
 
   const loadRetailRows = useCallback(async () => {
     try {
@@ -248,8 +281,8 @@ export default function StockManagementPage() {
     } catch (err: any) {
       setPageError(
         err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load retail stock"
+        err?.message ||
+        "Failed to load retail stock"
       );
 
       setRows([]);
@@ -267,6 +300,49 @@ export default function StockManagementPage() {
   useEffect(() => {
     loadRetailRows();
   }, [loadRetailRows]);
+
+
+  const handleUploadStockFile = async (file: File) => {
+    try {
+      if (uploadStockLoading) return;
+
+      setUploadStockLoading(true);
+      setUploadStockError("");
+      setPageError("");
+
+      const allowedExtensions = [".xlsx", ".xls", ".csv", ".pdf"];
+      const fileName = file.name.toLowerCase();
+
+      const isAllowed = allowedExtensions.some((ext) => fileName.endsWith(ext));
+
+      if (!isAllowed) {
+        throw new Error("Only Excel, CSV, or PDF files are allowed.");
+      }
+
+      const maxSize = 15 * 1024 * 1024;
+
+      if (file.size > maxSize) {
+        throw new Error("File size should be less than 15MB.");
+      }
+
+      const result = await uploadStockInFile(file);
+
+      if (!result?.success) {
+        throw new Error(result?.message || "Failed to upload stock file");
+      }
+
+      await loadRetailRows();
+
+      alert(result?.message || "Stock uploaded successfully");
+    } catch (error) {
+      const message = getStockApiErrorMessage(error);
+
+      setUploadStockError(message);
+      alert(message);
+    } finally {
+      setUploadStockLoading(false);
+    }
+  };
 
   useEffect(() => {
     const storedReported = sessionStorage.getItem("submitted-audit-items");
@@ -347,9 +423,9 @@ export default function StockManagementPage() {
         prev.map((row) =>
           row.category?.toLowerCase().trim() === category?.toLowerCase().trim()
             ? {
-                ...row,
-                articles,
-              }
+              ...row,
+              articles,
+            }
             : row
         )
       );
@@ -375,10 +451,10 @@ export default function StockManagementPage() {
       selectedCategory === "All"
         ? rows
         : rows.filter(
-            (row) =>
-              row.category?.toLowerCase().trim() ===
-              selectedCategory?.toLowerCase().trim()
-          );
+          (row) =>
+            row.category?.toLowerCase().trim() ===
+            selectedCategory?.toLowerCase().trim()
+        );
 
     const hydratedRows: StockRow[] = [];
 
@@ -511,10 +587,10 @@ export default function StockManagementPage() {
           articles: row.articles?.map((article) =>
             items.some((item) => String(item.item_id) === article.id)
               ? {
-                  ...article,
-                  isItemAudit: true,
-                  itemAuditAt: new Date().toISOString(),
-                }
+                ...article,
+                isItemAudit: true,
+                itemAuditAt: new Date().toISOString(),
+              }
               : article
           ),
         }))
@@ -539,7 +615,6 @@ export default function StockManagementPage() {
             value: summary.total_stock_items,
             tone: "gold",
             icon: "box",
-            change: "+12.5%",
             changeTone: "green",
           },
           {
@@ -548,7 +623,6 @@ export default function StockManagementPage() {
             value: summary.dead_stock_items,
             tone: "red",
             icon: "badge",
-            change: "+12.5%",
             changeTone: "red",
           },
           {
@@ -571,12 +645,31 @@ export default function StockManagementPage() {
       <StockManagementToolbar
         selectedCount={auditedCount}
         onCreateReport={handleCreateAudit}
+        onAddItem={() => {
+          setAddStockError("");
+          setAddStockOpen(true);
+        }}
+        onUploadStock={handleUploadStockFile}
+        uploadLoading={uploadStockLoading}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
         categories={categories}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
         submitting={submitting}
+      />
+
+      <AddStockPopup
+        open={addStockOpen}
+        loading={addStockLoading}
+        error={addStockError}
+        onClose={() => {
+          if (addStockLoading) return;
+
+          setAddStockOpen(false);
+          setAddStockError("");
+        }}
+        onSubmit={handleAddStockSubmit}
       />
 
       {pageError ? (

@@ -3,28 +3,163 @@ import axios from "axios";
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
   "https://erp-backend-w3pb.onrender.com";
 
 export const exchangeApi = axios.create({
   baseURL: API_URL,
-  withCredentials: true,
+
+  /**
+   * Bearer-token API ke liye cookies required nahi.
+   * Agar backend cookie auth use nahi kar raha, false best hai.
+   */
+  withCredentials: false,
 });
 
-exchangeApi.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token =
-      localStorage.getItem("token") ||
-      localStorage.getItem("accessToken") ||
-      localStorage.getItem("authToken") ||
-      sessionStorage.getItem("token");
+function safeJsonParse<T = any>(value: string | null): T | null {
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
+
+function getTokenFromStorage() {
+  if (typeof window === "undefined") return "";
+
+  const directToken =
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("ims_token") ||
+    localStorage.getItem("erp_token") ||
+    localStorage.getItem("jwt") ||
+    sessionStorage.getItem("token") ||
+    sessionStorage.getItem("accessToken") ||
+    sessionStorage.getItem("authToken") ||
+    sessionStorage.getItem("ims_token") ||
+    sessionStorage.getItem("erp_token") ||
+    "";
+
+  if (directToken) return directToken;
+
+  const user = safeJsonParse<any>(localStorage.getItem("user"));
+
+  return (
+    user?.token ||
+    user?.accessToken ||
+    user?.authToken ||
+    user?.jwt ||
+    ""
+  );
+}
+
+function getLoggedInUser() {
+  if (typeof window === "undefined") return null;
+
+  return safeJsonParse<any>(localStorage.getItem("user"));
+}
+
+function normalizeStoreCode(value: unknown) {
+  const clean = String(value ?? "").trim().toUpperCase();
+  return clean || "";
+}
+
+function getExchangeScope() {
+  if (typeof window === "undefined") {
+    return {
+      store_code: "",
+      organization_id: "",
+    };
+  }
+
+  const user = getLoggedInUser();
+
+  const storeCode = normalizeStoreCode(
+    user?.store_code ||
+      user?.storeCode ||
+      localStorage.getItem("store_code") ||
+      localStorage.getItem("selected_store_code") ||
+      localStorage.getItem("storeCode")
+  );
+
+  const organizationId =
+    user?.organization_id ||
+    user?.organizationId ||
+    localStorage.getItem("organization_id") ||
+    localStorage.getItem("organizationId") ||
+    "";
+
+  return {
+    store_code: storeCode,
+    organization_id: organizationId,
+  };
+}
+
+function buildScopeHeaders() {
+  const scope = getExchangeScope();
+
+  const headers: Record<string, string> = {};
+
+  /**
+   * Backend error bol raha hai:
+   * "Store code missing (token ya header me bhejo)"
+   *
+   * Isliye store_code header me bhejna mandatory hai.
+   */
+  if (scope.store_code) {
+    headers.store_code = scope.store_code;
+    headers["x-store-code"] = scope.store_code;
+  }
+
+  if (scope.organization_id) {
+    headers.organization_id = String(scope.organization_id);
+    headers["x-organization-id"] = String(scope.organization_id);
+  }
+
+  return headers;
+}
+
+exchangeApi.interceptors.request.use(
+  (config) => {
+    const token = getTokenFromStorage();
+
+    config.headers = config.headers || {};
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-  }
 
-  return config;
-});
+    config.headers.Accept = "application/json";
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+exchangeApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const data = error?.response?.data;
+
+    if (status === 400) {
+      console.error("Exchange API bad request:", data);
+    }
+
+    if (status === 401) {
+      console.error("Exchange API unauthorized: token missing or expired.", data);
+    }
+
+    if (status === 403) {
+      console.error("Exchange API forbidden: role not allowed.", data);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export type ExchangeDashboardStats = {
   total_exchanges: number;
@@ -142,6 +277,8 @@ export type RefundRequest = {
 let cache: {
   data: ExchangeDashboardResponse;
   time: number;
+  token: string;
+  scopeKey: string;
 } | null = null;
 
 const CACHE_TIME = 60 * 1000;
@@ -193,7 +330,9 @@ function getMetalName(productName?: string, purity?: string | null) {
 
   if (name.includes("gold")) return purity ? `Gold ${purity}` : "Gold";
   if (name.includes("silver")) return purity ? `Silver ${purity}` : "Silver";
-  if (name.includes("diamond")) return purity ? `Diamond ${purity}` : "Diamond";
+  if (name.includes("diamond")) {
+    return purity ? `Diamond ${purity}` : "Diamond";
+  }
 
   return purity || "-";
 }
@@ -212,6 +351,29 @@ function getWeight(
   if (stone > 0) return `${stone}g Stone`;
 
   return "-";
+}
+
+function getApiErrorMessage(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as
+      | {
+          success?: boolean;
+          message?: string;
+          error?: string;
+        }
+      | undefined;
+
+    return (
+      data?.message ||
+      data?.error ||
+      error.message ||
+      "Exchange request failed"
+    );
+  }
+
+  if (error instanceof Error) return error.message;
+
+  return "Exchange request failed";
 }
 
 export function mapExchangeStatsToRefundStats(
@@ -293,21 +455,56 @@ export function mapExchangeToRefundRequest(
 
 export async function getExchangeDashboard(force = false) {
   const now = Date.now();
+  const token = getTokenFromStorage();
+  const scope = getExchangeScope();
 
-  if (!force && cache && now - cache.time < CACHE_TIME) {
+  if (!token) {
+    throw new Error("Authorization token missing. Please login again.");
+  }
+
+  if (!scope.store_code) {
+    throw new Error("Store code missing. Please login again.");
+  }
+
+  const scopeKey = `${scope.store_code || "NO_STORE"}-${
+    scope.organization_id || "NO_ORG"
+  }`;
+
+  if (
+    !force &&
+    cache &&
+    cache.token === token &&
+    cache.scopeKey === scopeKey &&
+    now - cache.time < CACHE_TIME
+  ) {
     return cache.data;
   }
 
-  const res = await exchangeApi.get<ExchangeDashboardResponse>(
-    "/exchange/dashboard"
-  );
+  try {
+    const res = await exchangeApi.get<ExchangeDashboardResponse>(
+      "/exchange/dashboard",
+      {
+        /**
+         * Backend store_code header me expect kar raha hai.
+         * Query params ignore ho rahe the.
+         */
+        headers: {
+          ...buildScopeHeaders(),
+        },
+      }
+    );
 
-  cache = {
-    data: res.data,
-    time: now,
-  };
+    cache = {
+      data: res.data,
+      time: now,
+      token,
+      scopeKey,
+    };
 
-  return res.data;
+    return res.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
 }
 
 export async function getExchangeRefundData(force = false) {
@@ -323,11 +520,47 @@ export async function getExchangeRefundData(force = false) {
 }
 
 export async function createExchange(payload: CreateExchangePayload) {
-  const res = await exchangeApi.post("/exchange/create", payload);
+  const token = getTokenFromStorage();
+  const scope = getExchangeScope();
 
+  if (!token) {
+    throw new Error("Authorization token missing. Please login again.");
+  }
+
+  if (!scope.store_code) {
+    throw new Error("Store code missing. Please login again.");
+  }
+
+  try {
+    const res = await exchangeApi.post(
+      "/exchange/create",
+      {
+        ...payload,
+
+        /**
+         * Body me bhi scope bhej rahe hain for backend compatibility.
+         */
+        store_code: scope.store_code,
+        organization_id: scope.organization_id || undefined,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...buildScopeHeaders(),
+        },
+      }
+    );
+
+    cache = null;
+
+    return res.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+}
+
+export function clearExchangeCache() {
   cache = null;
-
-  return res.data;
 }
 
 export const refundPolicyPoints = [

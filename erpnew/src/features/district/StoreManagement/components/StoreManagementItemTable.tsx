@@ -23,7 +23,6 @@ type Props = {
 
 const parentHeaders = [
   "Category",
-  "Code",
   "Quantity",
   "Selling Price",
   "Making Chg.",
@@ -358,9 +357,6 @@ export default function StoreManagementCategoryTable({
                     <tr className="bg-white transition hover:bg-[#FAFBFC]">
                       <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-[15px] font-medium text-[#0F172A]">
                         {category.name}
-                      </td>
-                      <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-[15px] font-medium text-[#0F172A]">
-                        {category.code}
                       </td>
                       <td className="border-b border-r border-[#E5E7EB] px-6 py-7 text-center text-[15px] font-medium text-[#0F172A]">
                         {category.quantity}

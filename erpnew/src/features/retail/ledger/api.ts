@@ -480,6 +480,7 @@ export async function fetchInvoicePdfBlob(invoiceId: string | number): Promise<{
 
   const response = await fetch(
     joinUrl(API_BASE, makeLedgerPath(`/invoice/${invoiceId}/download`)),
+    
     {
       method: "GET",
       cache: "no-store",

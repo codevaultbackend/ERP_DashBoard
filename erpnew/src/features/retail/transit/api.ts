@@ -1,5 +1,6 @@
 import type {
   TransitDetailResponse,
+  TransitDirection,
   TransitListResponse,
   TransitTransfer,
 } from "./types";
@@ -44,54 +45,40 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   const json = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new Error(json?.message || `API Error (${res.status})`);
+    throw new Error(json?.message || json?.error || `API Error (${res.status})`);
   }
 
   return json as T;
+}
+
+function mapWithDirection(
+  rows: TransitTransfer[] = [],
+  direction: TransitDirection
+): TransitTransfer[] {
+  return rows.map((item) => ({
+    ...normalizeTransitTransfer(item),
+    direction,
+  }));
 }
 
 export async function getTransitTransfers(): Promise<{
   summary: TransitListResponse["summary"];
   data: TransitTransfer[];
 }> {
-  try {
-    const [incoming, outgoing] = await Promise.all([
-      apiFetch<TransitListResponse>("/request/transfers/incoming"),
-      apiFetch<TransitListResponse>("/request/transfers/outgoing"),
-    ]);
+  const [incoming, outgoing] = await Promise.all([
+    apiFetch<TransitListResponse>("/request/transfers/incoming"),
+    apiFetch<TransitListResponse>("/request/transfers/outgoing"),
+  ]);
 
-    const merged = [
-      ...(incoming?.data || []).map((item) => ({
-        ...normalizeTransitTransfer(item),
-        direction: "incoming" as const,
-      })),
-      ...(outgoing?.data || []).map((item) => ({
-        ...normalizeTransitTransfer(item),
-        direction: "outgoing" as const,
-      })),
-    ];
+  const incomingRows = mapWithDirection(incoming?.data || [], "incoming");
+  const outgoingRows = mapWithDirection(outgoing?.data || [], "outgoing");
 
-    const dedupedMap = new Map<number, TransitTransfer>();
-    for (const item of merged) dedupedMap.set(item.id, item);
+  const data = sortTransfersByRecent([...incomingRows, ...outgoingRows]);
 
-    const data = sortTransfersByRecent(Array.from(dedupedMap.values()));
-    const summary = buildMergedSummary(data);
-
-    return {
-      summary,
-      data,
-    };
-  } catch (err) {
-    console.error("Transit API failed:", err);
-    return {
-      summary: {
-        in_transit: 0,
-        shipments: 0,
-        goods_receipt: 0,
-      },
-      data: [],
-    };
-  }
+  return {
+    summary: buildMergedSummary(data),
+    data,
+  };
 }
 
 export async function getTransitById(id: string | number) {
@@ -145,9 +132,7 @@ export type TransferRouteResponse = {
 };
 
 export async function getTransferLiveLocation(id: string | number) {
-  return apiFetch<TransferLiveLocationResponse>(
-    `/track/${id}/live-location`
-  );
+  return apiFetch<TransferLiveLocationResponse>(`/track/${id}/live-location`);
 }
 
 export async function getTransferRoute(id: string | number) {

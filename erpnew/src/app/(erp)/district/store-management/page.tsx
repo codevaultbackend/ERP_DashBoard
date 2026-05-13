@@ -93,7 +93,6 @@ export default function DistrictStoreManagementPage() {
         icon: Store,
         bg: "bg-erp-yellow-soft",
         color: "text-erp-yellow",
-        trend: "+12.5%",
         trendColor: "text-erp-success",
       },
       {
@@ -102,7 +101,6 @@ export default function DistrictStoreManagementPage() {
         icon: Store,
         bg: "bg-erp-green-soft",
         color: "text-erp-success",
-        trend: "+12.5%",
         trendColor: "text-erp-danger",
       },
       {

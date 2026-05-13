@@ -2,7 +2,10 @@
 
 import axios from "axios";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  "https://erp-backend-w3pb.onrender.com";
 
 export const requestApi = axios.create({
   baseURL: API_URL,
@@ -11,7 +14,9 @@ export const requestApi = axios.create({
 
 requestApi.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token") || "";
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -19,6 +24,41 @@ requestApi.interceptors.request.use((config) => {
 
   return config;
 });
+
+/**
+ * Turn this false when you don't want console logs.
+ */
+const DEBUG_REQUEST_API = true;
+
+function logGroup(title: string, callback: () => void) {
+  if (!DEBUG_REQUEST_API) return;
+
+  console.group(title);
+
+  try {
+    callback();
+  } finally {
+    console.groupEnd();
+  }
+}
+
+function logAxiosError(title: string, error: unknown) {
+  if (!DEBUG_REQUEST_API) return;
+
+  if (axios.isAxiosError(error)) {
+    console.group(title);
+    console.log("Status:", error.response?.status);
+    console.log("Response data:", error.response?.data);
+    console.log("Message:", error.message);
+    console.log("URL:", error.config?.url);
+    console.log("Method:", error.config?.method);
+    console.log("Params:", error.config?.params);
+    console.groupEnd();
+    return;
+  }
+
+  console.error(title, error);
+}
 
 export type CategoryRowApi = {
   category: string;
@@ -50,6 +90,9 @@ export type CategoryItemApi = {
   making_charge: number;
   purchase_rate: number;
   sale_rate: number;
+  selling_price?: number;
+  purchase_price?: number;
+  rate?: number;
   hsn_code: string;
   unit: string;
   current_status: string;
@@ -91,8 +134,16 @@ export type RequestItemApi = {
     metal_type?: string;
     purity?: string;
     unit?: string;
-    gross_weight?: number;
-    net_weight?: number;
+    gross_weight?: number | string;
+    grossWeight?: number | string;
+    net_weight?: number | string;
+    netWeight?: number | string;
+    sale_rate?: number | string;
+    selling_price?: number | string;
+    sellingPrice?: number | string;
+    purchase_rate?: number | string;
+    purchase_price?: number | string;
+    rate?: number | string;
   };
 };
 
@@ -131,8 +182,30 @@ export async function getStockCategories(params?: {
   category?: string;
   metal_type?: string;
 }) {
-  const res = await requestApi.get("/stock/list", { params });
-  return res.data;
+  try {
+    logGroup("📥 GET STOCK CATEGORIES REQUEST", () => {
+      console.log("Endpoint:", "/stock/list");
+      console.log("Params:", params || {});
+    });
+
+    const res = await requestApi.get("/stock/list", { params });
+
+    logGroup("✅ GET STOCK CATEGORIES RESPONSE", () => {
+      console.log("Full response:", res.data);
+      console.log("Summary:", res.data?.summary);
+      console.log("Count:", res.data?.count);
+      console.log(
+        "Rows:",
+        Array.isArray(res.data?.data) ? res.data.data.length : "data is not array"
+      );
+      console.table(Array.isArray(res.data?.data) ? res.data.data : []);
+    });
+
+    return res.data;
+  } catch (error) {
+    logAxiosError("❌ GET STOCK CATEGORIES ERROR", error);
+    throw error;
+  }
 }
 
 export async function getStockItemsByCategory(
@@ -143,24 +216,130 @@ export async function getStockItemsByCategory(
     organization_id?: number | string;
   }
 ) {
-  const res = await requestApi.get(
-    `/stock/category/${encodeURIComponent(category)}`,
-    {
-      params,
-    }
-  );
+  const endpoint = `/stock/category/${encodeURIComponent(category)}`;
 
-  return res.data;
+  try {
+    logGroup("📥 GET STOCK ITEMS BY CATEGORY REQUEST", () => {
+      console.log("Endpoint:", endpoint);
+      console.log("Category:", category);
+      console.log("Params:", params || {});
+    });
+
+    const res = await requestApi.get(endpoint, {
+      params,
+    });
+
+    logGroup("✅ GET STOCK ITEMS BY CATEGORY RESPONSE", () => {
+      console.log("Full response:", res.data);
+      console.log("Count:", res.data?.count);
+      console.log(
+        "Rows:",
+        Array.isArray(res.data?.data) ? res.data.data.length : "data is not array"
+      );
+      console.table(Array.isArray(res.data?.data) ? res.data.data : []);
+    });
+
+    return res.data;
+  } catch (error) {
+    logAxiosError("❌ GET STOCK ITEMS BY CATEGORY ERROR", error);
+    throw error;
+  }
 }
 
 export async function getMyStockRequests() {
-  const res = await requestApi.get("/request/requests/my");
-  return res.data;
+  try {
+    logGroup("📥 GET MY STOCK REQUESTS REQUEST", () => {
+      console.log("Endpoint:", "/request/requests/my");
+    });
+
+    const res = await requestApi.get("/request/requests/my");
+
+    logGroup("✅ GET MY STOCK REQUESTS RESPONSE", () => {
+      console.log("Full response:", res.data);
+      console.log(
+        "Rows:",
+        Array.isArray(res.data?.data) ? res.data.data.length : "data is not array"
+      );
+      console.table(Array.isArray(res.data?.data) ? res.data.data : []);
+
+      const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+      rows.forEach((row: any, index: number) => {
+        console.log(`My Request ${index + 1}`, {
+          id: row?.id,
+          request_no: row?.request_no,
+          status: row?.status,
+          priority: row?.priority,
+          items: row?.request_items,
+          transfer: row?.transfer,
+          fullRow: row,
+        });
+      });
+    });
+
+    return res.data;
+  } catch (error) {
+    logAxiosError("❌ GET MY STOCK REQUESTS ERROR", error);
+    throw error;
+  }
 }
 
 export async function getReceivedStockRequests() {
-  const res = await requestApi.get("/request/requests/received");
-  return res.data;
+  try {
+    logGroup("📥 GET RECEIVED STOCK REQUESTS REQUEST", () => {
+      console.log("Endpoint:", "/request/requests/received");
+    });
+
+    const res = await requestApi.get("/request/requests/received");
+
+    logGroup("✅ GET RECEIVED STOCK REQUESTS RESPONSE", () => {
+      console.log("Full response:", res.data);
+      console.log(
+        "Rows:",
+        Array.isArray(res.data?.data) ? res.data.data.length : "data is not array"
+      );
+      console.table(Array.isArray(res.data?.data) ? res.data.data : []);
+
+      const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+      rows.forEach((row: any, index: number) => {
+        console.group(`📦 Received Request ${index + 1}`);
+        console.log("Request:", {
+          id: row?.id,
+          request_no: row?.request_no,
+          status: row?.status,
+          priority: row?.priority,
+          category: row?.category,
+          notes: row?.notes,
+          transfer: row?.transfer,
+        });
+
+        console.log("Request items:", row?.request_items);
+
+        (row?.request_items || []).forEach((itemRow: any, itemIndex: number) => {
+          console.log(`Item ${itemIndex + 1}`, {
+            item_id: itemRow?.item_id,
+            request_qty: itemRow?.request_qty,
+            approved_qty: itemRow?.approved_qty,
+            item: itemRow?.item,
+            gross_weight: itemRow?.item?.gross_weight,
+            net_weight: itemRow?.item?.net_weight,
+            sale_rate: itemRow?.item?.sale_rate,
+            selling_price: itemRow?.item?.selling_price,
+            purchase_rate: itemRow?.item?.purchase_rate,
+            purchase_price: itemRow?.item?.purchase_price,
+            rate: itemRow?.item?.rate,
+          });
+        });
+
+        console.log("Full row:", row);
+        console.groupEnd();
+      });
+    });
+
+    return res.data;
+  } catch (error) {
+    logAxiosError("❌ GET RECEIVED STOCK REQUESTS ERROR", error);
+    throw error;
+  }
 }
 
 export async function createStockRequest(payload: {
@@ -173,12 +352,37 @@ export async function createStockRequest(payload: {
     request_qty: number;
   }>;
 }) {
-  const res = await requestApi.post("/request/requests", payload);
-  return res.data;
+  try {
+    logGroup("📤 CREATE STOCK REQUEST PAYLOAD", () => {
+      console.log("Endpoint:", "/request/requests");
+      console.log("Payload:", payload);
+      console.table(payload.items || []);
+    });
+
+    const res = await requestApi.post("/request/requests", payload);
+
+    logGroup("✅ CREATE STOCK REQUEST RESPONSE", () => {
+      console.log("Full response:", res.data);
+    });
+
+    return res.data;
+  } catch (error) {
+    logAxiosError("❌ CREATE STOCK REQUEST ERROR", error);
+    throw error;
+  }
 }
 
-export async function approveDispatchRequest(payload: {
-  requestId: number;
+export type ApproveDispatchItemPayload = {
+  item_id: number;
+  qty: number;
+  approved_qty?: number;
+  weight?: number;
+  rate?: number;
+  remarks?: string | null;
+};
+
+export type ApproveDispatchPayload = {
+  requestId: number | string;
   remarks?: string;
   driver_name: string;
   driver_phone: string;
@@ -187,39 +391,53 @@ export async function approveDispatchRequest(payload: {
   pickup_address: string;
   delivery_address: string;
   expected_delivery_date: string;
-  expected_delivery_time: string;
+  expected_delivery_time?: string;
   additional_notes?: string;
-  items: Array<{
-    item_id: number;
-    qty: number;
-    weight?: number;
-    rate?: number;
-    remarks?: string | null;
-  }>;
+  items: ApproveDispatchItemPayload[];
   driver_photo?: File | null;
   dispatch_images?: File[];
   dispatch_video?: File | null;
   e_way_bill?: File | null;
-}) {
+};
+
+function normalizeApproveDispatchItems(items: ApproveDispatchItemPayload[]) {
+  return (items || [])
+    .map((item) => {
+      const qty = Number(item.qty || item.approved_qty || 0);
+
+      return {
+        item_id: Number(item.item_id),
+        qty,
+        approved_qty: qty,
+        weight: Number(item.weight || 0),
+        rate: Number(item.rate || 0),
+        remarks: item.remarks || null,
+      };
+    })
+    .filter((item) => item.item_id > 0 && item.qty > 0);
+}
+
+export async function approveDispatchRequest(payload: ApproveDispatchPayload) {
   const formData = new FormData();
+  const cleanItems = normalizeApproveDispatchItems(payload.items);
 
   formData.append("remarks", payload.remarks || "");
-  formData.append("driver_name", payload.driver_name);
-  formData.append("driver_phone", payload.driver_phone);
-  formData.append("vehicle_number", payload.vehicle_number);
-  formData.append("tracking_number", payload.tracking_number || "");
-  formData.append("pickup_address", payload.pickup_address);
-  formData.append("delivery_address", payload.delivery_address);
+  formData.append("driver_name", payload.driver_name.trim());
+  formData.append("driver_phone", payload.driver_phone.trim());
+  formData.append("vehicle_number", payload.vehicle_number.trim().toUpperCase());
+  formData.append("tracking_number", payload.tracking_number?.trim() || "");
+  formData.append("pickup_address", payload.pickup_address.trim());
+  formData.append("delivery_address", payload.delivery_address.trim());
   formData.append("expected_delivery_date", payload.expected_delivery_date);
-  formData.append("expected_delivery_time", payload.expected_delivery_time);
+  formData.append("expected_delivery_time", payload.expected_delivery_time || "");
   formData.append("additional_notes", payload.additional_notes || "");
-  formData.append("items", JSON.stringify(payload.items));
+  formData.append("items", JSON.stringify(cleanItems));
 
   if (payload.driver_photo) {
     formData.append("driver_photo", payload.driver_photo);
   }
 
-  (payload.dispatch_images || []).forEach((file) => {
+  (payload.dispatch_images || []).slice(0, 3).forEach((file) => {
     formData.append("dispatch_images", file);
   });
 
@@ -231,15 +449,94 @@ export async function approveDispatchRequest(payload: {
     formData.append("e_way_bill", payload.e_way_bill);
   }
 
-  const res = await requestApi.put(
-    `/request/requests/${payload.requestId}/approve-dispatch`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  logGroup("🚚 APPROVE DISPATCH PAYLOAD", () => {
+    console.log("Endpoint:", `/request/requests/${payload.requestId}/approve-dispatch`);
+    console.log("Raw payload:", payload);
+    console.log("Clean items:", cleanItems);
+    console.table(cleanItems);
+    console.log("Files:", {
+      driver_photo: payload.driver_photo
+        ? {
+            name: payload.driver_photo.name,
+            type: payload.driver_photo.type,
+            size: payload.driver_photo.size,
+          }
+        : null,
+      dispatch_images: (payload.dispatch_images || []).map((file) => ({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      })),
+      dispatch_video: payload.dispatch_video
+        ? {
+            name: payload.dispatch_video.name,
+            type: payload.dispatch_video.type,
+            size: payload.dispatch_video.size,
+          }
+        : null,
+      e_way_bill: payload.e_way_bill
+        ? {
+            name: payload.e_way_bill.name,
+            type: payload.e_way_bill.type,
+            size: payload.e_way_bill.size,
+          }
+        : null,
+    });
+  });
 
-  return res.data;
+  logGroup("📦 APPROVE DISPATCH FORMDATA", () => {
+    for (const [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(key, {
+          fileName: value.name,
+          type: value.type,
+          size: value.size,
+        });
+      } else {
+        console.log(key, value);
+      }
+    }
+  });
+
+  try {
+    const res = await requestApi.put(
+      `/request/requests/${payload.requestId}/approve-dispatch`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    logGroup("✅ APPROVE DISPATCH RESPONSE", () => {
+      console.log("Full response:", res.data);
+    });
+
+    return res.data;
+  } catch (error) {
+    logAxiosError("❌ APPROVE DISPATCH ERROR", error);
+    throw error;
+  }
+}
+
+export function getRequestApiErrorMessage(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as
+      | {
+          message?: string;
+          error?: string;
+          errors?: unknown;
+        }
+      | undefined;
+
+    if (data?.message) return data.message;
+    if (data?.error) return data.error;
+
+    return error.message || "Request failed";
+  }
+
+  if (error instanceof Error) return error.message;
+
+  return "Request failed";
 }

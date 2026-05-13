@@ -69,15 +69,8 @@ export function isInTransitStatus(status?: string) {
 }
 
 export function getRouteLabel(item: TransitTransfer) {
-  const from =
-    item.from_role ||
-    item.from_organization_name ||
-    "Source";
-
-  const to =
-    item.to_role ||
-    item.to_organization_name ||
-    "Destination";
+  const from = item.from_role || item.from_organization_name || "Source";
+  const to = item.to_role || item.to_organization_name || "Destination";
 
   return `${from} → ${to}`;
 }

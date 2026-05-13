@@ -1,34 +1,65 @@
 "use client";
 
-import Link from "next/link";
 import { ChevronDown, Plus, Search, Upload } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type StockManagementToolbarProps = {
   selectedCount: number;
   onCreateReport: () => void;
+
+  /**
+   * Retail + District dono ke liye common.
+   * Parent decide karega popup open karna hai ya nahi.
+   */
+  onAddItem?: () => void;
+
+  onUploadStock?: (file: File) => Promise<void> | void;
+
   searchValue: string;
   onSearchChange: (value: string) => void;
+
   categories: string[];
   selectedCategory: string;
   onCategoryChange: (value: string) => void;
+
   submitting?: boolean;
+  uploadLoading?: boolean;
+
+  /**
+   * Optional guards.
+   * Retail me kuch pass nahi karna.
+   * District me agar store/scope missing ho to Add Item disable kar sakte ho.
+   */
+  addItemDisabled?: boolean;
+  addItemDisabledReason?: string;
 };
 
 export default function StockManagementToolbar({
   selectedCount,
   onCreateReport,
+  onAddItem,
+  onUploadStock,
   searchValue,
   onSearchChange,
   categories,
   selectedCategory,
   onCategoryChange,
   submitting = false,
+  uploadLoading = false,
+  addItemDisabled = false,
+  addItemDisabledReason = "Add item is currently disabled",
 }: StockManagementToolbarProps) {
-  const isDisabled = submitting;
-
   const [openCategory, setOpenCategory] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const safeCategories =
+    Array.isArray(categories) && categories.length > 0 ? categories : ["All"];
+
+  const isReportDisabled = submitting;
+  const isUploading = uploadLoading;
+  const isAddDisabled = addItemDisabled || !onAddItem;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -41,8 +72,27 @@ export default function StockManagementToolbar({
 
     document.addEventListener("mousedown", handleClickOutside);
 
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    event.target.value = "";
+
+    if (!file || !onUploadStock || isUploading) return;
+
+    await onUploadStock(file);
+  };
+
+  const handleAddItemClick = () => {
+    if (isAddDisabled) return;
+    onAddItem?.();
+  };
 
   return (
     <div className="rounded-[30px] border border-erp-border bg-erp-card px-[18px] py-[17px] shadow-erp-card">
@@ -90,7 +140,7 @@ export default function StockManagementToolbar({
 
             {openCategory && (
               <div className="absolute right-0 z-30 mt-2 max-h-[280px] w-[210px] overflow-y-auto rounded-[18px] border border-erp-border bg-white shadow-[0px_12px_30px_rgba(15,23,42,0.10)]">
-                {categories.map((category) => {
+                {safeCategories.map((category) => {
                   const active = category === selectedCategory;
 
                   return (
@@ -117,41 +167,89 @@ export default function StockManagementToolbar({
             )}
           </div>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
           <button
             type="button"
+            disabled={isUploading || !onUploadStock}
+            onClick={() => {
+              if (isUploading || !onUploadStock) return;
+              fileInputRef.current?.click();
+            }}
             className={[
               "flex h-[40px] items-center justify-center gap-[8px]",
               "rounded-full bg-erp-dark px-[20px]",
               "text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-white",
-              "transition hover:brightness-110 sm:px-[22px]",
+              "transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70 sm:px-[22px]",
             ].join(" ")}
           >
-            <Upload className="h-[17px] w-[17px] stroke-[2.2]" />
-            <span className="whitespace-nowrap">Upload Challan</span>
+            {isUploading ? (
+              <>
+                <svg
+                  className="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  />
+                </svg>
+
+                <span className="whitespace-nowrap">Uploading...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="h-[17px] w-[17px] stroke-[2.2]" />
+                <span className="whitespace-nowrap">Upload Challan</span>
+              </>
+            )}
           </button>
 
-          <Link
-            href="/retail/request"
+          <button
+            type="button"
+            disabled={isAddDisabled}
+            title={isAddDisabled ? addItemDisabledReason : "Add Item"}
+            onClick={handleAddItemClick}
             className={[
               "flex h-[40px] items-center justify-center gap-[8px]",
-              "rounded-full bg-erp-dark px-[20px]",
-              "text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-white",
-              "transition hover:brightness-110 sm:px-[22px]",
+              "rounded-full px-[20px]",
+              "text-[15px] font-semibold leading-[20px] tracking-[-0.02em]",
+              "transition sm:px-[22px]",
+              isAddDisabled
+                ? "cursor-not-allowed bg-[#D9DEE7] text-[#8E98A8]"
+                : "bg-erp-dark text-white hover:brightness-110",
             ].join(" ")}
           >
             <Plus className="h-[18px] w-[18px] stroke-[2.2]" />
             <span className="whitespace-nowrap">Add Item</span>
-          </Link>
+          </button>
 
           <button
             type="button"
             onClick={onCreateReport}
-            disabled={isDisabled}
+            disabled={isReportDisabled}
             className={[
               "flex h-[40px] items-center justify-center gap-[8px]",
               "rounded-full px-[20px]",
               "text-[15px] font-semibold leading-[20px] tracking-[-0.02em] transition-all sm:px-[22px]",
-              isDisabled
+              isReportDisabled
                 ? "cursor-not-allowed bg-[#D9DEE7] text-[#8E98A8]"
                 : "bg-erp-dark text-white hover:brightness-110",
             ].join(" ")}

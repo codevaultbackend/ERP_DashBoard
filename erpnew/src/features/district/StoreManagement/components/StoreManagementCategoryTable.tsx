@@ -3,6 +3,7 @@
 import Image from "next/image";
 import React, { Fragment, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Loader2, X } from "lucide-react";
+import { FaChevronLeft } from "react-icons/fa6";
 import type { Category, Item } from "../types";
 
 type Props = {
@@ -11,9 +12,20 @@ type Props = {
   onLoadCategoryItems?: (category: Category) => Promise<Item[]>;
 };
 
+type ItemWithPrices = Item & {
+  salePrice?: string | number | null;
+  sellingPrice?: string | number | null;
+  selling_price?: string | number | null;
+  sale_rate?: string | number | null;
+
+  purchasePrice?: string | number | null;
+  purchase_price?: string | number | null;
+  purchase_rate?: string | number | null;
+  purchaseRate?: string | number | null;
+};
+
 const parentHeaders = [
   "Category",
-  "Code",
   "Quantity",
   "Selling Price",
   "Making Chg.",
@@ -29,6 +41,8 @@ const childHeaders = [
   "Article",
   "Code",
   "Quantity",
+  "Sale Price",
+  "Purchase Price",
   "Purity",
   "Net Wt.",
   "Stone Wt.",
@@ -37,6 +51,31 @@ const childHeaders = [
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function safeValue(value: unknown, fallback = "--") {
+  if (value === null || value === undefined || value === "") return fallback;
+  return String(value);
+}
+
+function getSalePrice(item: ItemWithPrices) {
+  return (
+    item.salePrice ??
+    item.sellingPrice ??
+    item.selling_price ??
+    item.sale_rate ??
+    "--"
+  );
+}
+
+function getPurchasePrice(item: ItemWithPrices) {
+  return (
+    item.purchasePrice ??
+    item.purchase_price ??
+    item.purchase_rate ??
+    item.purchaseRate ??
+    "--"
+  );
 }
 
 function DragScrollArea({ children }: { children: React.ReactNode }) {
@@ -143,7 +182,7 @@ export default function StoreManagementCategoryTable({
 
   const [openCategoryId, setOpenCategoryId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [itemsMap, setItemsMap] = useState<Record<string, Item[]>>({});
+  const [itemsMap, setItemsMap] = useState<Record<string, ItemWithPrices[]>>({});
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
   const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
   const [errorMap, setErrorMap] = useState<Record<string, string>>({});
@@ -159,7 +198,7 @@ export default function StoreManagementCategoryTable({
   const getCurrentItems = (category: Category) => {
     const loadedItems = itemsMap[category.id];
     if (Array.isArray(loadedItems)) return loadedItems;
-    return category.items ?? [];
+    return ((category.items ?? []) as ItemWithPrices[]);
   };
 
   const handleToggleRow = async (category: Category) => {
@@ -182,14 +221,14 @@ export default function StoreManagementCategoryTable({
 
       setItemsMap((prev) => ({
         ...prev,
-        [categoryId]: Array.isArray(items) ? items : [],
+        [categoryId]: Array.isArray(items) ? (items as ItemWithPrices[]) : [],
       }));
 
       setLoadedMap((prev) => ({ ...prev, [categoryId]: true }));
     } catch (error) {
       setItemsMap((prev) => ({
         ...prev,
-        [categoryId]: category.items ?? [],
+        [categoryId]: ((category.items ?? []) as ItemWithPrices[]),
       }));
 
       setLoadedMap((prev) => ({ ...prev, [categoryId]: true }));
@@ -265,10 +304,6 @@ export default function StoreManagementCategoryTable({
                         {category.name}
                       </td>
 
-                      <td className="border-b border-r border-erp-border px-6 py-7 text-[15px] font-medium text-erp-heading">
-                        {category.code}
-                      </td>
-
                       <td className="border-b border-r border-erp-border px-6 py-7 text-center text-[15px] font-medium text-erp-heading">
                         {category.quantity}
                       </td>
@@ -322,7 +357,7 @@ export default function StoreManagementCategoryTable({
 
                     {isOpen && (
                       <tr>
-                        <td colSpan={10} className="bg-erp-card-soft p-0">
+                        <td colSpan={parentHeaders.length} className="bg-erp-card-soft p-0">
                           <table className="w-full border-separate border-spacing-0">
                             <thead>
                               <tr className="bg-[#EEF2F7]">
@@ -333,6 +368,8 @@ export default function StoreManagementCategoryTable({
                                       "whitespace-nowrap border-b border-r border-erp-border px-6 py-4 text-left text-[14px] font-semibold text-erp-heading",
                                       [
                                         "Quantity",
+                                        "Sale Price",
+                                        "Purchase Price",
                                         "Purity",
                                         "Net Wt.",
                                         "Stone Wt.",
@@ -352,7 +389,7 @@ export default function StoreManagementCategoryTable({
                               {isLoading ? (
                                 <tr>
                                   <td
-                                    colSpan={8}
+                                    colSpan={childHeaders.length}
                                     className="px-6 py-8 text-center text-[14px] font-medium text-erp-muted"
                                   >
                                     Loading items...
@@ -361,7 +398,7 @@ export default function StoreManagementCategoryTable({
                               ) : error && items.length === 0 ? (
                                 <tr>
                                   <td
-                                    colSpan={8}
+                                    colSpan={childHeaders.length}
                                     className="px-6 py-8 text-center text-[14px] font-medium text-erp-danger"
                                   >
                                     {error}
@@ -370,7 +407,7 @@ export default function StoreManagementCategoryTable({
                               ) : items.length === 0 ? (
                                 <tr>
                                   <td
-                                    colSpan={8}
+                                    colSpan={childHeaders.length}
                                     className="px-6 py-8 text-center text-[14px] font-medium text-erp-muted"
                                   >
                                     No items found.
@@ -415,6 +452,14 @@ export default function StoreManagementCategoryTable({
                                     </td>
 
                                     <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-erp-text-soft">
+                                      {safeValue(getSalePrice(item))}
+                                    </td>
+
+                                    <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-erp-text-soft">
+                                      {safeValue(getPurchasePrice(item))}
+                                    </td>
+
+                                    <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-erp-text-soft">
                                       {item.purity}
                                     </td>
 
@@ -444,7 +489,7 @@ export default function StoreManagementCategoryTable({
               {!safeCategories.length && (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={parentHeaders.length}
                     className="px-6 py-10 text-center text-[15px] font-medium text-erp-muted"
                   >
                     No categories found.

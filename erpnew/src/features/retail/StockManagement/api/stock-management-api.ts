@@ -86,8 +86,6 @@ export type StockCategoryItemApi = {
 function getListEndpoint(role: StockRole) {
   if (role === "district") return "/stock/getdistrict";
 
-  // head-office ke liye agar tumhara backend me alag endpoint hai
-  // to yaha replace kar dena, jaise "/stock/head"
   if (role === "head") return "/stock/list";
 
   return "/stock/list";
@@ -119,5 +117,111 @@ export async function getStockItemsByCategoryByRole(
   }
 ) {
   const res = await stockApi.get(getCategoryEndpoint(category), { params });
+  return res.data;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              ADD STOCK ITEM API                            */
+/* -------------------------------------------------------------------------- */
+
+export type AddStockPayload = {
+  item_name: string;
+  metal_type: "Gold" | "Silver";
+  category: string;
+  purity: string;
+  qty: number;
+  net_weight: number;
+};
+
+export type AddStockResponse = {
+  success: boolean;
+  message?: string;
+  data?: unknown;
+  error?: string;
+};
+
+/**
+ * Backend endpoint:
+ * POST /stock/stock-in
+ *
+ * Payload:
+ * {
+ *   item_name: "Gold Ring",
+ *   metal_type: "Gold",
+ *   category: "Ring",
+ *   purity: "22KT",
+ *   qty: 2,
+ *   net_weight: 15
+ * }
+ */
+export async function addStockItem(payload: AddStockPayload) {
+  const cleanPayload: AddStockPayload = {
+    item_name: payload.item_name.trim(),
+    metal_type: payload.metal_type,
+    category: payload.category.trim(),
+    purity: payload.purity.trim(),
+    qty: Number(payload.qty),
+    net_weight: Number(payload.net_weight),
+  };
+
+  const res = await stockApi.post<AddStockResponse>(
+    "/stock/stock-in",
+    cleanPayload,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return res.data;
+}
+
+export function getStockApiErrorMessage(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as
+      | {
+          message?: string;
+          error?: string;
+        }
+      | undefined;
+
+    return (
+      data?.message ||
+      data?.error ||
+      error.message ||
+      "Failed to add stock item"
+    );
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Failed to add stock item";
+  
+}
+
+export type UploadStockInResponse = {
+  success: boolean;
+  message?: string;
+  data?: unknown;
+  error?: string;
+};
+
+export async function uploadStockInFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await stockApi.post<UploadStockInResponse>(
+    "/stock/inventory/stock-in/upload",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
   return res.data;
 }

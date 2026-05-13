@@ -75,6 +75,15 @@ export type LedgerClientRow = {
   totalAmount: string;
   receivedAmount: string;
   pendingAmount: string;
+
+  /**
+   * Optional custom route.
+   * Retail/district old flow will ignore this.
+   * Head office can pass /headoffice/ledger/:storeCode safely.
+   */
+  href?: string;
+
+  raw?: any;
 };
 
 export type LedgerInvoicePayment = {
@@ -93,7 +102,7 @@ export type LedgerInvoicePayment = {
 export type LedgerInvoicePaymentDetailResponse = {
   success: boolean;
   message?: string;
-  invoice: {
+  invoice?: {
     invoice_id: number | string;
     invoice_number: string;
     customer_id: number | string | null;
@@ -103,9 +112,10 @@ export type LedgerInvoicePaymentDetailResponse = {
     status: string;
     store_code: string | null;
   };
-  count: number;
-  total_paid: string;
-  data: LedgerInvoicePayment[];
+  count?: number;
+  total_paid?: string | number;
+  data?: LedgerInvoicePayment[] | any[];
+  payments?: LedgerInvoicePayment[] | any[];
 };
 
 export type ClientInvoiceHistoryRow = {
@@ -134,4 +144,155 @@ export type ClientInvoiceRow = {
   customerPhone?: string | null;
   customerAddress?: string | null;
   history: ClientInvoiceHistoryRow[];
+  raw?: any;
+};
+
+/* -------------------------------------------------------------------------- */
+/* HEAD OFFICE LEDGER TYPES                                                    */
+/* -------------------------------------------------------------------------- */
+
+export type HeadLedgerDashboardMetric = {
+  value: number | string;
+  change?: number | string;
+};
+
+export type HeadLedgerStoreApiRow = {
+  id: string | number;
+  store_code: string;
+  store_name: string;
+  organization_level: string;
+  store_manager: string | null;
+  total_deals: string | number;
+  total_amount: string | number;
+  received_amount: string | number;
+  pending_amount: string | number;
+};
+
+export type HeadLedgerStoresResponse = {
+  success: boolean;
+  message?: string;
+  data?: {
+    dashboard?: {
+      totalSales?: HeadLedgerDashboardMetric;
+      loss?: HeadLedgerDashboardMetric;
+      totalProfit?: HeadLedgerDashboardMetric;
+      totalRevenue?: HeadLedgerDashboardMetric;
+      collectableAmount?: HeadLedgerDashboardMetric;
+    };
+
+    /**
+     * Real backend shape:
+     * GET /headledger/stores
+     * response.data.ledger = store list
+     */
+    ledger?: HeadLedgerStoreApiRow[];
+  };
+};
+
+export type HeadStoreCustomerApiRow = {
+  customer_id?: string | number;
+  customerId?: string | number;
+  client_id?: string | number;
+  clientId?: string | number;
+  id?: string | number;
+
+  client_name?: string;
+  clientName?: string;
+  customer_name?: string;
+  customerName?: string;
+  name?: string;
+
+  phone?: string | null;
+  mobile?: string | null;
+  customer_phone?: string | null;
+
+  total_deals?: string | number;
+  totalDeals?: string | number;
+  total_invoices?: string | number;
+  invoice_count?: string | number;
+  bill_count?: string | number;
+
+  total_amount?: string | number;
+  totalAmount?: string | number;
+  total_sales?: string | number;
+
+  received_amount?: string | number;
+  receivedAmount?: string | number;
+  total_received?: string | number;
+
+  pending_amount?: string | number;
+  pendingAmount?: string | number;
+  collectable_amount?: string | number;
+  due_amount?: string | number;
+
+  [key: string]: any;
+};
+
+export type HeadStoreCustomersResponse = {
+  success: boolean;
+  message?: string;
+
+  /**
+   * Real backend shape:
+   * GET /headstore/store/:store_code/customers
+   * response.data = customer array
+   */
+  data?: HeadStoreCustomerApiRow[] | any;
+
+  store?: any;
+  summary?: any;
+  customers?: HeadStoreCustomerApiRow[];
+  clients?: HeadStoreCustomerApiRow[];
+  rows?: HeadStoreCustomerApiRow[];
+};
+
+export type HeadCustomerInvoicesResponse = {
+  success: boolean;
+  message?: string;
+  data?: any;
+  customer?: any;
+  summary?: any;
+  invoices?: any[];
+  deals?: any[];
+  rows?: any[];
+};
+
+export type HeadLedgerStoreRow = {
+  id: string;
+  storeCode: string;
+  storeName: string;
+  storeManager: string;
+  organizationLevel: string;
+  totalDeals: number;
+  totalAmount: string;
+  receivedAmount: string;
+  pendingAmount: string;
+  href: string;
+  raw?: any;
+};
+
+export type HeadLedgerCustomerRow = {
+  id: string;
+  customerId: string;
+  clientName: string;
+
+  /**
+   * Optional because head customer table design does not always show phone.
+   */
+  phone?: string;
+
+  totalDeals: number;
+  totalAmount: string;
+  receivedAmount: string;
+  pendingAmount: string;
+  href: string;
+  raw?: any;
+};
+
+export type HeadLedgerSummary = {
+  totalSales: string;
+  loss: string;
+  totalProfit: string;
+  totalRevenue: string;
+  collectableAmount: string;
 };
