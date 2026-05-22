@@ -183,14 +183,14 @@ export async function getStockCategories(params?: {
   metal_type?: string;
 }) {
   try {
-    logGroup("📥 GET STOCK CATEGORIES REQUEST", () => {
+    logGroup(" GET STOCK CATEGORIES REQUEST", () => {
       console.log("Endpoint:", "/stock/list");
       console.log("Params:", params || {});
     });
 
     const res = await requestApi.get("/stock/list", { params });
 
-    logGroup("✅ GET STOCK CATEGORIES RESPONSE", () => {
+    logGroup(" GET STOCK CATEGORIES RESPONSE", () => {
       console.log("Full response:", res.data);
       console.log("Summary:", res.data?.summary);
       console.log("Count:", res.data?.count);
@@ -203,7 +203,7 @@ export async function getStockCategories(params?: {
 
     return res.data;
   } catch (error) {
-    logAxiosError("❌ GET STOCK CATEGORIES ERROR", error);
+    logAxiosError(" GET STOCK CATEGORIES ERROR", error);
     throw error;
   }
 }
@@ -219,7 +219,7 @@ export async function getStockItemsByCategory(
   const endpoint = `/stock/category/${encodeURIComponent(category)}`;
 
   try {
-    logGroup("📥 GET STOCK ITEMS BY CATEGORY REQUEST", () => {
+    logGroup(" GET STOCK ITEMS BY CATEGORY REQUEST", () => {
       console.log("Endpoint:", endpoint);
       console.log("Category:", category);
       console.log("Params:", params || {});
@@ -229,7 +229,7 @@ export async function getStockItemsByCategory(
       params,
     });
 
-    logGroup("✅ GET STOCK ITEMS BY CATEGORY RESPONSE", () => {
+    logGroup(" GET STOCK ITEMS BY CATEGORY RESPONSE", () => {
       console.log("Full response:", res.data);
       console.log("Count:", res.data?.count);
       console.log(
@@ -241,20 +241,20 @@ export async function getStockItemsByCategory(
 
     return res.data;
   } catch (error) {
-    logAxiosError("❌ GET STOCK ITEMS BY CATEGORY ERROR", error);
+    logAxiosError(" GET STOCK ITEMS BY CATEGORY ERROR", error);
     throw error;
   }
 }
 
 export async function getMyStockRequests() {
   try {
-    logGroup("📥 GET MY STOCK REQUESTS REQUEST", () => {
+    logGroup(" GET MY STOCK REQUESTS REQUEST", () => {
       console.log("Endpoint:", "/request/requests/my");
     });
 
     const res = await requestApi.get("/request/requests/my");
 
-    logGroup("✅ GET MY STOCK REQUESTS RESPONSE", () => {
+    logGroup(" GET MY STOCK REQUESTS RESPONSE", () => {
       console.log("Full response:", res.data);
       console.log(
         "Rows:",
@@ -278,20 +278,20 @@ export async function getMyStockRequests() {
 
     return res.data;
   } catch (error) {
-    logAxiosError("❌ GET MY STOCK REQUESTS ERROR", error);
+    logAxiosError(" GET MY STOCK REQUESTS ERROR", error);
     throw error;
   }
 }
 
 export async function getReceivedStockRequests() {
   try {
-    logGroup("📥 GET RECEIVED STOCK REQUESTS REQUEST", () => {
+    logGroup(" GET RECEIVED STOCK REQUESTS REQUEST", () => {
       console.log("Endpoint:", "/request/requests/received");
     });
 
     const res = await requestApi.get("/request/requests/received");
 
-    logGroup("✅ GET RECEIVED STOCK REQUESTS RESPONSE", () => {
+    logGroup(" GET RECEIVED STOCK REQUESTS RESPONSE", () => {
       console.log("Full response:", res.data);
       console.log(
         "Rows:",
@@ -301,7 +301,7 @@ export async function getReceivedStockRequests() {
 
       const rows = Array.isArray(res.data?.data) ? res.data.data : [];
       rows.forEach((row: any, index: number) => {
-        console.group(`📦 Received Request ${index + 1}`);
+        console.group(` Received Request ${index + 1}`);
         console.log("Request:", {
           id: row?.id,
           request_no: row?.request_no,
@@ -337,39 +337,65 @@ export async function getReceivedStockRequests() {
 
     return res.data;
   } catch (error) {
-    logAxiosError("❌ GET RECEIVED STOCK REQUESTS ERROR", error);
+    logAxiosError(" GET RECEIVED STOCK REQUESTS ERROR", error);
     throw error;
   }
 }
 
-export async function createStockRequest(payload: {
-  store_id: number | string;
-  priority?: string;
-  category?: string;
-  notes?: string;
-  items: Array<{
-    item_id: number;
-    request_qty: number;
-  }>;
-}) {
-  try {
-    logGroup("📤 CREATE STOCK REQUEST PAYLOAD", () => {
-      console.log("Endpoint:", "/request/requests");
-      console.log("Payload:", payload);
-      console.table(payload.items || []);
-    });
+export async function createStockRequest(payload:any){
 
-    const res = await requestApi.post("/request/requests", payload);
+const cleanPayload={
 
-    logGroup("✅ CREATE STOCK REQUEST RESPONSE", () => {
-      console.log("Full response:", res.data);
-    });
+store_id:Number(payload.store_id),
 
-    return res.data;
-  } catch (error) {
-    logAxiosError("❌ CREATE STOCK REQUEST ERROR", error);
-    throw error;
-  }
+priority:
+["low","medium","high"]
+.includes(payload.priority)
+?payload.priority
+:"medium",
+
+category:
+payload.category || undefined,
+
+notes:
+payload.notes?.trim() || undefined,
+
+items:
+(payload.items||[])
+.map((item:any)=>({
+
+item_id:Number(item.item_id),
+
+request_qty:Number(item.request_qty)
+
+}))
+.filter(
+item=>
+item.item_id &&
+item.request_qty>0
+)
+
+};
+
+console.group(
+"REQUEST PAYLOAD"
+);
+
+console.log(cleanPayload);
+
+console.table(
+cleanPayload.items
+);
+
+console.groupEnd();
+
+const res=
+await requestApi.post(
+"/request/requests",
+cleanPayload
+);
+
+return res.data;
 }
 
 export type ApproveDispatchItemPayload = {

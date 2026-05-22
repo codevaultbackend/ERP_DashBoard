@@ -5,7 +5,9 @@ const API_BASE_URL =
   "https://erp-backend-w3pb.onrender.com";
 
 function getAuthToken() {
-  if (typeof window === "undefined") return "";
+  if (typeof window === "undefined") {
+    return "";
+  }
 
   return (
     localStorage.getItem("token") ||
@@ -19,7 +21,9 @@ function getAuthToken() {
 }
 
 function getStoreCode() {
-  if (typeof window === "undefined") return "";
+  if (typeof window === "undefined") {
+    return "";
+  }
 
   return (
     localStorage.getItem("store_code") ||
@@ -28,101 +32,203 @@ function getStoreCode() {
   );
 }
 
-async function parseApiResponse(res: Response) {
-  const json = await res.json().catch(() => null);
+async function parseApiResponse(
+  res: Response
+) {
+  const json = await res
+    .json()
+    .catch(() => null);
 
-  if (!res.ok || json?.success === false) {
+  if (
+    !res.ok ||
+    json?.success === false
+  ) {
     throw new Error(
-      json?.message || json?.error || "Something went wrong. Please try again."
+      json?.message ||
+        json?.error ||
+        "Something went wrong"
     );
   }
 
   return json;
 }
 
+/* =========================================================
+   SCAN ITEM
+========================================================= */
+
 export async function scanBillingItemByCode(
   rawCode: string
 ): Promise<LiveScannedBillingItem> {
-  const code = String(rawCode || "").trim();
+
+  const code = String(
+    rawCode || ""
+  ).trim();
 
   if (!code) {
-    throw new Error("QR/Barcode code is required");
+    throw new Error(
+      "QR/Barcode code is required"
+    );
   }
 
-  const token = getAuthToken();
+  const token =
+    getAuthToken();
 
   if (!token) {
-    throw new Error("Login token missing. Please login again.");
+    throw new Error(
+      "Login token missing"
+    );
   }
 
-  const res = await fetch(
-    `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    }
-  );
+  const response =
+    await fetch(
+      `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(
+        code
+      )}`,
+      {
+        method: "GET",
 
-  const json = await parseApiResponse(res);
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type":
+            "application/json",
+        },
+
+        cache: "no-store",
+      }
+    );
+
+  const json =
+    await parseApiResponse(
+      response
+    );
 
   return {
     ...json.data,
+
     raw_qr_value: code,
-    scanned_at: new Date().toISOString(),
+
+    scanned_at:
+      new Date().toISOString(),
   };
 }
 
-export type CreateBillCustomerPayload = {
-  name?: string | null;
-  phone?: string | null;
-  pan_card_number?: string | null;
-  pincode?: string | null;
-  address?: string | null;
-};
+/* =========================================================
+   CREATE BILL TYPES
+========================================================= */
 
-export type CreateBillItemPayload = {
-  item_id: number | string;
-  product_code?: string | null;
-  description?: string | null;
-  qty: number;
-  net_weight: number;
-  rate: number;
-  making_charge_percent: number;
-  unit?: string | null;
-};
+export type CreateBillCustomerPayload =
+  {
+    name?: string | null;
 
-export type CreateBillPayload = {
-  store_code?: string | null;
-  customer?: CreateBillCustomerPayload | null;
-  items: CreateBillItemPayload[];
-  paid_amount?: number;
-  notes?: string | null;
-};
+    phone?: string | null;
 
-export async function createBillingInvoice(payload: CreateBillPayload) {
-  const token = getAuthToken();
+    pan_card_number?:
+      | string
+      | null;
+
+    pincode?: string | null;
+
+    address?: string | null;
+  };
+
+export type CreateBillItemPayload =
+  {
+    item_id:
+      | number
+      | string;
+
+    product_code?:
+      | string
+      | null;
+
+    description?:
+      | string
+      | null;
+
+    qty: number;
+
+    net_weight: number;
+
+    rate: number;
+
+    making_charge_percent: number;
+
+    unit?: string | null;
+  };
+
+export type CreateBillPayload =
+  {
+    store_code?:
+      | string
+      | null;
+
+    customer?:
+      | CreateBillCustomerPayload
+      | null;
+
+    items: CreateBillItemPayload[];
+
+    paid_amount?: number;
+
+    notes?: string | null;
+  };
+
+/* =========================================================
+   CREATE BILL
+========================================================= */
+
+export async function createBillingInvoice(
+  payload: CreateBillPayload
+) {
+
+  const token =
+    getAuthToken();
 
   if (!token) {
-    throw new Error("Login token missing. Please login again.");
+    throw new Error(
+      "Login token missing"
+    );
   }
 
-  const storeCode = getStoreCode();
+  const storeCode =
+    getStoreCode();
 
-  const res = await fetch(`${API_BASE_URL}/bill/create-bill`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      ...payload,
-      store_code: payload.store_code || storeCode || undefined,
-    }),
-  });
+  const response =
+    await fetch(
+      `${API_BASE_URL}/bill/create-bill`,
+      {
+        method: "POST",
 
-  return parseApiResponse(res);
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          ...payload,
+
+          store_code:
+            payload.store_code ||
+            storeCode ||
+            undefined,
+        }),
+      }
+    );
+
+  return parseApiResponse(
+    response
+  );
 }
+
+/* =========================================================
+   DEFAULT EXPORT
+========================================================= */
+
+const billingApi = {
+  scanBillingItemByCode,
+  createBillingInvoice,
+};
+
+export default billingApi;

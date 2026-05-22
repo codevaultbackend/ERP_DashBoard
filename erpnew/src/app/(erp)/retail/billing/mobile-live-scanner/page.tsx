@@ -17,14 +17,16 @@ import {
   Wifi,
   XCircle,
 } from "lucide-react";
+
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { supabaseRealtime } from "@/lib/supabase-realtime";
+
 import {
-  getBillingScannerChannelName,
   sendScannedItemToDesktop,
 } from "@/features/retail/billing/billing-realtime";
+
 import { scanBillingItemByCode } from "@/features/retail/billing/billing-api";
+
 import type { LiveScannedBillingItem } from "@/features/retail/billing/live-scanner-types";
 
 export default function MobileLiveScannerPage() {
@@ -39,99 +41,130 @@ function MobileLiveScannerInner() {
   const searchParams = useSearchParams();
 
   const sessionId = searchParams.get("session_id") || "";
+
   const readerId = "mobile-live-billing-scanner-reader";
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
+
   const summaryRef = useRef<HTMLDivElement | null>(null);
+
   const cameraSectionRef = useRef<HTMLDivElement | null>(null);
-  const lastScanValueRef = useRef("");
-  const lastScanAtRef = useRef(0);
+
+  const scanLockRef = useRef(false);
+
+  const sendLockRef = useRef(false);
+
+  const processedCodesRef = useRef(new Set<string>());
 
   const [cameraStarted, setCameraStarted] = useState(false);
+
   const [cameraLoading, setCameraLoading] = useState(false);
+
   const [scanLoading, setScanLoading] = useState(false);
+
   const [sendLoading, setSendLoading] = useState(false);
 
   const [lastQrValue, setLastQrValue] = useState("");
-  const [previewItem, setPreviewItem] = useState<LiveScannedBillingItem | null>(
-    null
-  );
+
+  const [previewItem, setPreviewItem] =
+    useState<LiveScannedBillingItem | null>(null);
 
   const [statusMessage, setStatusMessage] = useState("");
+
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     return () => {
       stopCamera();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function startCamera() {
     try {
       setCameraLoading(true);
+
       setErrorMessage("");
+
       setStatusMessage("");
 
       if (!sessionId) {
         throw new Error(
-          "session_id missing. Desktop billing page se scanner link copy karke open karo."
+          "session_id missing. Desktop billing page se scanner link copy karo."
         );
       }
 
-      if (scannerRef.current) return;
+      if (scannerRef.current) {
+        return;
+      }
 
       const scanner = new Html5Qrcode(readerId);
+
       scannerRef.current = scanner;
 
       await scanner.start(
-        { facingMode: "environment" },
         {
-          fps: 10,
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            const size = Math.floor(minEdge * 0.72);
+          facingMode: "environment",
+        },
+        {
+          fps: 18,
+
+          aspectRatio: 1.7777778,
+
+          disableFlip: false,
+
+          qrbox: (width, height) => {
+            const edge = Math.min(width, height);
+
+            const size = Math.floor(edge * 0.72);
 
             return {
               width: size,
               height: size,
             };
           },
-          aspectRatio: 1,
-          disableFlip: false,
         },
+
         async (decodedText) => {
           await handleDecodedQr(decodedText);
-        },
-        () => {}
+        }
       );
 
       setCameraStarted(true);
+
     } catch (error: any) {
+
       scannerRef.current = null;
+
       setCameraStarted(false);
+
       setErrorMessage(
         error?.message ||
-          "Camera open nahi ho paya. Browser camera permission allow karo."
+          "Camera permission allow karo."
       );
+
     } finally {
+
       setCameraLoading(false);
     }
   }
 
   async function stopCamera() {
     try {
-      if (!scannerRef.current) return;
+      const scanner = scannerRef.current;
 
-      if (scannerRef.current.isScanning) {
-        await scannerRef.current.stop();
-      }
+      if (!scanner) return;
 
-      await scannerRef.current.clear();
-    } catch {
-      // cleanup ignore
-    } finally {
+      try {
+        await scanner.stop();
+      } catch {}
+
+      try {
+        await scanner.clear();
+      } catch {}
+
       scannerRef.current = null;
+
+    } finally {
       setCameraStarted(false);
     }
   }
@@ -139,95 +172,103 @@ function MobileLiveScannerInner() {
   async function handleDecodedQr(decodedText: string) {
     const cleanQr = String(decodedText || "").trim();
 
-    if (!cleanQr || scanLoading) return;
+    if (!cleanQr) return;
 
-    const now = Date.now();
-
-    if (
-      lastScanValueRef.current === cleanQr &&
-      now - lastScanAtRef.current < 2800
-    ) {
+    if (scanLockRef.current) {
       return;
     }
 
-    lastScanValueRef.current = cleanQr;
-    lastScanAtRef.current = now;
+    if (processedCodesRef.current.has(cleanQr)) {
+      return;
+    }
+
+    scanLockRef.current = true;
 
     try {
       setScanLoading(true);
+
       setErrorMessage("");
+
       setStatusMessage("");
+
       setPreviewItem(null);
+
       setLastQrValue(cleanQr);
 
-      const realItem = await scanBillingItemByCode(cleanQr);
+      const item = await scanBillingItemByCode(cleanQr);
 
-      setPreviewItem(realItem);
-      setStatusMessage("Item scanned successfully. Review summary below.");
-
-      if (typeof window !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate?.([80, 60, 80]);
+      if (!item?.item_id) {
+        throw new Error("Invalid item");
       }
+
+      processedCodesRef.current.add(cleanQr);
+
+      setPreviewItem(item);
+
+      setStatusMessage(
+        "Item scanned successfully."
+      );
+
+      navigator.vibrate?.([100]);
 
       window.setTimeout(() => {
         summaryRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "start",
         });
-      }, 180);
+      }, 150);
+
     } catch (error: any) {
+
       setPreviewItem(null);
-      setErrorMessage(error?.message || "QR scan failed.");
+
+      setErrorMessage(
+        error?.message || "QR scan failed."
+      );
+
     } finally {
+
+      scanLockRef.current = false;
+
       setScanLoading(false);
     }
   }
 
   async function sendPreviewToDesktop() {
+
+    if (sendLockRef.current) {
+      return;
+    }
+
     try {
+
+      sendLockRef.current = true;
+
       setSendLoading(true);
+
       setErrorMessage("");
+
       setStatusMessage("");
 
-      if (!sessionId) {
-        throw new Error("session_id missing.");
-      }
-
       if (!previewItem) {
-        throw new Error("No scanned item preview found.");
+        throw new Error("No scanned item found.");
       }
-
-      const channel = supabaseRealtime.channel(
-        getBillingScannerChannelName(sessionId),
-        {
-          config: {
-            broadcast: {
-              self: false,
-            },
-          },
-        }
-      );
-
-      await new Promise<void>((resolve, reject) => {
-        channel.subscribe((status) => {
-          if (status === "SUBSCRIBED") resolve();
-          if (status === "CHANNEL_ERROR") reject(new Error("Realtime failed"));
-        });
-      });
 
       await sendScannedItemToDesktop({
         sessionId,
+
         item: {
           ...previewItem,
           scanned_at: new Date().toISOString(),
         },
-        channel,
       });
 
-      await supabaseRealtime.removeChannel(channel);
+      setStatusMessage(
+        "Item sent to desktop billing page."
+      );
 
-      setStatusMessage("Item sent to desktop billing page.");
       setPreviewItem(null);
+
       setLastQrValue("");
 
       window.setTimeout(() => {
@@ -235,26 +276,40 @@ function MobileLiveScannerInner() {
           behavior: "smooth",
           block: "start",
         });
-      }, 180);
+      }, 120);
+
     } catch (error: any) {
-      setErrorMessage(error?.message || "Failed to send item to desktop.");
+
+      setErrorMessage(
+        error?.message ||
+          "Failed to send item."
+      );
+
     } finally {
+
+      sendLockRef.current = false;
+
       setSendLoading(false);
     }
   }
 
   function scanAnotherItem() {
     setPreviewItem(null);
+
     setStatusMessage("");
+
     setErrorMessage("");
+
     setLastQrValue("");
+
+    scanLockRef.current = false;
 
     window.setTimeout(() => {
       cameraSectionRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
-    }, 120);
+    }, 100);
   }
 
   const scannerStateText = scanLoading
@@ -266,21 +321,24 @@ function MobileLiveScannerInner() {
   return (
     <main className="min-h-screen bg-[#F4F6FA] text-[#0F172A]">
       <div className="mx-auto max-w-[480px] pb-[120px]">
+
         <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white/95 px-4 py-4 backdrop-blur-xl">
+
           <div className="flex items-center justify-between gap-3">
+
             <button
               type="button"
               onClick={() => window.history.back()}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F3F4F6] text-[#111827]"
-              aria-label="Go back"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
 
             <div className="min-w-0 flex-1 text-center">
-              <h1 className="truncate text-[18px] font-bold tracking-[-0.03em] text-[#111827]">
+              <h1 className="truncate text-[18px] font-bold text-[#111827]">
                 Mobile Billing Scanner
               </h1>
+
               <p className="mt-[2px] truncate text-[12px] font-medium text-[#667085]">
                 Scan item and send to desktop billing
               </p>
@@ -293,26 +351,21 @@ function MobileLiveScannerInner() {
         </header>
 
         <section className="px-4 pt-4">
-          <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-4 shadow-[0px_12px_34px_rgba(15,23,42,0.06)]">
-            <div className="grid grid-cols-3 gap-2">
-              <StepPill active label="1" text="Scan" />
-              <StepPill active={!!previewItem} label="2" text="Review" />
-              <StepPill active={statusMessage.includes("sent")} label="3" text="Send" />
-            </div>
-          </div>
-        </section>
 
-        <section className="px-4 pt-4">
           {!sessionId ? (
             <AlertCard
               tone="error"
               title="Session missing"
-              message="Desktop billing page se mobile scanner link copy karke open karo."
+              message="Desktop billing page se scanner link open karo."
             />
           ) : null}
 
           {errorMessage ? (
-            <AlertCard tone="error" title="Scan failed" message={errorMessage} />
+            <AlertCard
+              tone="error"
+              title="Error"
+              message={errorMessage}
+            />
           ) : null}
 
           {statusMessage ? (
@@ -324,10 +377,16 @@ function MobileLiveScannerInner() {
           ) : null}
         </section>
 
-        <section ref={cameraSectionRef} className="px-4 pt-4">
-          <div className="overflow-hidden rounded-[34px] border border-[#111827] bg-[#050816] shadow-[0px_24px_70px_rgba(15,23,42,0.28)]">
+        <section
+          ref={cameraSectionRef}
+          className="px-4 pt-4"
+        >
+          <div className="overflow-hidden rounded-[34px] border border-[#111827] bg-[#050816]">
+
             <div className="flex items-center justify-between px-4 py-4">
+
               <div className="flex items-center gap-3">
+
                 <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-white/10 text-white">
                   <Camera className="h-5 w-5" />
                 </div>
@@ -336,6 +395,7 @@ function MobileLiveScannerInner() {
                   <p className="text-[15px] font-bold text-white">
                     Product Scanner
                   </p>
+
                   <p className="mt-[2px] text-[12px] font-medium text-white/60">
                     Place QR inside frame
                   </p>
@@ -343,15 +403,19 @@ function MobileLiveScannerInner() {
               </div>
 
               <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5">
+
                 {scanLoading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
                 ) : (
                   <CircleDot
                     className={`h-3.5 w-3.5 ${
-                      cameraStarted ? "text-emerald-400" : "text-slate-400"
+                      cameraStarted
+                        ? "text-emerald-400"
+                        : "text-slate-400"
                     }`}
                   />
                 )}
+
                 <span className="text-[11px] font-semibold text-white">
                   {scannerStateText}
                 </span>
@@ -359,53 +423,38 @@ function MobileLiveScannerInner() {
             </div>
 
             <div className="relative aspect-[9/13] w-full overflow-hidden bg-black">
-              <div id={readerId} className="h-full w-full" />
+
+              <div
+                id={readerId}
+                className="h-full w-full"
+              />
 
               {!cameraStarted ? (
                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#050816] px-8 text-center text-white">
-                  <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/10 ring-8 ring-white/[0.03]">
+
+                  <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/10">
                     <Camera className="h-10 w-10" />
                   </div>
 
-                  <h2 className="text-[22px] font-bold tracking-[-0.04em]">
+                  <h2 className="text-[22px] font-bold">
                     Start scanning
                   </h2>
 
                   <p className="mt-2 max-w-[280px] text-[13px] font-medium leading-5 text-white/65">
-                    Camera permission allow karo aur product QR ko scanning
-                    frame ke andar rakho.
+                    Camera allow karo aur QR frame ke andar rakho.
                   </p>
                 </div>
               ) : null}
 
-              {cameraStarted ? (
-                <>
-                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-                    <div className="relative h-[252px] w-[252px] rounded-[34px] border border-white/80 shadow-[0_0_0_999px_rgba(0,0,0,0.46)]">
-                      <div className="absolute -left-[2px] -top-[2px] h-12 w-12 rounded-tl-[34px] border-l-[5px] border-t-[5px] border-emerald-400" />
-                      <div className="absolute -right-[2px] -top-[2px] h-12 w-12 rounded-tr-[34px] border-r-[5px] border-t-[5px] border-emerald-400" />
-                      <div className="absolute -bottom-[2px] -left-[2px] h-12 w-12 rounded-bl-[34px] border-b-[5px] border-l-[5px] border-emerald-400" />
-                      <div className="absolute -bottom-[2px] -right-[2px] h-12 w-12 rounded-br-[34px] border-b-[5px] border-r-[5px] border-emerald-400" />
-
-                      <div className="absolute left-5 right-5 top-1/2 h-[2px] -translate-y-1/2 bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.9)]" />
-                    </div>
-                  </div>
-
-                  <div className="pointer-events-none absolute bottom-5 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/60 px-4 py-2 text-[12px] font-semibold text-white backdrop-blur">
-                    Scanning item from mobile camera...
-                  </div>
-                </>
-              ) : null}
-
               {scanLoading ? (
-                <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50 backdrop-blur-[2px]">
-                  <div className="rounded-[22px] bg-white px-5 py-4 text-center shadow-xl">
+                <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50">
+
+                  <div className="rounded-[22px] bg-white px-5 py-4 text-center">
+
                     <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#7C3AED]" />
+
                     <p className="mt-3 text-[14px] font-bold text-[#111827]">
                       Verifying item
-                    </p>
-                    <p className="mt-1 text-[12px] font-medium text-[#667085]">
-                      Backend se real stock fetch ho raha hai
                     </p>
                   </div>
                 </div>
@@ -413,17 +462,23 @@ function MobileLiveScannerInner() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 p-4">
+
               <button
                 type="button"
                 onClick={startCamera}
-                disabled={cameraStarted || cameraLoading || !sessionId}
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-bold text-[#111827] shadow-[0px_8px_18px_rgba(0,0,0,0.20)] disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={
+                  cameraStarted ||
+                  cameraLoading ||
+                  !sessionId
+                }
+                className="flex h-12 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-bold text-[#111827]"
               >
                 {cameraLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Play className="h-4 w-4" />
                 )}
+
                 Start
               </button>
 
@@ -431,9 +486,10 @@ function MobileLiveScannerInner() {
                 type="button"
                 onClick={stopCamera}
                 disabled={!cameraStarted}
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/10 text-[15px] font-bold text-white ring-1 ring-white/15 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/10 text-[15px] font-bold text-white"
               >
                 <Square className="h-4 w-4" />
+
                 Stop
               </button>
             </div>
@@ -441,9 +497,13 @@ function MobileLiveScannerInner() {
         </section>
 
         <section className="px-4 pt-4">
-          <div className="rounded-[22px] border border-[#E5E7EB] bg-white p-4 shadow-[0px_8px_24px_rgba(15,23,42,0.04)]">
+
+          <div className="rounded-[22px] border border-[#E5E7EB] bg-white p-4">
+
             <div className="flex items-start justify-between gap-3">
+
               <div className="min-w-0">
+
                 <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">
                   Last scanned code
                 </p>
@@ -460,7 +520,10 @@ function MobileLiveScannerInner() {
           </div>
         </section>
 
-        <section ref={summaryRef} className="px-4 pt-5">
+        <section
+          ref={summaryRef}
+          className="px-4 pt-5"
+        >
           {previewItem ? (
             <ScannedSummaryCard
               item={previewItem}
@@ -472,35 +535,6 @@ function MobileLiveScannerInner() {
             <EmptySummaryCard />
           )}
         </section>
-
-        {previewItem ? (
-          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#E5E7EB] bg-white/95 px-4 py-3 backdrop-blur-xl">
-            <div className="mx-auto flex max-w-[480px] gap-3">
-              <button
-                type="button"
-                onClick={scanAnotherItem}
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#111827]"
-                aria-label="Scan another item"
-              >
-                <RefreshCcw className="h-5 w-5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={sendPreviewToDesktop}
-                disabled={sendLoading}
-                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[#050816] text-[15px] font-bold text-white shadow-[0px_12px_28px_rgba(15,23,42,0.25)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {sendLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                Send to Desktop Billing
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
     </main>
   );
@@ -511,85 +545,107 @@ function ScannedSummaryCard({
   sendLoading,
   onSend,
   onScanAnother,
-}: {
-  item: LiveScannedBillingItem;
-  sendLoading: boolean;
-  onSend: () => void;
-  onScanAnother: () => void;
-}) {
+}: any) {
+
   const name =
-    item.item_name || item.description || item.name || "Scanned Item";
+    item.item_name ||
+    item.description ||
+    item.name ||
+    "Scanned Item";
 
   const code =
-    item.product_code || item.article_code || item.sku_code || item.code || "-";
+    item.product_code ||
+    item.article_code ||
+    item.sku_code ||
+    item.code ||
+    "-";
 
   return (
-    <div className="rounded-[34px] border border-[#BBF7D0] bg-white p-4 shadow-[0px_18px_48px_rgba(15,23,42,0.08)]">
+    <div className="rounded-[34px] border border-[#BBF7D0] bg-white p-4">
+
       <div className="rounded-[28px] bg-gradient-to-br from-[#ECFDF5] to-[#F5F3FF] p-4">
+
         <div className="flex items-start justify-between gap-3">
+
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-emerald-700 shadow-sm">
+
+            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[12px] font-bold text-emerald-700">
               <BadgeCheck className="h-4 w-4" />
               Item Scanned Successfully
             </div>
 
-            <h2 className="mt-4 text-[24px] font-bold leading-[30px] tracking-[-0.05em] text-[#111827]">
+            <h2 className="mt-4 text-[24px] font-bold text-[#111827]">
               {name}
             </h2>
 
-            <p className="mt-2 break-all text-[13px] font-semibold leading-5 text-[#667085]">
+            <p className="mt-2 break-all text-[13px] font-semibold text-[#667085]">
               {code}
             </p>
           </div>
 
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-white text-[#7C3AED] shadow-sm">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] bg-white text-[#7C3AED]">
             <Gem className="h-7 w-7" />
           </div>
         </div>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <SummaryBox label="Purity" value={item.purity || "-"} />
-        <SummaryBox label="Metal" value={item.metal_type || "-"} />
+
+        <SummaryBox
+          label="Purity"
+          value={item.purity || "-"}
+        />
+
+        <SummaryBox
+          label="Metal"
+          value={item.metal_type || "-"}
+        />
+
         <SummaryBox
           label="Gross Wt"
           value={`${formatNumber(item.gross_weight)} g`}
         />
-        <SummaryBox label="Net Wt" value={`${formatNumber(item.net_weight)} g`} />
-        <SummaryBox label="Rate" value={`₹${formatNumber(item.rate)}`} />
+
+        <SummaryBox
+          label="Net Wt"
+          value={`${formatNumber(item.net_weight)} g`}
+        />
+
+        <SummaryBox
+          label="Rate"
+          value={`₹${formatNumber(item.rate)}`}
+        />
+
         <SummaryBox
           label="Making"
           value={`₹${formatNumber(item.making_charge_value)}`}
         />
+
         <SummaryBox
           label="Available"
           value={String(Number(item.available_qty || 0))}
         />
-        <SummaryBox label="Total" value={`₹${formatNumber(item.total_amount)}`} />
-      </div>
 
-      <div className="mt-4 rounded-[22px] border border-[#E5E7EB] bg-[#F8FAFC] p-4">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-[#94A3B8]">
-          Send status
-        </p>
-        <p className="mt-1 text-[14px] font-semibold leading-5 text-[#111827]">
-          Review item details. After sending, this item will appear on desktop
-          billing dashboard.
-        </p>
+        <SummaryBox
+          label="Total"
+          value={`₹${formatNumber(item.total_amount)}`}
+        />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3">
+
         <button
           type="button"
           onClick={onSend}
           disabled={sendLoading}
-          className="flex h-13 min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-[#050816] text-[15px] font-bold text-white shadow-[0px_12px_28px_rgba(15,23,42,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex h-13 min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-[#050816] text-[15px] font-bold text-white"
         >
           {sendLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Send className="h-4 w-4" />
           )}
+
           Send to Desktop Billing
         </button>
 
@@ -606,12 +662,20 @@ function ScannedSummaryCard({
   );
 }
 
-function SummaryBox({ label, value }: { label: string; value: string }) {
+function SummaryBox({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="rounded-[20px] border border-[#EEF2F7] bg-[#F8FAFC] p-3">
+
       <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-[#94A3B8]">
         {label}
       </p>
+
       <p className="mt-2 break-words text-[15px] font-bold text-[#111827]">
         {value || "-"}
       </p>
@@ -622,17 +686,17 @@ function SummaryBox({ label, value }: { label: string; value: string }) {
 function EmptySummaryCard() {
   return (
     <div className="rounded-[30px] border border-dashed border-[#CBD5E1] bg-white p-6 text-center">
+
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#F5F3FF] text-[#7C3AED]">
         <Camera className="h-8 w-8" />
       </div>
 
-      <h3 className="mt-4 text-[18px] font-bold tracking-[-0.03em] text-[#111827]">
+      <h3 className="mt-4 text-[18px] font-bold text-[#111827]">
         No item scanned yet
       </h3>
 
       <p className="mt-2 text-[13px] font-medium leading-5 text-[#667085]">
-        Jaise hi QR successfully scan hoga, app automatically yahan summary
-        section par aa jayega.
+        QR scan hone ke baad item summary yahan show hogi.
       </p>
     </div>
   );
@@ -642,11 +706,8 @@ function AlertCard({
   tone,
   title,
   message,
-}: {
-  tone: "success" | "error";
-  title: string;
-  message: string;
-}) {
+}: any) {
+
   const success = tone === "success";
 
   return (
@@ -664,36 +725,14 @@ function AlertCard({
       )}
 
       <div className="min-w-0">
-        <p className="text-[13px] font-bold">{title}</p>
-        <p className="mt-[2px] text-[12px] font-medium leading-5">{message}</p>
-      </div>
-    </div>
-  );
-}
+        <p className="text-[13px] font-bold">
+          {title}
+        </p>
 
-function StepPill({
-  active,
-  label,
-  text,
-}: {
-  active: boolean;
-  label: string;
-  text: string;
-}) {
-  return (
-    <div
-      className={`flex items-center gap-2 rounded-full px-3 py-2 ${
-        active ? "bg-[#EEF2FF] text-[#4F46E5]" : "bg-[#F8FAFC] text-[#94A3B8]"
-      }`}
-    >
-      <span
-        className={`flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-bold ${
-          active ? "bg-[#4F46E5] text-white" : "bg-[#E5E7EB] text-[#64748B]"
-        }`}
-      >
-        {label}
-      </span>
-      <span className="text-[12px] font-bold">{text}</span>
+        <p className="mt-[2px] text-[12px] font-medium leading-5">
+          {message}
+        </p>
+      </div>
     </div>
   );
 }
@@ -701,8 +740,11 @@ function StepPill({
 function ScannerPageLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F4F6FA]">
+
       <div className="rounded-[24px] bg-white px-6 py-5 text-center shadow-sm">
+
         <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#7C3AED]" />
+
         <p className="mt-3 text-[14px] font-bold text-[#111827]">
           Loading scanner...
         </p>
@@ -713,7 +755,11 @@ function ScannerPageLoading() {
 
 function formatNumber(value: unknown, digits = 2) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "0.00";
+
+  if (!Number.isFinite(n)) {
+    return "0.00";
+  }
+
   return n.toLocaleString("en-IN", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,

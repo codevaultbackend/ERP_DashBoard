@@ -664,7 +664,7 @@ export default function ApproveDispatchModal({
             </button>
           </div>
 
-          <div className="dashboard-hidden-scroll max-h-[calc(100svh-118px)] overflow-y-auto px-5 pb-5 sm:max-h-[calc(100svh-145px)] sm:px-6 sm:pb-6">
+          <div className="dashboard-hidden-scroll max-h-[calc(100svh-118px)] overflow-y-auto px-5  sm:max-h-[calc(100svh-145px)] sm:px-6 pb-0">
             {alreadyDispatched ? (
               <div className="mb-4 rounded-[16px] border border-[#BBF7D0] bg-[#F0FDF4] px-4 py-3 text-[14px] font-medium text-[#15803D]">
                 This stock request is already dispatched.
@@ -677,7 +677,7 @@ export default function ApproveDispatchModal({
               </div>
             ) : null}
 
-            <section className="rounded-[20px] bg-gradient-to-r from-[#EEF6FF] to-[#FCF3FF] px-4 py-4">
+            <section className="rounded-[20px] bg-gradient-to-r from-[#EEF6FF] to-[#FCF3FF] px-4 py-4 ">
               <h3 className="text-[18px] font-semibold leading-[24px] tracking-[-0.03em] text-[#111827]">
                 Request Details
               </h3>
@@ -975,7 +975,7 @@ export default function ApproveDispatchModal({
               </section>
             </div>
 
-            <div className="sticky bottom-0 z-10 mt-5 grid grid-cols-1 gap-4 border-t border-transparent bg-white pb-1 pt-4 lg:grid-cols-[520px_1fr] lg:items-end">
+            <div className="sticky bottom-0 z-10 mt-5 grid grid-cols-1 gap-4 border-t border-transparent bg-white  pt-4 lg:grid-cols-[520px_1fr] lg:items-end !pb-6">
               <div>
                 <label className="mb-2 block text-[14px] font-medium leading-[20px] tracking-[-0.02em] text-black">
                   Additional Notes

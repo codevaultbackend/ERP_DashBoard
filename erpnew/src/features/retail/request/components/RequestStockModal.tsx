@@ -350,62 +350,92 @@ export default function RequestStockModal({
   };
 
   const handleSubmit = async () => {
-    try {
-      if (submitting) return;
+  try {
+    if (submitting) return;
 
-      setSubmitting(true);
-      setError("");
+    setSubmitting(true);
+    setError("");
 
-      if (!storeId) {
-        setError("Store not found");
-        return;
-      }
+    const numericStoreId = Number(storeId);
 
-      if (!priority) {
-        setError("Please select priority");
-        return;
-      }
-
-      const payloadItems = Object.values(selectedItems)
-        .filter((item) => Number(item.request_qty) > 0)
-        .map((item) => ({
-          item_id: item.item_id,
-          request_qty: item.request_qty,
-        }));
-
-      if (payloadItems.length === 0) {
-        setError("Please select at least one item and enter quantity");
-        return;
-      }
-
-      const selectedCategories = Array.from(
-        new Set(Object.values(selectedItems).map((item) => item.category))
-      );
-
-      await createStockRequest({
-        store_id: storeId,
-        priority,
-        category: selectedCategories.join(", "),
-        notes: notes.trim() || "Not found",
-        items: payloadItems,
-      });
-
-      resetModal();
-      await onSuccess();
-      onClose();
-    } catch (err: any) {
-      setError(
-        safeText(
-          err?.response?.data?.message ||
-            err?.response?.data?.error ||
-            err?.message,
-          "Failed to send request"
-        )
-      );
-    } finally {
-      setSubmitting(false);
+    if (!numericStoreId) {
+      setError("Store not found");
+      return;
     }
-  };
+
+    if (!priority) {
+      setError("Please select priority");
+      return;
+    }
+
+    const payloadItems = Object.values(selectedItems)
+      .map((item) => ({
+        item_id: Number(item.item_id),
+        request_qty: Number(item.request_qty),
+      }))
+      .filter(
+        (item) =>
+          item.item_id > 0 &&
+          Number.isFinite(item.request_qty) &&
+          item.request_qty > 0
+      );
+
+    if (payloadItems.length === 0) {
+      setError(
+        "Please select at least one item and enter quantity"
+      );
+      return;
+    }
+
+    const payload = {
+      store_id: numericStoreId,
+
+      priority: priority.toLowerCase(),
+
+      // IMPORTANT FIX
+      category: selectedCategory || '',
+
+      notes: notes.trim() || "",
+
+      items: payloadItems,
+    };
+
+    console.group(
+      "📤 FINAL STOCK REQUEST PAYLOAD"
+    );
+
+    console.log(payload);
+
+    console.table(payload.items);
+
+    console.groupEnd();
+
+    await createStockRequest(payload);
+
+    resetModal();
+
+    await onSuccess();
+
+    onClose();
+
+  } catch (err: any) {
+    console.log(
+      "API ERROR:",
+      err?.response?.data
+    );
+
+    setError(
+      safeText(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message,
+        "Failed to send request"
+      )
+    );
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const modal = (
     <div

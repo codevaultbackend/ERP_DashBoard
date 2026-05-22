@@ -79,28 +79,58 @@ export function mapCategoryRowToOption(row: CategoryRowApi): RequestCategoryOpti
   };
 }
 
-export function mapCategoryItemToRequestProduct(item: CategoryItemApi): RequestableProduct {
-  const qty = Number(item.available_qty || item.quantity || 0);
+export function mapCategoryItemToRequestProduct(
+row:CategoryItemApi,
+category:string,
+selectedQty=""
+):RequestableProduct{
 
-  let tone: "critical" | "medium" | "optimum" = "medium";
-  if (qty <= 2) tone = "critical";
-  else if (qty <= 12) tone = "medium";
-  else tone = "optimum";
+const stock=
+Number(
+row.available_qty ??
+row.quantity ??
+0
+);
 
-  return {
-    id: Number(item.id),
-    item_id: Number(item.id),
-    name: item.item_name || "",
-    stock: qty,
-    available_weight: Number(item.available_weight || 0),
-    tone,
-    qty: "",
-    category: item.category || "",
-    article_code: item.article_code || "",
-    sku_code: item.sku_code || "",
-    purity: item.purity || "",
-    unit: item.unit || "",
-  };
+return{
+
+id:Number(row.id),
+
+item_id:Number(row.id),
+
+name:
+row.item_name ||
+row.article_code ||
+row.sku_code ||
+"Item",
+
+stock,
+
+available_weight:
+Number(
+row.available_weight ||0
+),
+
+tone:
+getToneFromStock(stock),
+
+qty:selectedQty,
+
+category,
+
+article_code:
+row.article_code || "",
+
+sku_code:
+row.sku_code || "",
+
+purity:
+row.purity || "",
+
+unit:
+row.unit || ""
+
+};
 }
 
 export function mapRequestToCard(item: StockRequestApi): RequestCardItem {
