@@ -1,9 +1,23 @@
+"use client";
+
 import { io } from "socket.io-client";
 
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL!;
+
 export const socket = io(
-  process.env.NEXT_PUBLIC_API_URL!,
+  SOCKET_URL,
   {
+    autoConnect: false,
+
     transports: ["websocket"],
-    autoConnect: true,
+
+    reconnection: true,
+
+    reconnectionAttempts: 20,
+
+    reconnectionDelay: 1000,
+
+    timeout: 20000,
   }
 );

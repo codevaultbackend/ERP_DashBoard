@@ -1,3 +1,5 @@
+// BillingHeader.tsx
+
 "use client";
 
 import {
@@ -7,7 +9,11 @@ import {
 
 import Link from "next/link";
 
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 export default function BillingHeader() {
 
@@ -16,17 +22,30 @@ export default function BillingHeader() {
     setBillingSessionId,
   ] = useState("");
 
+  /**
+   * IMPORTANT
+   * replace with actual values
+   * from auth/store context/api
+   */
+  const storeCode =
+    "STR001";
+
+  const organizationId =
+    "568";
+
   useEffect(() => {
 
     /**
-     * persistent billing session
+     * persistent session
      */
     let sessionId =
       localStorage.getItem(
         "billing_session_id"
       );
 
-    if (!sessionId) {
+    if (
+      !sessionId
+    ) {
 
       sessionId =
         crypto.randomUUID();
@@ -42,6 +61,24 @@ export default function BillingHeader() {
     );
 
   }, []);
+
+  /**
+   * scanner url
+   */
+  const scannerUrl =
+    useMemo(() => {
+
+      if (
+        !billingSessionId
+      ) {
+        return "#";
+      }
+
+      return `/retail/billing/mobile-live-scanner?session_id=${billingSessionId}&store_code=${storeCode}&organization_id=${organizationId}`;
+
+    }, [
+      billingSessionId,
+    ]);
 
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -59,14 +96,14 @@ export default function BillingHeader() {
 
       <div className="flex flex-wrap items-center gap-3">
 
-        {/* =========================
-            MOBILE SCANNER BUTTON
-        ========================= */}
+        {/* OPEN SCANNER */}
         {billingSessionId ? (
           <Link
-            href={`/retail/billing/mobile-live-scanner?session_id=${billingSessionId}`}
+            href={scannerUrl}
+            target="_blank"
             className="flex h-[44px] items-center gap-2 rounded-full bg-[#111827] px-4 text-white shadow-[0px_8px_20px_rgba(2,6,23,0.12)] transition-all hover:opacity-95"
           >
+
             <QrCode className="h-4 w-4" />
 
             <span className="text-[13px] font-semibold">
@@ -75,9 +112,7 @@ export default function BillingHeader() {
           </Link>
         ) : null}
 
-        {/* =========================
-            LIVE STATUS
-        ========================= */}
+        {/* LIVE */}
         <div className="flex h-[44px] items-center gap-2 rounded-full border border-green-200 bg-green-50 px-4">
 
           <Wifi className="h-4 w-4 text-green-600" />

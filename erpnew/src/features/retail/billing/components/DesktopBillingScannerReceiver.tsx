@@ -1,3 +1,5 @@
+// DesktopBillingScannerReceiver.tsx
+
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -12,23 +14,24 @@ export default function DesktopBillingScannerReceiver({
   onItemReceived,
 }: Props) {
 
-  const mountedRef = useRef(false);
+  const mountedRef =
+    useRef(false);
 
-  const joinedRef = useRef(false);
+  const joinedRef =
+    useRef(false);
 
   useEffect(() => {
 
-    /**
-     * prevent duplicate strict mode mounts
-     */
-    if (mountedRef.current) {
+    if (
+      mountedRef.current
+    ) {
       return;
     }
 
-    mountedRef.current = true;
+    mountedRef.current =
+      true;
 
     /**
-     * IMPORTANT
      * persistent billing session
      */
     let billingSessionId =
@@ -36,7 +39,9 @@ export default function DesktopBillingScannerReceiver({
         "billing_session_id"
       );
 
-    if (!billingSessionId) {
+    if (
+      !billingSessionId
+    ) {
 
       billingSessionId =
         crypto.randomUUID();
@@ -50,16 +55,21 @@ export default function DesktopBillingScannerReceiver({
     /**
      * connect socket
      */
-    if (!socket.connected) {
+    if (
+      !socket.connected
+    ) {
       socket.connect();
     }
 
     /**
-     * join billing room once
+     * join billing room
      */
-    if (!joinedRef.current) {
+    if (
+      !joinedRef.current
+    ) {
 
-      joinedRef.current = true;
+      joinedRef.current =
+        true;
 
       socket.emit(
         "join-billing-session",
@@ -67,7 +77,7 @@ export default function DesktopBillingScannerReceiver({
       );
 
       console.log(
-        "Joined billing session:",
+        "Joined billing room:",
         billingSessionId
       );
     }
@@ -75,86 +85,93 @@ export default function DesktopBillingScannerReceiver({
     /**
      * socket connected
      */
-    const handleConnect = () => {
+    const handleConnect =
+      () => {
 
-      console.log(
-        "Socket connected:",
-        socket.id
-      );
+        console.log(
+          "Socket connected:",
+          socket.id
+        );
 
-      /**
-       * reconnect join
-       */
-      socket.emit(
-        "join-billing-session",
-        billingSessionId
-      );
-    };
+        /**
+         * reconnect join
+         */
+        socket.emit(
+          "join-billing-session",
+          billingSessionId
+        );
+      };
 
     /**
      * socket disconnected
      */
-    const handleDisconnect = (
-      reason: string
-    ) => {
+    const handleDisconnect =
+      (
+        reason: string
+      ) => {
 
-      console.log(
-        "Socket disconnected:",
-        reason
-      );
-    };
-
-    /**
-     * realtime scanned item
-     */
-    const handleScannedItem = (
-      payload: any
-    ) => {
-
-      console.log(
-        "Realtime billing item received:",
-        payload
-      );
-
-      if (!payload) {
-        return;
-      }
-
-      /**
-       * backend format:
-       * {
-       *   success,
-       *   type,
-       *   data,
-       *   sent_at
-       * }
-       */
-      const item =
-        payload?.data || payload;
-
-      if (!item) {
-        return;
-      }
-
-      onItemReceived(item);
-    };
+        console.log(
+          "Socket disconnected:",
+          reason
+        );
+      };
 
     /**
-     * room joined confirmation
+     * realtime item
      */
-    const handleRoomJoined = (
-      data: any
-    ) => {
+    const handleScannedItem =
+      (
+        payload: any
+      ) => {
 
-      console.log(
-        "Billing room joined:",
-        data
-      );
-    };
+        console.log(
+          "Realtime payload:",
+          payload
+        );
+
+        if (
+          !payload
+        ) {
+          return;
+        }
+
+        /**
+         * backend format:
+         * {
+         *   success,
+         *   data,
+         *   sent_at
+         * }
+         */
+        const item =
+          payload?.data ||
+          payload;
+
+        if (
+          !item
+        ) {
+          return;
+        }
+
+        onItemReceived(
+          item
+        );
+      };
 
     /**
-     * listeners
+     * room joined
      */
+    const handleRoomJoined =
+      (
+        data: any
+      ) => {
+
+        console.log(
+          "Billing room joined:",
+          data
+        );
+      };
+
     socket.on(
       "connect",
       handleConnect
@@ -175,14 +192,13 @@ export default function DesktopBillingScannerReceiver({
       handleRoomJoined
     );
 
-    /**
-     * cleanup
-     */
     return () => {
 
-      mountedRef.current = false;
+      mountedRef.current =
+        false;
 
-      joinedRef.current = false;
+      joinedRef.current =
+        false;
 
       socket.off(
         "connect",
