@@ -23,7 +23,7 @@ import {
 
 import { scanBillingItemByCode } from "@/features/retail/billing/billing-api";
 
-import { socket } from "@/lib/socket";
+import { socket } from "../../../../../features/retail/billing/socket";
 
 export default function MobileLiveScannerPage() {
 
