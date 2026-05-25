@@ -1,0 +1,179 @@
+"use client";
+
+import Link from "next/link";
+import { useParams, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import ClientLedgerTable from "../../../../../../features/retail/ledger/ClientLedgerTable";
+import InvoicePreviewModal from "../../../../../../features/retail/ledger/InvoicePreviewModal";
+
+import { getPaymentsByCustomer } from "../../../../../../features/retail/ledger/api";
+
+import type { ClientInvoiceRow } from "../../../../../../features/retail/ledger/types";
+
+import { mapCustomerLedgerToUi } from "../../../../../../features/retail/ledger/utils";
+
+import { FaChevronLeft } from "react-icons/fa";
+
+export default function PendingClientDetailPage() {
+  const params = useParams<{ clientId: string }>();
+  const pathname = usePathname();
+
+  const customerId = params?.clientId ?? "";
+
+  const [selectedInvoice, setSelectedInvoice] =
+    useState<ClientInvoiceRow | null>(null);
+
+  const [rows, setRows] = useState<ClientInvoiceRow[]>([]);
+  const [customerName, setCustomerName] =
+    useState("Customer");
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // =========================================
+  // DYNAMIC BACK ROUTE
+  // =========================================
+  const backHref = pathname.includes("/district/")
+    ? "/district/billing/pending-amount"
+    : "/retail/billing/pending-amount";
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCustomerLedger() {
+      try {
+        setLoading(true);
+        setError("");
+
+        // =========================================
+        // VALIDATE CUSTOMER ID
+        // =========================================
+        if (!customerId?.trim()) {
+          throw new Error("Customer ID is missing.");
+        }
+
+        // =========================================
+        // FETCH CUSTOMER PAYMENTS
+        // =========================================
+        const res =
+          await getPaymentsByCustomer(customerId);
+
+        if (!active) return;
+
+        if (!res?.success) {
+          throw new Error(
+            res?.message ||
+              "Failed to load customer ledger."
+          );
+        }
+
+        // =========================================
+        // MAP API RESPONSE
+        // =========================================
+        const mapped = mapCustomerLedgerToUi(res);
+
+        setRows(mapped?.data ?? []);
+
+        setCustomerName(
+          mapped?.customer?.name || "Customer"
+        );
+      } catch (error) {
+        console.error(
+          "Failed to load customer ledger:",
+          error
+        );
+
+        if (!active) return;
+
+        setRows([]);
+
+        setCustomerName("Customer");
+
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while loading customer invoices."
+        );
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadCustomerLedger();
+
+    return () => {
+      active = false;
+    };
+  }, [customerId]);
+
+  return (
+    <div className="w-full pb-8">
+      {/* =========================================
+          HEADER
+      ========================================= */}
+      <div className="mb-6 flex items-center gap-4">
+        <Link
+          href={backHref}
+          className="flex h-[50px] w-[50px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)] transition hover:bg-[#F8FAFC]"
+        >
+          <FaChevronLeft className="h-5 w-5" />
+        </Link>
+
+        <h1 className="text-[30px] font-semibold leading-[36px] tracking-[0.4px] text-[#101828]">
+          {loading ? "Loading..." : customerName}
+        </h1>
+      </div>
+
+      {/* =========================================
+          LOADING
+      ========================================= */}
+      {loading ? (
+        <div className="rounded-[28px] border border-[#E0E3E8] bg-white px-6 py-8 text-center text-[16px] font-medium text-[#5B6475] shadow-[0px_3px_14px_rgba(15,23,42,0.03)]">
+          Loading customer invoices...
+        </div>
+      ) : error ? (
+        /* =========================================
+            ERROR
+        ========================================= */
+        <div className="rounded-[28px] border border-[#F3D2D2] bg-[#FFF7F7] px-6 py-8 shadow-[0px_3px_14px_rgba(15,23,42,0.03)]">
+          <h3 className="text-[16px] font-semibold text-[#B42318]">
+            Failed to load customer ledger
+          </h3>
+
+          <p className="mt-2 text-[14px] text-[#7A271A]">
+            {error}
+          </p>
+        </div>
+      ) : rows.length === 0 ? (
+        /* =========================================
+            EMPTY STATE
+        ========================================= */
+        <div className="rounded-[28px] border border-[#E0E3E8] bg-white px-6 py-8 text-center text-[16px] font-medium text-[#5B6475] shadow-[0px_3px_14px_rgba(15,23,42,0.03)]">
+          No invoices found for this customer.
+        </div>
+      ) : (
+        /* =========================================
+            TABLE
+        ========================================= */
+        <ClientLedgerTable
+          rows={rows}
+          onViewInvoice={setSelectedInvoice}
+        />
+      )}
+
+      {/* =========================================
+          INVOICE MODAL
+      ========================================= */}
+      <InvoicePreviewModal
+        open={!!selectedInvoice}
+        invoice={selectedInvoice}
+        onClose={() =>
+          setSelectedInvoice(null)
+        }
+      />
+    </div>
+  );
+}

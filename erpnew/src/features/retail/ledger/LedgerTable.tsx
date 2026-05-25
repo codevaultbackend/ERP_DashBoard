@@ -37,42 +37,79 @@ function getClientId(row: LedgerClientRow & any) {
 function getLedgerBasePath(pathname: string | null) {
   if (!pathname) return "/retail/ledger";
 
-  const cleanPath = pathname.split("?")[0].replace(/\/+$/, "");
-  const parts = cleanPath.split("/").filter(Boolean);
+  const cleanPath = pathname
+    .split("?")[0]
+    .replace(/\/+$/, "");
 
-  const ledgerIndex = parts.findIndex((part) => part === "ledger");
+  const parts = cleanPath
+    .split("/")
+    .filter(Boolean);
 
-  if (ledgerIndex >= 0) {
-    return `/${parts.slice(0, ledgerIndex + 1).join("/")}`;
-  }
-
-  const lowerParts = parts.map((part) => part.toLowerCase());
-
+  // =========================================
+  // BILLING -> PENDING AMOUNT
+  // =========================================
   if (
-    lowerParts.includes("headoffice") ||
-    lowerParts.includes("head-office") ||
-    lowerParts.includes("head") ||
-    lowerParts.includes("head_office")
+    parts.includes("billing") &&
+    parts.includes("pending-amount")
   ) {
-    const headPart =
-      parts.find((part) =>
-        ["headoffice", "head-office", "head", "head_office"].includes(
-          part.toLowerCase()
-        )
-      ) || "headoffice";
+    const pendingAmountIndex =
+      parts.findIndex(
+        (part) => part === "pending-amount"
+      );
 
-    return `/${headPart}/ledger`;
+    return `/${parts
+      .slice(0, pendingAmountIndex + 1)
+      .join("/")}`;
   }
 
-  if (lowerParts.includes("district")) return "/district/ledger";
-  if (lowerParts.includes("retail")) return "/retail/ledger";
+  // =========================================
+  // LEDGER
+  // =========================================
+  if (parts.includes("ledger")) {
+    const ledgerIndex = parts.findIndex(
+      (part) => part === "ledger"
+    );
 
+    return `/${parts
+      .slice(0, ledgerIndex + 1)
+      .join("/")}`;
+  }
+
+  // =========================================
+  // DISTRICT FALLBACK
+  // =========================================
+  if (parts.includes("district")) {
+    if (parts.includes("billing")) {
+      return "/district/billing/pending-amount";
+    }
+
+    return "/district/ledger";
+  }
+
+  // =========================================
+  // RETAIL FALLBACK
+  // =========================================
+  if (parts.includes("retail")) {
+    if (parts.includes("billing")) {
+      return "/retail/billing/pending-amount";
+    }
+
+    return "/retail/ledger";
+  }
+
+  // =========================================
+  // DEFAULT
+  // =========================================
   return "/retail/ledger";
 }
 
-export default function LedgerTable({ rows }: Props) {
+export default function LedgerTable({
+  rows,
+}: Props) {
   const pathname = usePathname();
-  const ledgerBasePath = getLedgerBasePath(pathname);
+
+  const ledgerBasePath =
+    getLedgerBasePath(pathname);
 
   return (
     <div className="w-full overflow-hidden rounded-[31px] border border-[#E5E7EB] bg-white shadow-[1px_1px_4px_0px_rgba(0,0,0,0.10)]">
@@ -101,8 +138,12 @@ export default function LedgerTable({ rows }: Props) {
                   key={header}
                   className={[
                     "border-b border-black px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em]",
-                    index === 0 ? "rounded-tl-[31px]" : "",
-                    index === 5 ? "rounded-tr-[31px]" : "",
+                    index === 0
+                      ? "rounded-tl-[31px]"
+                      : "",
+                    index === 5
+                      ? "rounded-tr-[31px]"
+                      : "",
                   ].join(" ")}
                 >
                   {header}
@@ -113,54 +154,77 @@ export default function LedgerTable({ rows }: Props) {
 
           <tbody>
             {rows.length > 0 ? (
-              rows.map((row: LedgerClientRow & any, index) => {
-                const clientId = getClientId(row);
-                const href = clientId
-                  ? `${ledgerBasePath}/${encodeURIComponent(clientId)}`
-                  : ledgerBasePath;
+              rows.map(
+                (
+                  row: LedgerClientRow & any,
+                  index
+                ) => {
+                  const clientId =
+                    getClientId(row);
 
-                return (
-                  <tr
-                    key={`${clientId ?? row.clientName ?? "ledger"}-${index}`}
-                    className="h-[54px] bg-white"
-                  >
-                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-normal leading-[20px] tracking-[-0.03em] text-[#30323A]">
-                      {displayValue(row.clientName)}
-                    </td>
+                  const href = clientId
+                    ? `${ledgerBasePath}/${encodeURIComponent(
+                        clientId
+                      )}`
+                    : ledgerBasePath;
 
-                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-normal leading-[20px] tracking-[-0.03em] text-[#30323A]">
-                      {displayValue(row.totalDeals)}
-                    </td>
+                  return (
+                    <tr
+                      key={`${
+                        clientId ??
+                        row.clientName ??
+                        "ledger"
+                      }-${index}`}
+                      className="h-[54px] bg-white"
+                    >
+                      <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-normal leading-[20px] tracking-[-0.03em] text-[#30323A]">
+                        {displayValue(
+                          row.clientName
+                        )}
+                      </td>
 
-                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
-                      {displayValue(row.totalAmount)}
-                    </td>
+                      <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-normal leading-[20px] tracking-[-0.03em] text-[#30323A]">
+                        {displayValue(
+                          row.totalDeals
+                        )}
+                      </td>
 
-                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
-                      {displayValue(row.receivedAmount)}
-                    </td>
+                      <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
+                        {displayValue(
+                          row.totalAmount
+                        )}
+                      </td>
 
-                    <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
-                      {displayValue(row.pendingAmount)}
-                    </td>
+                      <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
+                        {displayValue(
+                          row.receivedAmount
+                        )}
+                      </td>
 
-                    <td className="border-b border-[#E5E7EB] px-4 text-center align-middle">
-                      {clientId ? (
-                        <Link
-                          href={href}
-                          className="text-[16px] font-medium leading-[20px] tracking-[-0.03em] text-[#2563EB] underline underline-offset-[3px] transition hover:text-[#1D4ED8]"
-                        >
-                          View
-                        </Link>
-                      ) : (
-                        <span className="text-[16px] font-medium leading-[20px] tracking-[-0.03em] text-[#94A3B8]">
-                          View
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+                      <td className="border-b border-r border-[#E5E7EB] px-4 text-center align-middle text-[16px] font-semibold leading-[20px] tracking-[-0.03em] text-[#101828]">
+                        {displayValue(
+                          row.pendingAmount
+                        )}
+                      </td>
+
+                      <td className="border-b border-[#E5E7EB] px-4 text-center align-middle">
+                        {clientId ? (
+                          <Link
+                            href={href}
+                            className="text-[16px] font-medium leading-[20px] tracking-[-0.03em] text-[#2563EB] underline underline-offset-[3px] transition hover:text-[#1D4ED8]"
+                          >
+                            View
+                          </Link>
+                        ) : (
+                          <span className="text-[16px] font-medium leading-[20px] tracking-[-0.03em] text-[#94A3B8]">
+                            View
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                }
+              )
             ) : (
               <tr>
                 <td

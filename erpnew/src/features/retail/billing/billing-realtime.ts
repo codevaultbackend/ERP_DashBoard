@@ -5,219 +5,212 @@ import {
   type RealtimeChannel,
 } from "@supabase/supabase-js";
 
-/* =========================================================
-   SUPABASE
-========================================================= */
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
-const supabase =
-  createClient(
-    process.env
-      .NEXT_PUBLIC_SUPABASE_URL!,
-    process.env
-      .NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+const channelMap = new Map<
+  string,
+  RealtimeChannel
+>();
 
-/* =========================================================
-   CHANNEL CACHE
-========================================================= */
+const subscribedMap = new Map<
+  string,
+  boolean
+>();
 
-const channelMap =
-  new Map<
-    string,
-    RealtimeChannel
-  >();
+function safeWindow() {
+  return typeof window !== "undefined";
+}
 
-/* =========================================================
-   SESSION ID
-========================================================= */
-
-export function createBillingSessionId() {
-
-  try {
-
-    return crypto.randomUUID();
-
-  } catch {
-
-    return `billing_${Date.now()}_${Math.random()
-      .toString(36)
-      .slice(2, 10)}`;
+/**
+ * SAFE STORE CODE
+ */
+export function getStoreCode() {
+  if (!safeWindow()) {
+    return null;
   }
+
+  const storeCode =
+    localStorage.getItem("store_code") ||
+    localStorage.getItem("storeCode") ||
+    sessionStorage.getItem("store_code") ||
+    sessionStorage.getItem("storeCode") ||
+    "";
+
+  const clean = String(storeCode).trim();
+
+  if (!clean) {
+    return null;
+  }
+
+  return clean;
 }
 
-/* =========================================================
-   CHANNEL NAME
-========================================================= */
+/**
+ * SAFE CHANNEL NAME
+ */
+export function getBillingChannelName() {
+  const storeCode = getStoreCode();
 
-export function getBillingScannerChannelName(
-  sessionId: string
-) {
+  /**
+   * DO NOT THROW
+   */
+  if (!storeCode) {
+    return null;
+  }
 
-  return `billing_scanner_${sessionId}`;
+  return `billing_store_${storeCode}`;
 }
 
-/* =========================================================
-   GET OR CREATE CHANNEL
-========================================================= */
+/**
+ * SINGLETON CHANNEL
+ */
+export function getBillingChannel() {
+  const channelName =
+    getBillingChannelName();
 
-export function getOrCreateBillingChannel(
-  sessionId: string
-) {
-
-  if (!sessionId) {
-    throw new Error(
-      "sessionId missing"
-    );
+  /**
+   * store not ready yet
+   */
+  if (!channelName) {
+    return null;
   }
 
   const existing =
-    channelMap.get(
-      sessionId
-    );
+    channelMap.get(channelName);
 
+  /**
+   * prevent duplicate joins
+   */
   if (existing) {
     return existing;
   }
 
-  const channel =
-    supabase.channel(
-      getBillingScannerChannelName(
-        sessionId
-      ),
-      {
-        config: {
-          broadcast: {
-            self: true,
-            ack: true,
-          },
+  const channel = supabase.channel(
+    channelName,
+    {
+      config: {
+        broadcast: {
+          self: true,
+          ack: true,
         },
-      }
-    );
-
-  channel.subscribe(
-    (status) => {
-      console.log(
-        "Billing realtime:",
-        status
-      );
+      },
     }
   );
 
+  /**
+   * subscribe ONLY once
+   */
+  if (!subscribedMap.get(channelName)) {
+    subscribedMap.set(channelName, true);
+
+    channel.subscribe((status) => {
+      console.log(
+        "[Billing Realtime]",
+        status
+      );
+    });
+  }
+
   channelMap.set(
-    sessionId,
+    channelName,
     channel
   );
 
   return channel;
 }
 
-/* =========================================================
-   DESTROY CHANNEL
-========================================================= */
+/**
+ * CLEANUP
+ */
+export async function destroyBillingChannel() {
+  const channelName =
+    getBillingChannelName();
 
-export async function destroyBillingChannel(
-  sessionId: string
-) {
+  if (!channelName) {
+    return;
+  }
 
   const channel =
-    channelMap.get(
-      sessionId
-    );
+    channelMap.get(channelName);
 
   if (!channel) {
     return;
   }
 
   try {
-
     await supabase.removeChannel(
       channel
     );
-
   } catch (error) {
-
     console.error(
       "removeChannel failed",
       error
     );
   }
 
-  channelMap.delete(
-    sessionId
-  );
+  channelMap.delete(channelName);
+
+  subscribedMap.delete(channelName);
 }
 
-/* =========================================================
-   SEND ITEM
-========================================================= */
-
-export async function sendScannedItemToDesktop({
-  sessionId,
-  item,
-}: {
-  sessionId: string;
-
-  item: any;
-}) {
-
+/**
+ * SEND ITEM
+ */
+export async function sendScannedItemToDesktop(
+  payload: any
+) {
   const channel =
-    getOrCreateBillingChannel(
-      sessionId
+    getBillingChannel();
+
+  if (!channel) {
+    throw new Error(
+      "Store not initialized"
     );
+  }
 
-  const payload = {
-    event_id:
-      createBillingSessionId(),
+  return channel.send({
+    type: "broadcast",
 
-    session_id:
-      sessionId,
+    event: "billing:item_scanned",
 
-    sent_at:
-      new Date().toISOString(),
+    payload: {
+      ...payload,
 
-    item,
-  };
+      sent_at:
+        new Date().toISOString(),
 
-  const response =
-    await channel.send({
-      type: "broadcast",
-
-      event:
-        "billing:item_scanned",
-
-      payload,
-    });
-
-  return response;
+      event_id:
+        crypto.randomUUID(),
+    },
+  });
 }
 
-/* =========================================================
-   SUBSCRIBE ITEMS
-========================================================= */
-
+/**
+ * SUBSCRIBE ITEMS
+ */
 export function subscribeBillingItems({
-  sessionId,
   onItem,
 }: {
-  sessionId: string;
-
   onItem: (
     payload: any
   ) => void;
 }) {
-
   const channel =
-    getOrCreateBillingChannel(
-      sessionId
-    );
+    getBillingChannel();
 
   /**
-   * Remove old listeners first
-   * prevents duplicate events
+   * store not ready yet
    */
-  channel.unsubscribe();
+  if (!channel) {
+    console.warn(
+      "Billing realtime skipped: store_code missing"
+    );
 
-  channel.subscribe();
+    return null;
+  }
 
   channel.on(
     "broadcast",
@@ -226,31 +219,9 @@ export function subscribeBillingItems({
         "billing:item_scanned",
     },
     ({ payload }) => {
-
-      if (!payload) {
-        return;
-      }
-
       onItem(payload);
     }
   );
 
-  return {
-    unsubscribe: async () => {
-
-      try {
-
-        await destroyBillingChannel(
-          sessionId
-        );
-
-      } catch (error) {
-
-        console.error(
-          "unsubscribe failed",
-          error
-        );
-      }
-    },
-  };
+  return channel;
 }

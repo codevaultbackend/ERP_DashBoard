@@ -166,7 +166,6 @@ function mapProductToCartItem(
 function mapScannedItemToCartItem(
   item: LiveScannedBillingItem
 ): BillingCartItem {
-
   const code =
     getScannedCode(item);
 
@@ -367,9 +366,6 @@ export default function BillingPageContent() {
   const hydratedRef =
     useRef(false);
 
-  const createBillLockRef =
-    useRef(false);
-
   const scannedEventIdsRef =
     useRef(new Set<string>());
 
@@ -414,21 +410,6 @@ export default function BillingPageContent() {
     useState<LiveScannedBillingItem | null>(
       null
     );
-
-  const [
-    invoiceModalOpen,
-    setInvoiceModalOpen,
-  ] = useState(false);
-
-  const [
-    createBillLoading,
-    setCreateBillLoading,
-  ] = useState(false);
-
-  const [
-    createBillError,
-    setCreateBillError,
-  ] = useState("");
 
   const [
     billSuccess,
@@ -683,9 +664,6 @@ export default function BillingPageContent() {
             scannedItem
           );
 
-        /**
-         * Duplicate realtime protection
-         */
         if (
           scannedCodesRef.current.has(
             code
@@ -721,9 +699,6 @@ export default function BillingPageContent() {
                     ))
             );
 
-          /**
-           * Prevent duplicates
-           */
           if (
             existing
           ) {
@@ -946,204 +921,11 @@ export default function BillingPageContent() {
 
     setBillSuccess("");
 
-    setInvoiceModalOpen(
-      false
-    );
-
-    setCreateBillError("");
-
     clearStoredBillingSession();
   }
 
-  function openCreateInvoiceModal() {
-
-    setCreateBillError("");
-
-    if (
-      items.length === 0
-    ) {
-
-      setScanError(
-        "Please scan at least one item."
-      );
-
-      return;
-    }
-
-    setInvoiceModalOpen(
-      true
-    );
-  }
-
-  function buildBillItems(): CreateBillItemPayload[] {
-
-    return items.map(
-      (item) => {
-
-        const itemId =
-          item.item_id ||
-          item.id;
-
-        if (
-          !itemId
-        ) {
-          throw new Error(
-            `item_id missing for ${item.name}`
-          );
-        }
-
-        return {
-          item_id:
-            itemId,
-
-          product_code:
-            item.code,
-
-          description:
-            item.name,
-
-          qty:
-            toNumber(
-              item.qty,
-              1
-            ),
-
-          net_weight:
-            toNumber(
-              item.net_weight ||
-                item.weight
-            ),
-
-          rate:
-            toNumber(
-              item.rate
-            ),
-
-          making_charge_percent:
-            toNumber(
-              item.making_charge_percent
-            ),
-
-          unit:
-            item.unit ||
-            undefined,
-        };
-      }
-    );
-  }
-
-  async function submitCreateInvoice(
-    form: InvoiceCustomerForm
-  ) {
-
-    if (
-      createBillLockRef.current
-    ) {
-      return;
-    }
-
-    try {
-
-      createBillLockRef.current =
-        true;
-
-      setCreateBillLoading(
-        true
-      );
-
-      setCreateBillError("");
-
-      const billItems =
-        buildBillItems();
-
-      const customerPayload =
-        {
-          name:
-            sanitizeText(
-              form.name
-            ),
-
-          phone:
-            sanitizeText(
-              form.phone ||
-                customerPhone
-            ),
-
-          pan_card_number:
-            sanitizeText(
-              form.pan_card_number
-            ),
-
-          pincode:
-            sanitizeText(
-              form.pincode
-            ),
-
-          address:
-            sanitizeText(
-              form.address
-            ),
-        };
-
-      const hasCustomer =
-        Object.values(
-          customerPayload
-        ).some(Boolean);
-
-      const response =
-        await createBillingInvoice(
-          {
-            customer:
-              hasCustomer
-                ? customerPayload
-                : null,
-
-            items:
-              billItems,
-
-            paid_amount: 0,
-
-            notes: null,
-          }
-        );
-
-      const billNumber =
-        response?.data
-          ?.bill_number ||
-        response?.data
-          ?.bill_no ||
-        "created";
-
-      setBillSuccess(
-        `Invoice ${billNumber} created successfully.`
-      );
-
-      setInvoiceModalOpen(
-        false
-      );
-
-      endBillingSession();
-
-    } catch (error: any) {
-
-      setCreateBillError(
-        error?.message ||
-          "Failed to create invoice"
-      );
-
-    } finally {
-
-      createBillLockRef.current =
-        false;
-
-      setCreateBillLoading(
-        false
-      );
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-[#F6F7F9]">
+    <div className="min-h-screen overflow-x-hidden bg-[#F6F7F9]">
 
       <DesktopBillingScannerReceiver
         onItemReceived={
@@ -1151,7 +933,7 @@ export default function BillingPageContent() {
         }
       />
 
-      <div className="mx-auto w-full max-w-[1510px]">
+      <div className="mx-auto w-full max-w-[1510px] px-3 sm:px-4 md:px-5 lg:px-6">
 
         <BillingHeader />
 
@@ -1173,16 +955,10 @@ export default function BillingPageContent() {
           onSelectProduct={
             addProduct
           }
-          scanLoading={
-            scanLoading
-          }
-          onCreateBill={
-            openCreateInvoiceModal
-          }
         />
 
         {scanLoading ? (
-          <div className="mb-4 flex h-[46px] items-center gap-3 rounded-[18px] border border-[#DBEAFE] bg-[#EFF6FF] px-4 text-[14px] font-semibold text-[#1D4ED8]">
+          <div className="mb-4 flex min-h-[46px] flex-wrap items-center gap-3 rounded-2xl border border-[#DBEAFE] bg-[#EFF6FF] px-3 py-3 text-[13px] font-semibold text-[#1D4ED8] sm:px-4 sm:text-[14px]">
 
             <Loader2 className="h-4 w-4 animate-spin" />
 
@@ -1191,7 +967,7 @@ export default function BillingPageContent() {
         ) : null}
 
         {scanError ? (
-          <div className="mb-4 flex min-h-[46px] items-center justify-between gap-3 rounded-[18px] border border-red-200 bg-red-50 px-4 text-[14px] font-semibold text-red-700">
+          <div className="mb-4 flex min-h-[46px] flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-[13px] font-semibold text-red-700 sm:px-4 sm:text-[14px]">
 
             <span>
               {scanError}
@@ -1209,7 +985,7 @@ export default function BillingPageContent() {
         ) : null}
 
         {billSuccess ? (
-          <div className="mb-4 flex min-h-[46px] items-center gap-3 rounded-[18px] border border-emerald-200 bg-emerald-50 px-4 text-[14px] font-semibold text-emerald-700">
+          <div className="mb-4 flex min-h-[46px] flex-wrap items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-[13px] font-semibold text-emerald-700 sm:px-4 sm:text-[14px]">
 
             <CheckCircle2 className="h-4 w-4" />
 
@@ -1245,7 +1021,7 @@ export default function BillingPageContent() {
           }
         />
 
-        <div className="grid grid-cols-1 gap-[28px] xl:grid-cols-[minmax(0,1fr)_376px]">
+        <div className="grid grid-cols-1 gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_376px]">
 
           <BillingItemsCard
             items={items}
@@ -1261,6 +1037,11 @@ export default function BillingPageContent() {
                 document.querySelector<HTMLInputElement>(
                   'input[placeholder*="Scan or enter"]'
                 );
+
+              input?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
 
               input?.focus();
             }}
@@ -1293,46 +1074,12 @@ export default function BillingPageContent() {
             totalWeight={
               totalWeight
             }
-            onCreateBill={
-              openCreateInvoiceModal
-            }
             onClearAll={
               endBillingSession
             }
           />
         </div>
       </div>
-
-      <CreateInvoiceModal
-        open={
-          invoiceModalOpen
-        }
-        loading={
-          createBillLoading
-        }
-        error={
-          createBillError
-        }
-        onClose={() => {
-
-          if (
-            createBillLoading
-          ) {
-            return;
-          }
-
-          setInvoiceModalOpen(
-            false
-          );
-
-          setCreateBillError(
-            ""
-          );
-        }}
-        onSubmit={
-          submitCreateInvoice
-        }
-      />
     </div>
   );
 }
@@ -1360,37 +1107,37 @@ function ScanSummaryCard({
     "-";
 
   return (
-    <div className="relative mb-5 rounded-[24px] border border-[#BBF7D0] bg-white px-4 py-4 shadow-[0px_8px_24px_rgba(15,23,42,0.05)] sm:px-5">
+    <div className="relative mb-5 overflow-hidden rounded-3xl border border-[#BBF7D0] bg-white p-4 shadow-[0px_8px_24px_rgba(15,23,42,0.05)] sm:p-5">
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-5">
 
-        <div className="flex min-w-0 items-start gap-3">
+        <div className="flex items-start gap-3 pr-10">
 
-          <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[14px] bg-[#F5F3FF] text-[#8B5CF6]">
+          <div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-2xl bg-[#F5F3FF] text-[#8B5CF6]">
 
             <ScanLine className="h-6 w-6" />
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
 
-            <div className="mb-1 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[12px] font-semibold text-emerald-700">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700 sm:text-[12px]">
 
               <CheckCircle2 className="h-4 w-4" />
 
               Item Scanned Successfully
             </div>
 
-            <h3 className="truncate text-[20px] font-semibold tracking-[-0.03em] text-[#111827]">
+            <h3 className="break-words text-[18px] font-semibold tracking-[-0.03em] text-[#111827] sm:text-[20px]">
               {name}
             </h3>
 
-            <p className="mt-1 break-all text-[13px] font-medium text-[#667085]">
+            <p className="mt-1 break-all text-[12px] font-medium text-[#667085] sm:text-[13px]">
               {code}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[620px]">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
 
           <MiniStat
             label="Purity"
@@ -1432,7 +1179,7 @@ function ScanSummaryCard({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#667085] hover:bg-[#E5E7EB]"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#667085] transition hover:bg-[#E5E7EB]"
         >
           <X className="h-4 w-4" />
         </button>
@@ -1449,14 +1196,15 @@ function MiniStat({
 
   value: string;
 }) {
+
   return (
-    <div className="rounded-[16px] bg-[#F8FAFC] px-4 py-3">
+    <div className="min-w-0 rounded-2xl bg-[#F8FAFC] px-3 py-3 sm:px-4">
 
       <p className="text-[12px] font-medium text-[#667085]">
         {label}
       </p>
 
-      <p className="mt-1 truncate text-[15px] font-bold text-[#111827]">
+      <p className="mt-1 break-words text-[14px] font-bold text-[#111827] sm:text-[15px]">
         {value}
       </p>
     </div>

@@ -1,21 +1,52 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+} from "lucide-react";
+
+import {
+  Fragment,
+  useMemo,
+  useState,
+} from "react";
+
 import type { ReactNode } from "react";
+
 import { usePathname } from "next/navigation";
-import { getPaymentsByInvoice, viewInvoicePdf } from "./api";
-import type { ClientInvoiceHistoryRow, ClientInvoiceRow } from "./types";
-import { mapInvoiceHistoryToUi } from "./utils";
+
+import {
+  getPaymentsByInvoice,
+  viewInvoicePdf,
+} from "./api";
+
+import type {
+  ClientInvoiceHistoryRow,
+  ClientInvoiceRow,
+} from "./types";
+
+import {
+  mapInvoiceHistoryToUi,
+} from "./utils";
+
+import PendingAmountModal from "../../../features/retail/billing/components/PendingAmountModal";
 
 type Props = {
   rows: ClientInvoiceRow[];
-  onViewInvoice?: (invoice: ClientInvoiceRow) => void | Promise<void>;
+
+  onViewInvoice?: (
+    invoice: ClientInvoiceRow
+  ) => void | Promise<void>;
+
   onFetchPayments?: (
     invoiceId: string | number,
     invoice?: ClientInvoiceRow
   ) => Promise<any>;
-  onDownloadInvoice?: (invoice: ClientInvoiceRow) => void | Promise<void>;
+
+  onDownloadInvoice?: (
+    invoice: ClientInvoiceRow
+  ) => void | Promise<void>;
 };
 
 function isValidValue(value: unknown) {
@@ -28,21 +59,36 @@ function isValidValue(value: unknown) {
   );
 }
 
-function getDisplayValue(...values: unknown[]) {
-  const found = values.find((value) => isValidValue(value));
+function getDisplayValue(
+  ...values: unknown[]
+) {
+  const found = values.find((value) =>
+    isValidValue(value)
+  );
+
   return found ? String(found) : "—";
 }
 
-function getIdFromPathname(pathname: string | null) {
+function getIdFromPathname(
+  pathname: string | null
+) {
   if (!pathname) return null;
 
-  const segments = pathname.split("/").filter(Boolean);
-  const last = segments[segments.length - 1];
+  const segments = pathname
+    .split("/")
+    .filter(Boolean);
 
-  return isValidValue(last) ? String(last) : null;
+  const last =
+    segments[segments.length - 1];
+
+  return isValidValue(last)
+    ? String(last)
+    : null;
 }
 
-function getInvoiceIdFromRow(row: ClientInvoiceRow & any) {
+function getInvoiceIdFromRow(
+  row: ClientInvoiceRow & any
+) {
   const value =
     row?.invoiceId ??
     row?.invoice_id ??
@@ -57,10 +103,15 @@ function getInvoiceIdFromRow(row: ClientInvoiceRow & any) {
     row?.raw?.referenceId ??
     null;
 
-  return isValidValue(value) ? String(value) : null;
+  return isValidValue(value)
+    ? String(value)
+    : null;
 }
 
-function getRowKey(row: ClientInvoiceRow & any, index: number) {
+function getRowKey(
+  row: ClientInvoiceRow & any,
+  index: number
+) {
   return String(
     getInvoiceIdFromRow(row) ??
       row?.invoiceNumber ??
@@ -78,141 +129,238 @@ export default function ClientLedgerTable({
 }: Props) {
   const pathname = usePathname();
 
-  const [openKey, setOpenKey] = useState<string | null>(null);
-  const [historyMap, setHistoryMap] = useState<
-    Record<string, ClientInvoiceHistoryRow[]>
-  >({});
-  const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
-  const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
-  const [errorMap, setErrorMap] = useState<Record<string, string>>({});
-  const [viewingMap, setViewingMap] = useState<Record<string, boolean>>({});
+  const [openKey, setOpenKey] =
+    useState<string | null>(null);
 
-  const safeRows = useMemo(() => rows ?? [], [rows]);
+  const [historyMap, setHistoryMap] =
+    useState<
+      Record<
+        string,
+        ClientInvoiceHistoryRow[]
+      >
+    >({});
 
-  const getSafeInvoiceId = (row: ClientInvoiceRow & any) => {
-    return getInvoiceIdFromRow(row) || getIdFromPathname(pathname);
+  const [loadingMap, setLoadingMap] =
+    useState<
+      Record<string, boolean>
+    >({});
+
+  const [loadedMap, setLoadedMap] =
+    useState<
+      Record<string, boolean>
+    >({});
+
+  const [errorMap, setErrorMap] =
+    useState<Record<string, string>>(
+      {}
+    );
+
+  const [viewingMap, setViewingMap] =
+    useState<
+      Record<string, boolean>
+    >({});
+
+  // =========================================
+  // PENDING MODAL STATES
+  // =========================================
+  const [
+    pendingModalOpen,
+    setPendingModalOpen,
+  ] = useState(false);
+
+  const [
+    selectedInvoice,
+    setSelectedInvoice,
+  ] = useState<any>(null);
+
+  // =========================================
+  // CHECK ROUTE
+  // =========================================
+  const isPendingAmountPage =
+    pathname?.includes(
+      "/billing/pending-amount/"
+    );
+
+  const safeRows = useMemo(
+    () => rows ?? [],
+    [rows]
+  );
+
+  const getSafeInvoiceId = (
+    row: ClientInvoiceRow & any
+  ) => {
+    return (
+      getInvoiceIdFromRow(row) ||
+      getIdFromPathname(pathname)
+    );
   };
 
-  const handleToggleHistory = async (
-    row: ClientInvoiceRow & any,
-    index: number
-  ) => {
-    const rowKey = getRowKey(row, index);
-    const invoiceId = getSafeInvoiceId(row);
-
-    if (!isValidValue(invoiceId)) {
-      setOpenKey(rowKey);
-      setHistoryMap((prev) => ({ ...prev, [rowKey]: [] }));
-      setLoadedMap((prev) => ({ ...prev, [rowKey]: true }));
-      setErrorMap((prev) => ({
-        ...prev,
-        [rowKey]:
-          "Invoice ID missing. Payment history needs real invoice_id/reference_id.",
-      }));
-      return;
-    }
-
-    if (openKey === rowKey) {
-      setOpenKey(null);
-      return;
-    }
-
-    setOpenKey(rowKey);
-
-    if (loadedMap[rowKey]) return;
-
-    try {
-      setLoadingMap((prev) => ({ ...prev, [rowKey]: true }));
-      setErrorMap((prev) => ({ ...prev, [rowKey]: "" }));
-
-      const res = onFetchPayments
-        ? await onFetchPayments(invoiceId as string | number, row)
-        : await getPaymentsByInvoice(invoiceId);
-
-      if (!res?.success) {
-        throw new Error(res?.message || "Failed to load payment history.");
-      }
-
-      setHistoryMap((prev) => ({
-        ...prev,
-        [rowKey]: mapInvoiceHistoryToUi(res),
-      }));
-
-      setLoadedMap((prev) => ({ ...prev, [rowKey]: true }));
-    } catch (error) {
-      console.error("Failed to load invoice history:", error);
-
-      setHistoryMap((prev) => ({ ...prev, [rowKey]: [] }));
-      setLoadedMap((prev) => ({ ...prev, [rowKey]: true }));
-      setErrorMap((prev) => ({
-        ...prev,
-        [rowKey]:
-          error instanceof Error
-            ? error.message
-            : "Failed to load payment history.",
-      }));
-    } finally {
-      setLoadingMap((prev) => ({ ...prev, [rowKey]: false }));
-    }
-  };
-
-  const handleViewInvoice = async (
-    row: ClientInvoiceRow & any,
-    index: number
-  ) => {
-    const rowKey = getRowKey(row, index);
-    const invoiceId = getSafeInvoiceId(row);
-
-    if (!isValidValue(invoiceId)) {
-      console.error("Invoice ID missing for invoice action:", row);
-      alert("Invoice ID missing. Cannot open/download invoice.");
-      return;
-    }
-
-    try {
-      setViewingMap((prev) => ({ ...prev, [rowKey]: true }));
-
-      if (onDownloadInvoice) {
-        await onDownloadInvoice(row);
-        return;
-      }
-
-      if (onViewInvoice) {
-        await onViewInvoice(row);
-        return;
-      }
-
-      await viewInvoicePdf(invoiceId);
-    } catch (error) {
-      console.error("Failed to process invoice action:", error);
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Failed to process invoice PDF."
+  // =========================================
+  // TOGGLE HISTORY
+  // =========================================
+  const handleToggleHistory =
+    async (
+      row: ClientInvoiceRow & any,
+      index: number
+    ) => {
+      const rowKey = getRowKey(
+        row,
+        index
       );
-    } finally {
-      setViewingMap((prev) => ({ ...prev, [rowKey]: false }));
-    }
-  };
+
+      const invoiceId =
+        getSafeInvoiceId(row);
+
+      if (!isValidValue(invoiceId)) {
+        setOpenKey(rowKey);
+
+        setHistoryMap((prev) => ({
+          ...prev,
+          [rowKey]: [],
+        }));
+
+        setLoadedMap((prev) => ({
+          ...prev,
+          [rowKey]: true,
+        }));
+
+        setErrorMap((prev) => ({
+          ...prev,
+          [rowKey]:
+            "Invoice ID missing.",
+        }));
+
+        return;
+      }
+
+      if (openKey === rowKey) {
+        setOpenKey(null);
+        return;
+      }
+
+      setOpenKey(rowKey);
+
+      if (loadedMap[rowKey]) return;
+
+      try {
+        setLoadingMap((prev) => ({
+          ...prev,
+          [rowKey]: true,
+        }));
+
+        setErrorMap((prev) => ({
+          ...prev,
+          [rowKey]: "",
+        }));
+
+        const res =
+          onFetchPayments
+            ? await onFetchPayments(
+                invoiceId,
+                row
+              )
+            : await getPaymentsByInvoice(
+                invoiceId
+              );
+
+        if (!res?.success) {
+          throw new Error(
+            res?.message ||
+              "Failed to load payment history."
+          );
+        }
+
+        setHistoryMap((prev) => ({
+          ...prev,
+          [rowKey]:
+            mapInvoiceHistoryToUi(
+              res
+            ),
+        }));
+
+        setLoadedMap((prev) => ({
+          ...prev,
+          [rowKey]: true,
+        }));
+      } catch (error) {
+        console.error(error);
+
+        setErrorMap((prev) => ({
+          ...prev,
+          [rowKey]:
+            error instanceof Error
+              ? error.message
+              : "Failed to load history.",
+        }));
+      } finally {
+        setLoadingMap((prev) => ({
+          ...prev,
+          [rowKey]: false,
+        }));
+      }
+    };
+
+  // =========================================
+  // VIEW INVOICE
+  // =========================================
+  const handleViewInvoice =
+    async (
+      row: ClientInvoiceRow & any,
+      index: number
+    ) => {
+      const rowKey = getRowKey(
+        row,
+        index
+      );
+
+      const invoiceId =
+        getSafeInvoiceId(row);
+
+      if (!invoiceId) return;
+
+      try {
+        setViewingMap((prev) => ({
+          ...prev,
+          [rowKey]: true,
+        }));
+
+        if (onDownloadInvoice) {
+          await onDownloadInvoice(
+            row
+          );
+
+          return;
+        }
+
+        if (onViewInvoice) {
+          await onViewInvoice(row);
+
+          return;
+        }
+
+        await viewInvoicePdf(
+          invoiceId
+        );
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setViewingMap((prev) => ({
+          ...prev,
+          [rowKey]: false,
+        }));
+      }
+    };
 
   return (
     <>
       <div className="hidden w-full rounded-erp-2xl border border-erp-border bg-erp-card shadow-erp-card lg:block">
         <div className="w-full overflow-x-auto overflow-y-visible rounded-erp-2xl table-drag-scroll">
+
           <table className="w-full min-w-[1180px] table-fixed border-separate border-spacing-0 font-erp">
-            <colgroup>
-              <col className="w-[16.2%]" />
-              <col className="w-[14.5%]" />
-              <col className="w-[13.1%]" />
-              <col className="w-[15.9%]" />
-              <col className="w-[15.8%]" />
-              <col className="w-[14.2%]" />
-              <col className="w-[10.3%]" />
-            </colgroup>
 
             <thead className="sticky top-0 z-10">
               <tr className="h-[64px] bg-erp-dark text-white">
+
                 {[
                   "Invoice Number",
                   "Date",
@@ -221,14 +369,10 @@ export default function ClientLedgerTable({
                   "Pending Amount",
                   "Payment Tracking",
                   "Action",
-                ].map((header, index) => (
+                ].map((header) => (
                   <th
                     key={header}
-                    className={[
-                      "whitespace-nowrap border-b border-erp-dark px-4 text-center align-middle text-[16px] font-semibold leading-5 tracking-[-0.03em]",
-                      index === 0 ? "rounded-tl-erp-2xl" : "",
-                      index === 6 ? "rounded-tr-erp-2xl" : "",
-                    ].join(" ")}
+                    className="border-b border-erp-dark px-4 text-center align-middle text-[16px] font-semibold"
                   >
                     {header}
                   </th>
@@ -238,172 +382,306 @@ export default function ClientLedgerTable({
 
             <tbody>
               {safeRows.length > 0 ? (
-                safeRows.map((row: ClientInvoiceRow & any, index) => {
-                  const rowKey = getRowKey(row, index);
-                  const isOpen = openKey === rowKey;
-                  const isLoading = !!loadingMap[rowKey];
-                  const isViewing = !!viewingMap[rowKey];
-                  const history = historyMap[rowKey] ?? row.history ?? [];
-                  const error = errorMap[rowKey] ?? "";
+                safeRows.map(
+                  (
+                    row:
+                      | ClientInvoiceRow
+                      | any,
+                    index
+                  ) => {
 
-                  return (
-                    <Fragment key={rowKey}>
-                      <tr className="h-[60px] bg-erp-card transition hover:bg-erp-card-soft">
-                        <DataCell>
-                          {getDisplayValue(
-                            row.invoiceNumber,
-                            row.invoice_number,
-                            row.raw?.invoice_number
-                          )}
-                        </DataCell>
+                    const rowKey =
+                      getRowKey(
+                        row,
+                        index
+                      );
 
-                        <DataCell>
-                          {getDisplayValue(row.date, row.raw?.date)}
-                        </DataCell>
+                    const isOpen =
+                      openKey === rowKey;
 
-                        <AmountCell>
-                          {getDisplayValue(
-                            row.totalAmount,
-                            row.total_amount,
-                            row.raw?.total_amount,
-                            "₹0"
-                          )}
-                        </AmountCell>
+                    const isLoading =
+                      !!loadingMap[
+                        rowKey
+                      ];
 
-                        <AmountCell>
-                          {getDisplayValue(
-                            row.receivedAmount,
-                            row.received_amount,
-                            row.raw?.received_amount,
-                            "₹0"
-                          )}
-                        </AmountCell>
+                    const isViewing =
+                      !!viewingMap[
+                        rowKey
+                      ];
 
-                        <AmountCell>
-                          {getDisplayValue(
-                            row.pendingAmount,
-                            row.pending_amount,
-                            row.raw?.pending_amount,
-                            "₹0"
-                          )}
-                        </AmountCell>
+                    return (
+                      <Fragment
+                        key={rowKey}
+                      >
+                        <tr className="h-[60px] bg-white">
 
-                        <td className="border-b border-r border-erp-border px-4 text-center align-middle">
-                          <button
-                            type="button"
-                            disabled={isLoading}
-                            onClick={() => handleToggleHistory(row, index)}
-                            className="inline-flex h-[34px] items-center justify-center gap-2 whitespace-nowrap text-[16px] font-medium leading-5 tracking-[-0.03em] text-erp-heading transition hover:text-erp-primary disabled:cursor-not-allowed disabled:opacity-70"
-                          >
-                            <span>View History</span>
-                            {isLoading ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : isOpen ? (
-                              <ChevronUp className="h-4 w-4 stroke-[2.4]" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4 stroke-[2.4]" />
+                          <DataCell>
+                            {getDisplayValue(
+                              row.invoiceNumber
                             )}
-                          </button>
-                        </td>
+                          </DataCell>
 
-                        <td className="border-b border-erp-border px-4 text-center align-middle">
-                          <button
-                            type="button"
-                            disabled={isViewing}
-                            onClick={() => handleViewInvoice(row, index)}
-                            className="whitespace-nowrap text-[16px] font-medium leading-5 tracking-[-0.03em] text-erp-primary underline underline-offset-[3px] transition hover:text-erp-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {isViewing ? "Opening..." : "View"}
-                          </button>
-                        </td>
-                      </tr>
+                          <DataCell>
+                            {getDisplayValue(
+                              row.date
+                            )}
+                          </DataCell>
 
-                      {isOpen && (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="border-b border-erp-border bg-erp-primary-soft p-0"
-                          >
-                            <div className="min-w-[1180px]">
-                              <div className="grid h-[58px] grid-cols-6 border-b border-erp-border bg-erp-primary-soft">
-                                {[
-                                  "Date",
-                                  "Received Amount",
-                                  "Self/Financer",
-                                  "Payment Method",
-                                  "TXN ID",
-                                  "Operator",
-                                ].map((item, idx) => (
-                                  <div
-                                    key={item}
-                                    className={[
-                                      "flex items-center justify-center px-4 text-center text-[16px] font-semibold leading-5 tracking-[-0.03em] text-erp-heading",
-                                      idx !== 5
-                                        ? "border-r border-erp-border"
-                                        : "",
-                                    ].join(" ")}
-                                  >
-                                    {item}
-                                  </div>
-                                ))}
-                              </div>
+                          <AmountCell>
+                            {getDisplayValue(
+                              row.totalAmount
+                            )}
+                          </AmountCell>
+
+                          <AmountCell>
+                            {getDisplayValue(
+                              row.receivedAmount
+                            )}
+                          </AmountCell>
+
+                          <AmountCell>
+                            {getDisplayValue(
+                              row.pendingAmount
+                            )}
+                          </AmountCell>
+
+                          {/* HISTORY BUTTON */}
+                          <td className="border-b border-r border-erp-border px-4 text-center align-middle">
+
+                            <button
+                              type="button"
+                              disabled={
+                                isLoading
+                              }
+                              onClick={() =>
+                                handleToggleHistory(
+                                  row,
+                                  index
+                                )
+                              }
+                              className="inline-flex items-center gap-2 text-[15px] font-medium"
+                            >
+                              View History
 
                               {isLoading ? (
-                                <div className="flex h-[62px] items-center justify-center gap-2 bg-erp-primary-soft text-[15px] font-medium text-erp-muted">
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                  Loading history...
-                                </div>
-                              ) : error ? (
-                                <div className="flex h-[62px] items-center justify-center bg-erp-primary-soft px-5 text-center text-[15px] font-medium text-erp-danger">
-                                  {error}
-                                </div>
-                              ) : history.length > 0 ? (
-                                history.map((historyItem, historyIndex) => (
-                                  <div
-                                    key={
-                                      historyItem.id ??
-                                      `history-${historyIndex}`
-                                    }
-                                    className="grid h-[62px] grid-cols-6 border-b border-erp-border bg-erp-primary-soft last:border-b-0"
-                                  >
-                                    <HistoryCell value={historyItem.date} />
-                                    <HistoryCell
-                                      value={historyItem.receivedAmount}
-                                      strong
-                                    />
-                                    <HistoryCell
-                                      value={historyItem.selfFinancer}
-                                    />
-                                    <HistoryCell
-                                      value={historyItem.paymentMethod}
-                                    />
-                                    <HistoryCell value={historyItem.txnId} />
-                                    <div className="flex min-w-0 items-center justify-center px-4 text-center text-[16px] font-normal leading-5 tracking-[-0.03em] text-erp-text-soft">
-                                      <span className="truncate">
-                                        {historyItem.operator || "—"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : isOpen ? (
+                                <ChevronUp className="h-4 w-4" />
                               ) : (
-                                <div className="flex h-[62px] items-center justify-center bg-erp-primary-soft text-center text-[15px] font-medium text-erp-muted">
-                                  No payment history found.
-                                </div>
+                                <ChevronDown className="h-4 w-4" />
                               )}
-                            </div>
+                            </button>
+                          </td>
+
+                          {/* ACTION BUTTON */}
+                          <td className="border-b border-erp-border px-4 text-center align-middle">
+
+                            {isPendingAmountPage ? (
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedInvoice(
+                                    row
+                                  );
+
+                                  setPendingModalOpen(
+                                    true
+                                  );
+                                }}
+                                className="text-[16px] font-medium text-[#2563EB] underline underline-offset-[3px]"
+                              >
+                                Edit
+                              </button>
+
+                            ) : (
+
+                              <button
+                                type="button"
+                                disabled={
+                                  isViewing
+                                }
+                                onClick={() =>
+                                  handleViewInvoice(
+                                    row,
+                                    index
+                                  )
+                                }
+                                className="text-[16px] font-medium text-[#2563EB] underline underline-offset-[3px]"
+                              >
+                                {isViewing
+                                  ? "Opening..."
+                                  : "View"}
+                              </button>
+
+                            )}
                           </td>
                         </tr>
-                      )}
-                    </Fragment>
-                  );
-                })
+
+                        {/* =========================================
+                            HISTORY EXPANSION
+                        ========================================= */}
+                        {isOpen && (
+                          <tr>
+                            <td
+                              colSpan={7}
+                              className="border-b border-erp-border bg-[#F8FAFC] p-0"
+                            >
+                              <div className="min-w-[1180px]">
+
+                                {/* HEADER */}
+                                <div className="grid h-[58px] grid-cols-6 border-b border-erp-border bg-[#F1F5F9]">
+
+                                  {[
+                                    "Date",
+                                    "Received Amount",
+                                    "Self/Financer",
+                                    "Payment Method",
+                                    "TXN ID",
+                                    "Operator",
+                                  ].map(
+                                    (
+                                      item,
+                                      idx
+                                    ) => (
+                                      <div
+                                        key={
+                                          item
+                                        }
+                                        className={[
+                                          "flex items-center justify-center px-4 text-center text-[15px] font-semibold text-[#111827]",
+                                          idx !==
+                                          5
+                                            ? "border-r border-erp-border"
+                                            : "",
+                                        ].join(
+                                          " "
+                                        )}
+                                      >
+                                        {
+                                          item
+                                        }
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+
+                                {/* LOADING */}
+                                {isLoading ? (
+
+                                  <div className="flex h-[62px] items-center justify-center gap-2 bg-[#F8FAFC] text-[15px] font-medium text-[#64748B]">
+
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+
+                                    Loading history...
+
+                                  </div>
+
+                                ) : errorMap[
+                                    rowKey
+                                  ] ? (
+
+                                  <div className="flex h-[62px] items-center justify-center bg-[#F8FAFC] px-5 text-center text-[15px] font-medium text-red-500">
+
+                                    {
+                                      errorMap[
+                                        rowKey
+                                      ]
+                                    }
+
+                                  </div>
+
+                                ) : (
+                                  historyMap[
+                                    rowKey
+                                  ] ??
+                                  []
+                                ).length > 0 ? (
+
+                                  (
+                                    historyMap[
+                                      rowKey
+                                    ] ?? []
+                                  ).map(
+                                    (
+                                      historyItem,
+                                      historyIndex
+                                    ) => (
+                                      <div
+                                        key={
+                                          historyItem.id ??
+                                          `history-${historyIndex}`
+                                        }
+                                        className="grid h-[62px] grid-cols-6 border-b border-erp-border bg-[#F8FAFC] last:border-b-0"
+                                      >
+
+                                        <HistoryCell
+                                          value={
+                                            historyItem.date
+                                          }
+                                        />
+
+                                        <HistoryCell
+                                          value={
+                                            historyItem.receivedAmount
+                                          }
+                                          strong
+                                        />
+
+                                        <HistoryCell
+                                          value={
+                                            historyItem.selfFinancer
+                                          }
+                                        />
+
+                                        <HistoryCell
+                                          value={
+                                            historyItem.paymentMethod
+                                          }
+                                        />
+
+                                        <HistoryCell
+                                          value={
+                                            historyItem.txnId
+                                          }
+                                        />
+
+                                        <div className="flex min-w-0 items-center justify-center px-4 text-center text-[15px] text-[#475467]">
+
+                                          <span className="truncate">
+                                            {historyItem.operator ||
+                                              "—"}
+                                          </span>
+
+                                        </div>
+                                      </div>
+                                    )
+                                  )
+
+                                ) : (
+
+                                  <div className="flex h-[62px] items-center justify-center bg-[#F8FAFC] text-center text-[15px] font-medium text-[#64748B]">
+
+                                    No payment history found.
+
+                                  </div>
+
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  }
+                )
               ) : (
                 <tr>
                   <td
                     colSpan={7}
-                    className="h-[180px] px-5 text-center align-middle text-[15px] font-medium text-erp-muted"
+                    className="h-[180px] text-center"
                   >
-                    No ledger invoices found.
+                    No invoices found.
                   </td>
                 </tr>
               )}
@@ -412,169 +690,57 @@ export default function ClientLedgerTable({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:hidden">
-        {safeRows.length > 0 ? (
-          safeRows.map((row: ClientInvoiceRow & any, index) => {
-            const rowKey = getRowKey(row, index);
-            const isOpen = openKey === rowKey;
-            const isLoading = !!loadingMap[rowKey];
-            const isViewing = !!viewingMap[rowKey];
-            const history = historyMap[rowKey] ?? row.history ?? [];
-            const error = errorMap[rowKey] ?? "";
+      {/* =========================================
+          PENDING MODAL
+      ========================================= */}
+      <PendingAmountModal
+        open={pendingModalOpen}
+        onClose={() => {
+          setPendingModalOpen(false);
 
-            return (
-              <div
-                key={rowKey}
-                className="rounded-erp-xl border border-erp-border bg-erp-card p-4 shadow-erp-card"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-[17px] font-semibold leading-[22px] tracking-[-0.03em] text-erp-heading">
-                      {getDisplayValue(
-                        row.invoiceNumber,
-                        row.invoice_number,
-                        row.raw?.invoice_number
-                      )}
-                    </h3>
-                    <p className="mt-1 text-[14px] font-medium leading-[18px] text-erp-muted">
-                      {getDisplayValue(row.date, row.raw?.date)}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={isViewing}
-                    onClick={() => handleViewInvoice(row, index)}
-                    className="shrink-0 text-[15px] font-medium text-erp-primary underline underline-offset-[3px] transition hover:text-erp-primary-hover disabled:opacity-60"
-                  >
-                    {isViewing ? "Opening..." : "View"}
-                  </button>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <Info
-                    label="Total Amount"
-                    value={getDisplayValue(
-                      row.totalAmount,
-                      row.total_amount,
-                      row.raw?.total_amount,
-                      "₹0"
-                    )}
-                  />
-                  <Info
-                    label="Received"
-                    value={getDisplayValue(
-                      row.receivedAmount,
-                      row.received_amount,
-                      row.raw?.received_amount,
-                      "₹0"
-                    )}
-                  />
-                  <Info
-                    label="Pending"
-                    value={getDisplayValue(
-                      row.pendingAmount,
-                      row.pending_amount,
-                      row.raw?.pending_amount,
-                      "₹0"
-                    )}
-                  />
-
-                  <div className="rounded-erp-sm bg-erp-card-soft p-3">
-                    <p className="text-[12px] font-medium leading-4 text-erp-muted">
-                      History
-                    </p>
-                    <button
-                      type="button"
-                      disabled={isLoading}
-                      onClick={() => handleToggleHistory(row, index)}
-                      className="mt-1 inline-flex items-center gap-1 text-[14px] font-semibold leading-[18px] text-erp-heading transition hover:text-erp-primary disabled:opacity-70"
-                    >
-                      View
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isOpen ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {isOpen && (
-                  <div className="mt-4 space-y-3 rounded-erp-md border border-erp-border bg-erp-primary-soft p-3">
-                    {isLoading ? (
-                      <div className="flex items-center justify-center gap-2 rounded-erp-sm bg-erp-card p-4 text-[14px] font-medium text-erp-muted">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Loading history...
-                      </div>
-                    ) : error ? (
-                      <div className="rounded-erp-sm bg-erp-card p-4 text-center text-[14px] font-medium text-erp-danger">
-                        {error}
-                      </div>
-                    ) : history.length > 0 ? (
-                      history.map((historyItem, historyIndex) => (
-                        <div
-                          key={
-                            historyItem.id ?? `history-mobile-${historyIndex}`
-                          }
-                          className="rounded-erp-sm bg-erp-card p-3"
-                        >
-                          <div className="grid grid-cols-2 gap-3">
-                            <Info label="Date" value={historyItem.date} />
-                            <Info
-                              label="Amount"
-                              value={historyItem.receivedAmount}
-                            />
-                            <Info
-                              label="Self/Financer"
-                              value={historyItem.selfFinancer}
-                            />
-                            <Info
-                              label="Method"
-                              value={historyItem.paymentMethod}
-                            />
-                            <Info label="TXN ID" value={historyItem.txnId} />
-                            <Info
-                              label="Operator"
-                              value={historyItem.operator}
-                            />
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="rounded-erp-sm bg-erp-card p-4 text-center text-[14px] font-medium text-erp-muted">
-                        No payment history found.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        ) : (
-          <div className="rounded-erp-xl border border-erp-border bg-erp-card p-6 text-center text-[14px] font-medium text-erp-muted shadow-erp-card">
-            No ledger invoices found.
-          </div>
+          setSelectedInvoice(
+            null
+          );
+        }}
+        invoiceId={Number(
+          getInvoiceIdFromRow(
+            selectedInvoice
+          )
         )}
-      </div>
+        pendingAmount={Number(
+          selectedInvoice?.pendingAmount ||
+            selectedInvoice?.pending_amount ||
+            0
+        )}
+        client={selectedInvoice}
+        onSuccess={() => {
+          window.location.reload();
+        }}
+      />
     </>
   );
 }
 
-function DataCell({ children }: { children: ReactNode }) {
+function DataCell({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
-    <td className="min-w-0 border-b border-r border-erp-border px-4 text-center align-middle text-[16px] font-normal leading-5 tracking-[-0.03em] text-erp-text-soft">
-      <div className="mx-auto max-w-full truncate">{children}</div>
+    <td className="border-b border-r border-erp-border px-4 text-center text-[16px]">
+      {children}
     </td>
   );
 }
 
-function AmountCell({ children }: { children: ReactNode }) {
+function AmountCell({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
-    <td className="min-w-0 border-b border-r border-erp-border px-4 text-center align-middle text-[16px] font-semibold leading-5 tracking-[-0.03em] text-erp-heading">
-      <div className="mx-auto max-w-full truncate">{children}</div>
+    <td className="border-b border-r border-erp-border px-4 text-center text-[16px] font-semibold">
+      {children}
     </td>
   );
 }
@@ -589,24 +755,15 @@ function HistoryCell({
   return (
     <div
       className={[
-        "flex min-w-0 items-center justify-center border-r border-erp-border px-4 text-center text-[16px] leading-5 tracking-[-0.03em] text-erp-text-soft",
-        strong ? "font-semibold text-erp-heading" : "font-normal",
+        "flex min-w-0 items-center justify-center border-r border-erp-border px-4 text-center text-[15px]",
+        strong
+          ? "font-semibold text-[#111827]"
+          : "font-normal text-[#475467]",
       ].join(" ")}
     >
-      <span className="truncate">{value || "—"}</span>
-    </div>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-erp-sm bg-erp-card-soft p-3">
-      <p className="text-[12px] font-medium leading-4 text-erp-muted">
-        {label}
-      </p>
-      <p className="mt-1 break-words text-[14px] font-semibold leading-[18px] text-erp-heading">
+      <span className="truncate">
         {value || "—"}
-      </p>
+      </span>
     </div>
   );
 }
