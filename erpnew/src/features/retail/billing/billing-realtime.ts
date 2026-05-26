@@ -4,6 +4,7 @@ import {
   createClient,
   type RealtimeChannel,
 } from "@supabase/supabase-js";
+import { socket } from "./socket";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -162,30 +163,55 @@ export async function destroyBillingChannel() {
 export async function sendScannedItemToDesktop(
   payload: any
 ) {
-  const channel =
-    getBillingChannel();
 
-  if (!channel) {
+  const billingSessionId =
+    localStorage.getItem(
+      "billing_session_id"
+    );
+
+  if (
+    !billingSessionId
+  ) {
+
     throw new Error(
-      "Store not initialized"
+      "Billing session missing"
     );
   }
 
-  return channel.send({
-    type: "broadcast",
+  const roomName =
+    `billing_session_${billingSessionId}`;
 
-    event: "billing:item_scanned",
+  /**
+   * CONNECT
+   */
+  if (
+    !socket.connected
+  ) {
+    socket.connect();
+  }
 
-    payload: {
-      ...payload,
+  /**
+   * EMIT TO BACKEND
+   */
+  socket.emit(
+    "billing:item_scanned",
+    {
+      room: roomName,
+
+      data: payload,
 
       sent_at:
         new Date().toISOString(),
 
       event_id:
         crypto.randomUUID(),
-    },
-  });
+    }
+  );
+
+  console.log(
+    "ITEM SENT:",
+    payload
+  );
 }
 
 /**

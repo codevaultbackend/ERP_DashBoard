@@ -1,38 +1,23 @@
-// DesktopBillingScannerReceiver.tsx
-
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import { socket } from "../socket";
 
 type Props = {
-  onItemReceived: (item: any) => void;
+  onItemReceived: (
+    item: any
+  ) => void;
 };
 
 export default function DesktopBillingScannerReceiver({
   onItemReceived,
 }: Props) {
 
-  const mountedRef =
-    useRef(false);
-
-  const joinedRef =
-    useRef(false);
-
   useEffect(() => {
 
-    if (
-      mountedRef.current
-    ) {
-      return;
-    }
-
-    mountedRef.current =
-      true;
-
     /**
-     * persistent billing session
+     * GET / CREATE SESSION
      */
     let billingSessionId =
       localStorage.getItem(
@@ -53,37 +38,41 @@ export default function DesktopBillingScannerReceiver({
     }
 
     /**
-     * connect socket
+     * FINAL ROOM NAME
+     */
+    const roomName =
+      `billing_session_${billingSessionId}`;
+
+    console.log(
+      "ROOM NAME:",
+      roomName
+    );
+
+    /**
+     * CONNECT SOCKET
      */
     if (
       !socket.connected
     ) {
+
       socket.connect();
     }
 
     /**
-     * join billing room
+     * JOIN ROOM
      */
-    if (
-      !joinedRef.current
-    ) {
+    socket.emit(
+      "join-billing-session",
+      roomName
+    );
 
-      joinedRef.current =
-        true;
-
-      socket.emit(
-        "join-billing-session",
-        `billing_session_${billingSessionId}`
-      );
-
-      console.log(
-        "Joined billing room:",
-        billingSessionId
-      );
-    }
+    console.log(
+      "Joined billing room:",
+      roomName
+    );
 
     /**
-     * socket connected
+     * CONNECT
      */
     const handleConnect =
       () => {
@@ -94,16 +83,17 @@ export default function DesktopBillingScannerReceiver({
         );
 
         /**
-         * reconnect join
+         * IMPORTANT
+         * REJOIN SAME ROOM
          */
         socket.emit(
           "join-billing-session",
-          billingSessionId
+          roomName
         );
       };
 
     /**
-     * socket disconnected
+     * DISCONNECT
      */
     const handleDisconnect =
       (
@@ -117,7 +107,7 @@ export default function DesktopBillingScannerReceiver({
       };
 
     /**
-     * realtime item
+     * RECEIVE ITEM
      */
     const handleScannedItem =
       (
@@ -136,30 +126,140 @@ export default function DesktopBillingScannerReceiver({
         }
 
         /**
-         * backend format:
-         * {
-         *   success,
-         *   data,
-         *   sent_at
-         * }
+         * BACKEND FORMAT
          */
-        const item =
+        const rawItem =
           payload?.data ||
           payload;
 
         if (
-          !item
+          !rawItem
         ) {
           return;
         }
 
+        /**
+         * NORMALIZE ITEM
+         */
+        const normalizedItem = {
+          id:
+            rawItem?.id,
+
+          item_id:
+            rawItem?.item_id ||
+            rawItem?.id,
+
+          code:
+            rawItem?.product_code ||
+            rawItem?.code ||
+            rawItem?.qr_code ||
+            "",
+
+          name:
+            rawItem?.product_name ||
+            rawItem?.name ||
+            rawItem?.item_name ||
+            "Unknown Product",
+
+          qty:
+            Number(
+              rawItem?.qty || 1
+            ),
+
+          purity:
+            rawItem?.purity ||
+            "",
+
+          gross_weight:
+            Number(
+              rawItem?.gross_weight ||
+                rawItem?.grossWeight ||
+                0
+            ),
+
+          net_weight:
+            Number(
+              rawItem?.net_weight ||
+                rawItem?.netWeight ||
+                0
+            ),
+
+          weight:
+            Number(
+              rawItem?.weight ||
+                rawItem?.net_weight ||
+                0
+            ),
+
+          rate:
+            Number(
+              rawItem?.rate ||
+                0
+            ),
+
+          making_charge_percent:
+            Number(
+              rawItem?.making_charge_percent ||
+                rawItem?.makingChargePercent ||
+                0
+            ),
+
+          makingCharges:
+            Number(
+              rawItem?.makingCharges ||
+                rawItem?.making_charges ||
+                0
+            ),
+
+          metalValue:
+            Number(
+              rawItem?.metalValue ||
+                rawItem?.metal_value ||
+                0
+            ),
+
+          category:
+            rawItem?.category ||
+            "",
+
+          unit:
+            rawItem?.unit ||
+            "g",
+
+          scanned_at:
+            rawItem?.scanned_at ||
+            new Date().toISOString(),
+        };
+
+        console.log(
+          "NORMALIZED ITEM:",
+          normalizedItem
+        );
+
+        /**
+         * INVALID ITEM
+         */
+        if (
+          !normalizedItem.code
+        ) {
+
+          console.error(
+            "Invalid item received"
+          );
+
+          return;
+        }
+
+        /**
+         * SEND TO PARENT
+         */
         onItemReceived(
-          item
+          normalizedItem
         );
       };
 
     /**
-     * room joined
+     * ROOM JOINED
      */
     const handleRoomJoined =
       (
@@ -172,6 +272,30 @@ export default function DesktopBillingScannerReceiver({
         );
       };
 
+    /**
+     * DEBUG EVENTS
+     */
+    socket.onAny(
+      (
+        event,
+        data
+      ) => {
+
+        console.log(
+          "SOCKET EVENT:",
+          event
+        );
+
+        console.log(
+          "SOCKET DATA:",
+          data
+        );
+      }
+    );
+
+    /**
+     * EVENTS
+     */
     socket.on(
       "connect",
       handleConnect
@@ -194,12 +318,6 @@ export default function DesktopBillingScannerReceiver({
 
     return () => {
 
-      mountedRef.current =
-        false;
-
-      joinedRef.current =
-        false;
-
       socket.off(
         "connect",
         handleConnect
@@ -219,6 +337,8 @@ export default function DesktopBillingScannerReceiver({
         "billing-session-joined",
         handleRoomJoined
       );
+
+      socket.offAny();
     };
 
   }, [onItemReceived]);
