@@ -17,7 +17,7 @@ export default function DesktopBillingScannerReceiver({
   useEffect(() => {
 
     /**
-     * GET / CREATE SESSION
+     * SESSION
      */
     let billingSessionId =
       localStorage.getItem(
@@ -38,7 +38,7 @@ export default function DesktopBillingScannerReceiver({
     }
 
     /**
-     * FINAL ROOM NAME
+     * ROOM NAME
      */
     const roomName =
       `billing_session_${billingSessionId}`;
@@ -83,8 +83,7 @@ export default function DesktopBillingScannerReceiver({
         );
 
         /**
-         * IMPORTANT
-         * REJOIN SAME ROOM
+         * REJOIN
          */
         socket.emit(
           "join-billing-session",
@@ -119,27 +118,31 @@ export default function DesktopBillingScannerReceiver({
           payload
         );
 
-        if (
-          !payload
-        ) {
-          return;
-        }
-
         /**
-         * BACKEND FORMAT
+         * BACKEND RETURNS:
+         * {
+         *   success,
+         *   item
+         * }
          */
         const rawItem =
+          payload?.item ||
           payload?.data ||
           payload;
 
         if (
           !rawItem
         ) {
+
+          console.error(
+            "No item received"
+          );
+
           return;
         }
 
         /**
-         * NORMALIZE ITEM
+         * NORMALIZE
          */
         const normalizedItem = {
           id:
@@ -151,14 +154,15 @@ export default function DesktopBillingScannerReceiver({
 
           code:
             rawItem?.product_code ||
+            rawItem?.item_code ||
             rawItem?.code ||
             rawItem?.qr_code ||
             "",
 
           name:
             rawItem?.product_name ||
-            rawItem?.name ||
             rawItem?.item_name ||
+            rawItem?.name ||
             "Unknown Product",
 
           qty:
@@ -173,49 +177,49 @@ export default function DesktopBillingScannerReceiver({
           gross_weight:
             Number(
               rawItem?.gross_weight ||
-                rawItem?.grossWeight ||
-                0
+              rawItem?.grossWeight ||
+              0
             ),
 
           net_weight:
             Number(
               rawItem?.net_weight ||
-                rawItem?.netWeight ||
-                0
+              rawItem?.netWeight ||
+              0
             ),
 
           weight:
             Number(
               rawItem?.weight ||
-                rawItem?.net_weight ||
-                0
+              rawItem?.net_weight ||
+              0
             ),
 
           rate:
             Number(
               rawItem?.rate ||
-                0
+              0
             ),
 
           making_charge_percent:
             Number(
               rawItem?.making_charge_percent ||
-                rawItem?.makingChargePercent ||
-                0
+              rawItem?.makingChargePercent ||
+              0
             ),
 
           makingCharges:
             Number(
               rawItem?.makingCharges ||
-                rawItem?.making_charges ||
-                0
+              rawItem?.making_charges ||
+              0
             ),
 
           metalValue:
             Number(
               rawItem?.metalValue ||
-                rawItem?.metal_value ||
-                0
+              rawItem?.metal_value ||
+              0
             ),
 
           category:
@@ -227,7 +231,6 @@ export default function DesktopBillingScannerReceiver({
             "g",
 
           scanned_at:
-            rawItem?.scanned_at ||
             new Date().toISOString(),
         };
 
@@ -237,14 +240,14 @@ export default function DesktopBillingScannerReceiver({
         );
 
         /**
-         * INVALID ITEM
+         * INVALID
          */
         if (
           !normalizedItem.code
         ) {
 
           console.error(
-            "Invalid item received"
+            "Invalid item code"
           );
 
           return;
@@ -273,7 +276,7 @@ export default function DesktopBillingScannerReceiver({
       };
 
     /**
-     * DEBUG EVENTS
+     * DEBUG
      */
     socket.onAny(
       (
@@ -306,8 +309,12 @@ export default function DesktopBillingScannerReceiver({
       handleDisconnect
     );
 
+    /**
+     * IMPORTANT
+     * BACKEND EVENT NAME
+     */
     socket.on(
-      "billing:item_scanned",
+      "billing-item-scanned",
       handleScannedItem
     );
 
@@ -329,7 +336,7 @@ export default function DesktopBillingScannerReceiver({
       );
 
       socket.off(
-        "billing:item_scanned",
+        "billing-item-scanned",
         handleScannedItem
       );
 
