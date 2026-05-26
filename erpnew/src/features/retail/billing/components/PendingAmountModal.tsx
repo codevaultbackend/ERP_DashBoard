@@ -279,19 +279,6 @@ export default function PendingAmountModal({
             </div>
           ) : null}
 
-          {/* SUMMARY */}
-          <div className="mb-6 rounded-3xl border border-gray-200 bg-gray-50 p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">
-                Pending Amount
-              </span>
-
-              <span className="text-3xl font-bold text-gray-900">
-                ₹{pendingAmount}
-              </span>
-            </div>
-          </div>
-
           {/* FORM */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {/* AMOUNT */}

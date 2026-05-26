@@ -1,6 +1,11 @@
 import { BadgeIndianRupee, FileText, X } from "lucide-react";
 import BillingSectionCard from "./BillingSectionCard";
-import { cn, formatCurrency, formatWeight } from "../../utils/billing-utils";
+import {
+  cn,
+  formatCurrency,
+  formatWeight,
+} from "../../utils/billing-utils";
+
 import type { BillingCartItem } from "./BillingPageContent";
 
 type Props = {
@@ -11,14 +16,25 @@ type Props = {
   grandTotal: number;
   totalItems: number;
   totalWeight: number;
-  onCreateBill: () => void;
+
+  // ✅ FIXED
+  onCreateBill?: () => void;
+
   onClearAll: () => void;
 };
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   return (
     <div className="flex min-h-[68px] items-center justify-between gap-4 border-b border-[#E5E7EB] text-[15px]">
-      <span className="text-[#4B5563]">{label}</span>
+      <span className="text-[#4B5563]">
+        {label}
+      </span>
 
       <span className="text-right text-[18px] font-semibold text-[#111827]">
         {value}
@@ -38,6 +54,13 @@ export default function BillSummaryCard({
   onCreateBill,
   onClearAll,
 }: Props) {
+  // ✅ SAFE HANDLER
+  const handleCreateBill = () => {
+    if (typeof onCreateBill === "function") {
+      onCreateBill();
+    }
+  };
+
   return (
     <BillingSectionCard className="h-fit overflow-hidden xl:sticky xl:top-5">
       <div className="flex min-h-[80px] items-center gap-[12px] border-b border-[#E5E7EB] px-[26px] py-[20px]">
@@ -49,12 +72,20 @@ export default function BillSummaryCard({
       </div>
 
       <div className="px-[26px] pb-[25px] pt-[4px]">
-        <SummaryRow label="Metal Value" value={formatCurrency(metalValue)} />
+        <SummaryRow
+          label="Metal Value"
+          value={formatCurrency(metalValue)}
+        />
+
         <SummaryRow
           label="Making Charges"
           value={formatCurrency(makingCharges)}
         />
-        <SummaryRow label="GST (3%)" value={formatCurrency(gst)} />
+
+        <SummaryRow
+          label="GST (3%)"
+          value={formatCurrency(gst)}
+        />
 
         <div className="mx-[-26px] mt-[18px] bg-[#F4F7FC] px-[26px] py-[20px]">
           <div className="flex items-center justify-between gap-4">
@@ -70,8 +101,10 @@ export default function BillSummaryCard({
 
         <button
           type="button"
-          onClick={onCreateBill}
-          disabled={items.length === 0}
+          onClick={handleCreateBill}
+          disabled={
+            items.length === 0
+          }
           className={cn(
             "mt-[34px] inline-flex h-[60px] w-full items-center justify-center gap-[14px] rounded-full text-[19px] font-semibold text-white shadow-[0px_12px_26px_rgba(17,24,39,0.18)] transition",
             items.length === 0
@@ -82,6 +115,7 @@ export default function BillSummaryCard({
           <span className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-white/25">
             <FileText className="h-[16px] w-[16px]" />
           </span>
+
           <span>Create Bill</span>
         </button>
 
@@ -122,6 +156,7 @@ export default function BillSummaryCard({
                 className="inline-flex items-center gap-1 text-[13px] font-medium text-[#DC2626]"
               >
                 <X className="h-[14px] w-[14px]" />
+
                 Clear all
               </button>
             </div>
@@ -144,7 +179,9 @@ export default function BillSummaryCard({
 
                   <p className="shrink-0 text-[14px] font-semibold text-[#111827]">
                     {formatCurrency(
-                      (item.metalValue + item.makingCharges) * item.qty
+                      (item.metalValue +
+                        item.makingCharges) *
+                        item.qty
                     )}
                   </p>
                 </div>

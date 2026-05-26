@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Pencil,
 } from "lucide-react";
 
 import {
@@ -12,9 +13,13 @@ import {
   useState,
 } from "react";
 
-import type { ReactNode } from "react";
+import type {
+  ReactNode,
+} from "react";
 
-import { usePathname } from "next/navigation";
+import {
+  usePathname,
+} from "next/navigation";
 
 import {
   getPaymentsByInvoice,
@@ -49,7 +54,10 @@ type Props = {
   ) => void | Promise<void>;
 };
 
-function isValidValue(value: unknown) {
+function isValidValue(
+  value: unknown
+) {
+
   return (
     value !== null &&
     value !== undefined &&
@@ -62,24 +70,34 @@ function isValidValue(value: unknown) {
 function getDisplayValue(
   ...values: unknown[]
 ) {
-  const found = values.find((value) =>
-    isValidValue(value)
-  );
 
-  return found ? String(found) : "—";
+  const found =
+    values.find((value) =>
+      isValidValue(value)
+    );
+
+  return found
+    ? String(found)
+    : "—";
 }
 
 function getIdFromPathname(
   pathname: string | null
 ) {
-  if (!pathname) return null;
 
-  const segments = pathname
-    .split("/")
-    .filter(Boolean);
+  if (!pathname) {
+    return null;
+  }
+
+  const segments =
+    pathname
+      .split("/")
+      .filter(Boolean);
 
   const last =
-    segments[segments.length - 1];
+    segments[
+      segments.length - 1
+    ];
 
   return isValidValue(last)
     ? String(last)
@@ -89,6 +107,7 @@ function getIdFromPathname(
 function getInvoiceIdFromRow(
   row: ClientInvoiceRow & any
 ) {
+
   const value =
     row?.invoiceId ??
     row?.invoice_id ??
@@ -112,11 +131,13 @@ function getRowKey(
   row: ClientInvoiceRow & any,
   index: number
 ) {
+
   return String(
     getInvoiceIdFromRow(row) ??
       row?.invoiceNumber ??
       row?.invoice_number ??
-      row?.raw?.invoice_number ??
+      row?.raw
+        ?.invoice_number ??
       `ledger-row-${index}`
   );
 }
@@ -127,10 +148,14 @@ export default function ClientLedgerTable({
   onFetchPayments,
   onDownloadInvoice,
 }: Props) {
-  const pathname = usePathname();
+
+  const pathname =
+    usePathname();
 
   const [openKey, setOpenKey] =
-    useState<string | null>(null);
+    useState<string | null>(
+      null
+    );
 
   const [historyMap, setHistoryMap] =
     useState<
@@ -142,27 +167,39 @@ export default function ClientLedgerTable({
 
   const [loadingMap, setLoadingMap] =
     useState<
-      Record<string, boolean>
+      Record<
+        string,
+        boolean
+      >
     >({});
 
   const [loadedMap, setLoadedMap] =
     useState<
-      Record<string, boolean>
+      Record<
+        string,
+        boolean
+      >
     >({});
 
   const [errorMap, setErrorMap] =
-    useState<Record<string, string>>(
-      {}
-    );
+    useState<
+      Record<
+        string,
+        string
+      >
+    >({});
 
   const [viewingMap, setViewingMap] =
     useState<
-      Record<string, boolean>
+      Record<
+        string,
+        boolean
+      >
     >({});
 
-  // =========================================
-  // PENDING MODAL STATES
-  // =========================================
+  /**
+   * PENDING MODAL
+   */
   const [
     pendingModalOpen,
     setPendingModalOpen,
@@ -171,11 +208,9 @@ export default function ClientLedgerTable({
   const [
     selectedInvoice,
     setSelectedInvoice,
-  ] = useState<any>(null);
+  ] =
+    useState<any>(null);
 
-  // =========================================
-  // CHECK ROUTE
-  // =========================================
   const isPendingAmountPage =
     pathname?.includes(
       "/billing/pending-amount/"
@@ -186,72 +221,114 @@ export default function ClientLedgerTable({
     [rows]
   );
 
-  const getSafeInvoiceId = (
-    row: ClientInvoiceRow & any
-  ) => {
-    return (
-      getInvoiceIdFromRow(row) ||
-      getIdFromPathname(pathname)
-    );
-  };
+  const getSafeInvoiceId =
+    (
+      row:
+        | ClientInvoiceRow
+        | any
+    ) => {
 
-  // =========================================
-  // TOGGLE HISTORY
-  // =========================================
+      return (
+        getInvoiceIdFromRow(
+          row
+        ) ||
+        getIdFromPathname(
+          pathname
+        )
+      );
+    };
+
+  /**
+   * HISTORY TOGGLE
+   */
   const handleToggleHistory =
     async (
-      row: ClientInvoiceRow & any,
+      row:
+        | ClientInvoiceRow
+        | any,
       index: number
     ) => {
-      const rowKey = getRowKey(
-        row,
-        index
-      );
+
+      const rowKey =
+        getRowKey(
+          row,
+          index
+        );
 
       const invoiceId =
-        getSafeInvoiceId(row);
+        getSafeInvoiceId(
+          row
+        );
 
-      if (!isValidValue(invoiceId)) {
-        setOpenKey(rowKey);
+      if (
+        !isValidValue(
+          invoiceId
+        )
+      ) {
 
-        setHistoryMap((prev) => ({
-          ...prev,
-          [rowKey]: [],
-        }));
+        setOpenKey(
+          rowKey
+        );
 
-        setLoadedMap((prev) => ({
-          ...prev,
-          [rowKey]: true,
-        }));
+        setHistoryMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]: [],
+          })
+        );
 
-        setErrorMap((prev) => ({
-          ...prev,
-          [rowKey]:
-            "Invoice ID missing.",
-        }));
+        setLoadedMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]: true,
+          })
+        );
+
+        setErrorMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]:
+              "Invoice ID missing.",
+          })
+        );
 
         return;
       }
 
-      if (openKey === rowKey) {
+      if (
+        openKey === rowKey
+      ) {
+
         setOpenKey(null);
+
         return;
       }
 
-      setOpenKey(rowKey);
+      setOpenKey(
+        rowKey
+      );
 
-      if (loadedMap[rowKey]) return;
+      if (
+        loadedMap[rowKey]
+      ) {
+        return;
+      }
 
       try {
-        setLoadingMap((prev) => ({
-          ...prev,
-          [rowKey]: true,
-        }));
 
-        setErrorMap((prev) => ({
-          ...prev,
-          [rowKey]: "",
-        }));
+        setLoadingMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]: true,
+          })
+        );
+
+        setErrorMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]: "",
+          })
+        );
 
         const res =
           onFetchPayments
@@ -263,77 +340,142 @@ export default function ClientLedgerTable({
                 invoiceId
               );
 
-        if (!res?.success) {
+        if (
+          !res?.success
+        ) {
+
           throw new Error(
             res?.message ||
               "Failed to load payment history."
           );
         }
 
-        setHistoryMap((prev) => ({
-          ...prev,
-          [rowKey]:
-            mapInvoiceHistoryToUi(
-              res
-            ),
-        }));
+        setHistoryMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]:
+              mapInvoiceHistoryToUi(
+                res
+              ),
+          })
+        );
 
-        setLoadedMap((prev) => ({
-          ...prev,
-          [rowKey]: true,
-        }));
+        setLoadedMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]: true,
+          })
+        );
+
       } catch (error) {
-        console.error(error);
 
-        setErrorMap((prev) => ({
-          ...prev,
-          [rowKey]:
-            error instanceof Error
-              ? error.message
-              : "Failed to load history.",
-        }));
+        console.error(
+          error
+        );
+
+        setErrorMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]:
+              error instanceof
+              Error
+                ? error.message
+                : "Failed to load history.",
+          })
+        );
+
       } finally {
-        setLoadingMap((prev) => ({
-          ...prev,
-          [rowKey]: false,
-        }));
+
+        setLoadingMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]: false,
+          })
+        );
       }
     };
 
-  // =========================================
-  // VIEW INVOICE
-  // =========================================
+  /**
+   * VIEW / DOWNLOAD
+   */
   const handleViewInvoice =
     async (
-      row: ClientInvoiceRow & any,
+      row:
+        | ClientInvoiceRow
+        | any,
       index: number
     ) => {
-      const rowKey = getRowKey(
-        row,
-        index
-      );
 
-      const invoiceId =
-        getSafeInvoiceId(row);
-
-      if (!invoiceId) return;
+      const rowKey =
+        getRowKey(
+          row,
+          index
+        );
 
       try {
-        setViewingMap((prev) => ({
-          ...prev,
-          [rowKey]: true,
-        }));
 
-        if (onDownloadInvoice) {
-          await onDownloadInvoice(
+        const invoiceId =
+          getSafeInvoiceId(
             row
+          );
+
+        if (
+          !invoiceId ||
+          invoiceId ===
+            "undefined" ||
+          invoiceId ===
+            "null"
+        ) {
+
+          console.error(
+            "Invoice ID missing:",
+            row
+          );
+
+          alert(
+            "Invoice ID not found."
           );
 
           return;
         }
 
-        if (onViewInvoice) {
-          await onViewInvoice(row);
+        setViewingMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]: true,
+          })
+        );
+
+        if (
+          onViewInvoice
+        ) {
+
+          await onViewInvoice({
+            ...row,
+            invoice_id:
+              invoiceId,
+            invoiceId:
+              invoiceId,
+            id:
+              invoiceId,
+          });
+
+          return;
+        }
+
+        if (
+          onDownloadInvoice
+        ) {
+
+          await onDownloadInvoice({
+            ...row,
+            invoice_id:
+              invoiceId,
+            invoiceId:
+              invoiceId,
+            id:
+              invoiceId,
+          });
 
           return;
         }
@@ -341,24 +483,61 @@ export default function ClientLedgerTable({
         await viewInvoicePdf(
           invoiceId
         );
-      } catch (error) {
-        console.error(error);
+
+      } catch (
+        error: any
+      ) {
+
+        console.error(
+          "Invoice open/download failed:",
+          error
+        );
+
+        alert(
+          error?.message ||
+            "Failed to open invoice."
+        );
+
       } finally {
-        setViewingMap((prev) => ({
-          ...prev,
-          [rowKey]: false,
-        }));
+
+        setViewingMap(
+          (prev) => ({
+            ...prev,
+            [rowKey]: false,
+          })
+        );
       }
+    };
+
+  /**
+   * EDIT BUTTON
+   */
+  const handleEditInvoice =
+    (
+      row:
+        | ClientInvoiceRow
+        | any
+    ) => {
+
+      setSelectedInvoice(
+        row
+      );
+
+      setPendingModalOpen(
+        true
+      );
     };
 
   return (
     <>
       <div className="hidden w-full rounded-erp-2xl border border-erp-border bg-erp-card shadow-erp-card lg:block">
+
         <div className="w-full overflow-x-auto overflow-y-visible rounded-erp-2xl table-drag-scroll">
 
           <table className="w-full min-w-[1180px] table-fixed border-separate border-spacing-0 font-erp">
 
             <thead className="sticky top-0 z-10">
+
               <tr className="h-[64px] bg-erp-dark text-white">
 
                 {[
@@ -369,19 +548,22 @@ export default function ClientLedgerTable({
                   "Pending Amount",
                   "Payment Tracking",
                   "Action",
-                ].map((header) => (
-                  <th
-                    key={header}
-                    className="border-b border-erp-dark px-4 text-center align-middle text-[16px] font-semibold"
-                  >
-                    {header}
-                  </th>
-                ))}
+                ].map(
+                  (header) => (
+                    <th
+                      key={header}
+                      className="border-b border-erp-dark px-4 text-center align-middle text-[16px] font-semibold"
+                    >
+                      {header}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
 
             <tbody>
-              {safeRows.length > 0 ? (
+              {safeRows.length >
+              0 ? (
                 safeRows.map(
                   (
                     row:
@@ -397,7 +579,8 @@ export default function ClientLedgerTable({
                       );
 
                     const isOpen =
-                      openKey === rowKey;
+                      openKey ===
+                      rowKey;
 
                     const isLoading =
                       !!loadingMap[
@@ -411,7 +594,9 @@ export default function ClientLedgerTable({
 
                     return (
                       <Fragment
-                        key={rowKey}
+                        key={
+                          rowKey
+                        }
                       >
                         <tr className="h-[60px] bg-white">
 
@@ -445,7 +630,7 @@ export default function ClientLedgerTable({
                             )}
                           </AmountCell>
 
-                          {/* HISTORY BUTTON */}
+                          {/* HISTORY */}
                           <td className="border-b border-r border-erp-border px-4 text-center align-middle">
 
                             <button
@@ -461,7 +646,8 @@ export default function ClientLedgerTable({
                               }
                               className="inline-flex items-center gap-2 text-[15px] font-medium"
                             >
-                              View History
+                              View
+                              History
 
                               {isLoading ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -473,29 +659,12 @@ export default function ClientLedgerTable({
                             </button>
                           </td>
 
-                          {/* ACTION BUTTON */}
+                          {/* ACTION */}
                           <td className="border-b border-erp-border px-4 text-center align-middle">
 
-                            {isPendingAmountPage ? (
+                            <div className="flex items-center justify-center gap-4">
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedInvoice(
-                                    row
-                                  );
-
-                                  setPendingModalOpen(
-                                    true
-                                  );
-                                }}
-                                className="text-[16px] font-medium text-[#2563EB] underline underline-offset-[3px]"
-                              >
-                                Edit
-                              </button>
-
-                            ) : (
-
+                              {/* VIEW */}
                               <button
                                 type="button"
                                 disabled={
@@ -514,22 +683,35 @@ export default function ClientLedgerTable({
                                   : "View"}
                               </button>
 
-                            )}
+                              {/* EDIT */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleEditInvoice(
+                                    row
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 text-[16px] font-medium text-[#DC6803] underline underline-offset-[3px]"
+                              >
+                                <Pencil className="h-4 w-4" />
+
+                                Edit
+                              </button>
+                            </div>
                           </td>
                         </tr>
 
-                        {/* =========================================
-                            HISTORY EXPANSION
-                        ========================================= */}
+                        {/* HISTORY */}
                         {isOpen && (
                           <tr>
                             <td
-                              colSpan={7}
+                              colSpan={
+                                7
+                              }
                               className="border-b border-erp-border bg-[#F8FAFC] p-0"
                             >
                               <div className="min-w-[1180px]">
 
-                                {/* HEADER */}
                                 <div className="grid h-[58px] grid-cols-6 border-b border-erp-border bg-[#F1F5F9]">
 
                                   {[
@@ -566,7 +748,6 @@ export default function ClientLedgerTable({
                                   )}
                                 </div>
 
-                                {/* LOADING */}
                                 {isLoading ? (
 
                                   <div className="flex h-[62px] items-center justify-center gap-2 bg-[#F8FAFC] text-[15px] font-medium text-[#64748B]">
@@ -596,12 +777,14 @@ export default function ClientLedgerTable({
                                     rowKey
                                   ] ??
                                   []
-                                ).length > 0 ? (
+                                ).length >
+                                  0 ? (
 
                                   (
                                     historyMap[
                                       rowKey
-                                    ] ?? []
+                                    ] ??
+                                    []
                                   ).map(
                                     (
                                       historyItem,
@@ -649,10 +832,11 @@ export default function ClientLedgerTable({
                                         <div className="flex min-w-0 items-center justify-center px-4 text-center text-[15px] text-[#475467]">
 
                                           <span className="truncate">
+
                                             {historyItem.operator ||
                                               "—"}
-                                          </span>
 
+                                          </span>
                                         </div>
                                       </div>
                                     )
@@ -678,7 +862,9 @@ export default function ClientLedgerTable({
               ) : (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={
+                      7
+                    }
                     className="h-[180px] text-center"
                   >
                     No invoices found.
@@ -690,13 +876,16 @@ export default function ClientLedgerTable({
         </div>
       </div>
 
-      {/* =========================================
-          PENDING MODAL
-      ========================================= */}
+      {/* MODAL */}
       <PendingAmountModal
-        open={pendingModalOpen}
+        open={
+          pendingModalOpen
+        }
         onClose={() => {
-          setPendingModalOpen(false);
+
+          setPendingModalOpen(
+            false
+          );
 
           setSelectedInvoice(
             null
@@ -712,7 +901,9 @@ export default function ClientLedgerTable({
             selectedInvoice?.pending_amount ||
             0
         )}
-        client={selectedInvoice}
+        client={
+          selectedInvoice
+        }
         onSuccess={() => {
           window.location.reload();
         }}
@@ -726,6 +917,7 @@ function DataCell({
 }: {
   children: ReactNode;
 }) {
+
   return (
     <td className="border-b border-r border-erp-border px-4 text-center text-[16px]">
       {children}
@@ -738,6 +930,7 @@ function AmountCell({
 }: {
   children: ReactNode;
 }) {
+
   return (
     <td className="border-b border-r border-erp-border px-4 text-center text-[16px] font-semibold">
       {children}
@@ -752,6 +945,7 @@ function HistoryCell({
   value: string;
   strong?: boolean;
 }) {
+
   return (
     <div
       className={[

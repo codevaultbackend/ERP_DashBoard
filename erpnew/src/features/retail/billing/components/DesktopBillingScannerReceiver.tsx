@@ -73,7 +73,7 @@ export default function DesktopBillingScannerReceiver({
 
       socket.emit(
         "join-billing-session",
-        billingSessionId
+        `billing_session_${billingSessionId}`
       );
 
       console.log(

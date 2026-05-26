@@ -484,10 +484,6 @@ export async function getExchangeDashboard(force = false) {
     const res = await exchangeApi.get<ExchangeDashboardResponse>(
       "/exchange/dashboard",
       {
-        /**
-         * Backend store_code header me expect kar raha hai.
-         * Query params ignore ho rahe the.
-         */
         headers: {
           ...buildScopeHeaders(),
         },
