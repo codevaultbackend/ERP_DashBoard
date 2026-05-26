@@ -11,10 +11,10 @@ const API_BASE =
   "https://erp-backend-w3pb.onrender.com";
 
 const HEAD_LEDGER_BASE =
-  process.env.NEXT_PUBLIC_HEAD_LEDGER_BASE_PATH || "/headledger";
+  process.env.NEXT_PUBLIC_HEAD_LEDGER_BASE_PATH || "/ladger";
 
 const HEAD_STORE_BASE =
-  process.env.NEXT_PUBLIC_HEAD_STORE_LEDGER_BASE_PATH || "/headledger";
+  process.env.NEXT_PUBLIC_HEAD_STORE_LEDGER_BASE_PATH || "/ladger";
 
 /**
  * Your updated endpoints:
@@ -300,7 +300,7 @@ export function downloadHeadInvoicePdf(invoiceId: string | number) {
   return downloadBlob(
     `${HEAD_INVOICE_BASE}/invoice/${encodeURIComponent(
       String(invoiceId)
-    )}/download-pdf`,
+    )}/download`,
     `invoice-${invoiceId}.pdf`
   );
 }
