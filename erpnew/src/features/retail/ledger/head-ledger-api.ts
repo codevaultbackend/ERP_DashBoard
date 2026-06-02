@@ -11,7 +11,7 @@ const API_BASE =
   "https://erp-backend-w3pb.onrender.com";
 
 const HEAD_LEDGER_BASE =
-  process.env.NEXT_PUBLIC_HEAD_LEDGER_BASE_PATH || "/ladger";
+  process.env.NEXT_PUBLIC_HEAD_LEDGER_BASE_PATH || "/headledger";
 
 const HEAD_STORE_BASE =
   process.env.NEXT_PUBLIC_HEAD_STORE_LEDGER_BASE_PATH || "/ladger";

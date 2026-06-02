@@ -15,6 +15,7 @@ import { useParams, useRouter } from "next/navigation";
 import { getDistrictInventory } from "@/features/head-office/store-management/api/store-management-api";
 
 type ApiInventoryItem = {
+  item_id?: number;
   category?: string;
   item_name?: string;
   code?: string;
@@ -33,6 +34,7 @@ type ApiInventoryItem = {
 
 type StockItem = {
   id: string;
+  itemId: number;
   image?: string;
   article: string;
   code: string;
@@ -208,9 +210,8 @@ export default function DistrictStoreStockPage() {
               >
                 {category}
                 <ChevronDown
-                  className={`h-4 w-4 transition ${
-                    showCategory ? "rotate-180" : ""
-                  }`}
+                  className={`h-4 w-4 transition ${showCategory ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -224,11 +225,10 @@ export default function DistrictStoreStockPage() {
                         setCategory(item);
                         setShowCategory(false);
                       }}
-                      className={`block w-full rounded-[12px] px-4 py-2 text-left text-[14px] font-semibold transition ${
-                        category === item
-                          ? "bg-[#EEF5FF] text-[#0B63CE]"
-                          : "text-[#334155] hover:bg-[#F8FAFC]"
-                      }`}
+                      className={`block w-full rounded-[12px] px-4 py-2 text-left text-[14px] font-semibold transition ${category === item
+                        ? "bg-[#EEF5FF] text-[#0B63CE]"
+                        : "text-[#334155] hover:bg-[#F8FAFC]"
+                        }`}
                     >
                       {item}
                     </button>
@@ -346,11 +346,10 @@ export default function DistrictStoreStockPage() {
                             <button
                               type="button"
                               onClick={() => handleToggle(item)}
-                              className={`inline-flex items-center gap-3 text-[15px] font-medium transition ${
-                                isOpen
-                                  ? "text-[#111827]"
-                                  : "text-[#5F6673] hover:text-[#111827]"
-                              }`}
+                              className={`inline-flex items-center gap-3 text-[15px] font-medium transition ${isOpen
+                                ? "text-[#111827]"
+                                : "text-[#5F6673] hover:text-[#111827]"
+                                }`}
                             >
                               View Details
                               {isOpen ? (
@@ -464,11 +463,38 @@ export default function DistrictStoreStockPage() {
                                   </td>
                                   <td
                                     colSpan={2}
-                                    className="border-l border-[#D7DEE8] px-6 text-center"
+                                    className="border-l border-[#D7DEE8] px-6"
                                   >
-                                    <span className="rounded-full bg-[#E7F8EE] px-3 py-1 text-[12px] font-bold text-[#16A34A]">
-                                      Available
-                                    </span>
+                                    <div className="flex items-center justify-center gap-3">
+                                    
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (!product.itemId) return;
+
+                                          router.push(
+                                            `/head-office/tracking/${product.itemId}`
+                                          );
+                                        }}
+                                        className="
+        inline-flex
+        h-[34px]
+        items-center
+        justify-center
+        rounded-full
+        bg-[#111827]
+        px-4
+        text-[12px]
+        font-semibold
+        text-white
+        transition
+        hover:bg-[#1F2937]
+        active:scale-[0.98]
+      "
+                                      >
+                                        Track
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -588,18 +614,52 @@ function mapStockItem(
   category: string,
   index: number
 ): StockItem {
-  const code = item.code || item.sku_code || "-";
+  const code =
+    item.code ||
+    item.sku_code ||
+    "-";
 
   return {
-    id: makeId(`${category}-${code}`, index),
-    image: item.image_url || item.image || "",
-    article: item.item_name || category || "Item",
+    id: makeId(
+      `${category}-${code}`,
+      index
+    ),
+
+    itemId: Number(
+      item.item_id || 0
+    ),
+
+    image:
+      item.image_url ||
+      item.image ||
+      "",
+
+    article:
+      item.item_name ||
+      item.article ||
+      category ||
+      "Item",
+
     code,
-    quantity: toNumber(item.quantity),
-    purity: item.purity || "-",
-    netWeight: formatWeight(item.net_weight),
-    stoneWeight: formatWeight(item.stone_weight),
-    grossWeight: formatWeight(item.gross_weight),
+
+    quantity: toNumber(
+      item.quantity
+    ),
+
+    purity:
+      item.purity || "-",
+
+    netWeight: formatWeight(
+      item.net_weight
+    ),
+
+    stoneWeight: formatWeight(
+      item.stone_weight
+    ),
+
+    grossWeight: formatWeight(
+      item.gross_weight
+    ),
   };
 }
 

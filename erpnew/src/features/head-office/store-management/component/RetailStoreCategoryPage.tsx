@@ -19,6 +19,7 @@ import {
 
 type StockItem = {
   id: string;
+  itemId: number;
   image: string;
   article: string;
   code: string;
@@ -110,11 +111,11 @@ function makeId(value: string) {
 function getItemCode(item: InventoryRow) {
   return String(
     item.code ||
-      item.sku_code ||
-      item.article_code ||
-      item.item_id ||
-      item.id ||
-      "-"
+    item.sku_code ||
+    item.article_code ||
+    item.item_id ||
+    item.id ||
+    "-"
   );
 }
 
@@ -152,6 +153,7 @@ function mapStockItem(
 
   return {
     id: `${makeId(category)}-${makeId(code)}-${index}`,
+    itemId: Number(item.item_id),
     image: getImage(item),
     article: getItemName(item),
     code,
@@ -358,9 +360,9 @@ export default function RetailStoreCategoryPage({
         prev.map((current) =>
           current.id === row.id
             ? {
-                ...current,
-                items,
-              }
+              ...current,
+              items,
+            }
             : current
         )
       );
@@ -545,6 +547,7 @@ function DesktopInventoryTable({
     "Gross Wt.",
     "Action",
   ];
+  const router = useRouter();
 
   return (
     <div className="mt-6 hidden overflow-hidden rounded-[26px] border border-erp-border bg-erp-card shadow-erp-card lg:block xl:rounded-[30px]">
@@ -559,7 +562,7 @@ function DesktopInventoryTable({
                     "whitespace-nowrap px-4 text-[13px] font-bold tracking-[-0.01em] xl:px-6 xl:text-[14px]",
                     index === 0 && "rounded-tl-[26px] xl:rounded-tl-[30px]",
                     index === headers.length - 1 &&
-                      "rounded-tr-[26px] xl:rounded-tr-[30px]",
+                    "rounded-tr-[26px] xl:rounded-tr-[30px]",
                     index >= 2 && "text-center"
                   )}
                 >
@@ -669,7 +672,7 @@ function DesktopInventoryTable({
                             Gross Wt.
                           </td>
                           <td className="border-l border-erp-border px-4 text-center xl:px-6">
-                            Status
+                            Action
                           </td>
                         </tr>
 
@@ -751,11 +754,22 @@ function DesktopInventoryTable({
                                 {item.grossWeight}
                               </td>
 
+                              
+
                               <td className="border-b border-l border-erp-border px-4 text-center xl:px-6">
-                                <span className="rounded-full bg-[#E7F8EE] px-3 py-1 text-[12px] font-bold text-[#16A34A]">
-                                  {item.status}
-                                </span>
+                                <button
+                                  type="button"
+                                  className="rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
+                                  onClick={() => {
+                                    console.log("Inventory Item", item);
+                                    if (!item.itemId) return;
+                                    router.push(`/head-office/tracking/${item.itemId}`);
+                                  }}
+                                >
+                                  Track
+                                </button>
                               </td>
+                              
                             </tr>
                           ))}
 
@@ -807,6 +821,7 @@ function MobileInventoryCards({
   onToggle: (row: CategoryRow) => void;
   onPreview: (item: StockItem) => void;
 }) {
+  const router = useRouter();
   if (loading) {
     return (
       <div className="mt-6 flex h-[220px] items-center justify-center rounded-[24px] border border-erp-border bg-erp-card shadow-erp-card lg:hidden">
@@ -928,6 +943,20 @@ function MobileInventoryCards({
                           <Info label="Purity" value={item.purity} />
                           <Info label="Net Wt." value={item.netWeight} />
                           <Info label="Gross Wt." value={item.grossWeight} />
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                      
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!item.itemId) return;
+                              router.push(`/head-office/tracking/${item.itemId}`);
+                            }}
+                            className="rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-700"
+                          >
+                            Track
+                          </button>
                         </div>
                       </div>
                     ))}

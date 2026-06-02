@@ -104,7 +104,7 @@ export default function HeadOfficeLedgerPage() {
 
   return (
     <main className="min-h-screen w-full bg-[#F5F6F8] font-erp text-[#111827]">
-      <section className="mx-auto w-full max-w-[1540px] px-4 py-5 sm:px-5 md:px-6 lg:px-8 xl:px-10 2xl:px-0">
+      <section className="mx-auto w-full max-w-[1540px]  max-[768px]:px-5 md:px-6  xl:px-0 2xl:px-0">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <h1 className="text-[30px] font-semibold leading-[38px] tracking-[-0.04em] text-[#111827] sm:text-[36px] sm:leading-[44px] xl:text-[42px] xl:leading-[52px]">

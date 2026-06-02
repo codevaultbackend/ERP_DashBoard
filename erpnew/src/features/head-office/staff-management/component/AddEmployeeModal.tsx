@@ -389,25 +389,6 @@ export default function AddEmployeeModal({
                 ))}
               </SelectField>
 
-              <div className="flex h-[44px] items-center justify-between rounded-[12px] bg-[#F1F3F6] px-4">
-                <span className="text-[14px] font-medium leading-none text-erp-text sm:text-[15px]">
-                  Police Verified
-                </span>
-
-                <input
-                  type="checkbox"
-                  checked={form.isPoliceVerified}
-                  disabled={submitting}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      isPoliceVerified: event.target.checked,
-                    })
-                  }
-                  className="h-4 w-4 cursor-pointer accent-erp-dark disabled:cursor-not-allowed"
-                />
-              </div>
-
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <FileButton
                   label="Upload Aadhaar"

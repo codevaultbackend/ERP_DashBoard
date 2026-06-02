@@ -95,8 +95,8 @@ export async function updateStockPricing(
       throw new Error("Valid selling price is required");
     }
 
-    const res = await pricingApi.post<UpdateStockPricingResponse>(
-      "/update-stock-pricing",
+    const res = await pricingApi.put<UpdateStockPricingResponse>(
+      "stock/update-stock-pricing",
       cleanPayload,
       {
         headers: {

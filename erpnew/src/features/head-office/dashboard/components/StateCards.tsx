@@ -100,7 +100,7 @@ export default function StateCards({ cards }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-4 max-[768px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
       {stats.map((item) => {
         const Icon = item.icon;
         const tone = getToneClasses(item.tone);

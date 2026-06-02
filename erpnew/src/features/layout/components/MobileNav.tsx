@@ -52,8 +52,8 @@ export default function MobileNav({ items, pathname }: MobileNavProps) {
 
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full bg-gradient-to-b from-[#F4F7FB] via-[#F4F7FB]/95 to-[#F4F7FB]/80" />
 
-      <div className="overflow-hidden  border-b border-[#E7E9EE]/70 bg-[#F4F7FB]/80  backdrop-blur-xl">
-        <div className="flex items-center gap-2 overflow-x-auto dashboard-hidden-scroll px-3 py-3 scrollbar-hide">
+      <div className="overflow-hidden">
+        <div className="flex items-center gap-2 overflow-x-auto dashboard-hidden-scroll px-3 py-3 pb-2 scrollbar-hide">
           {items.map((item) => {
             const Icon = getIcon(item.label);
             const active =

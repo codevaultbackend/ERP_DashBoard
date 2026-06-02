@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   BadgeAlert,
@@ -544,6 +545,7 @@ function StockTable({
 
   const parentScrollRef = useRef<HTMLDivElement | null>(null);
   const childScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const router = useRouter();
 
   const dragState = useRef({
     isDown: false,
@@ -919,18 +921,35 @@ function StockTable({
                                           ))}
 
                                           <td className="h-[54px] border-b border-erp-border px-5">
-                                            <div className="flex items-center justify-center">
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  setPricingItem(article)
-                                                }
-                                                className="inline-flex h-9 w-9 items-center justify-center rounded-erp-full text-erp-primary transition hover:bg-erp-primary-soft hover:text-erp-primary-hover"
-                                                title="Edit stock pricing"
-                                              >
-                                                <Pencil className="h-4 w-4" />
-                                              </button>
-                                            </div>
+                                          
+  <div className="flex items-center justify-center gap-2">
+    <button
+      type="button"
+      onClick={() => setPricingItem(article)}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-erp-full text-erp-primary transition hover:bg-erp-primary-soft hover:text-erp-primary-hover"
+      title="Edit stock pricing"
+    >
+      <Pencil className="h-4 w-4" />
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        const itemId =
+          Number(article.item_id) ||
+          Number(article.itemId) ||
+          Number(article.id);
+
+        if (!itemId) return;
+
+        router.push(`/head-office/tracking/${itemId}`);
+      }}
+      className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700"
+      title="Track Item"
+    >
+      Track
+    </button>
+  </div>
                                           </td>
                                         </tr>
                                       );

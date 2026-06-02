@@ -75,14 +75,18 @@ function getExchangeScope() {
     };
   }
 
-  const user = getLoggedInUser();
+  const user = getLoggedInUser() || {};
 
   const storeCode = normalizeStoreCode(
     user?.store_code ||
-      user?.storeCode ||
-      localStorage.getItem("store_code") ||
-      localStorage.getItem("selected_store_code") ||
-      localStorage.getItem("storeCode")
+    user?.storeCode ||
+    user?.selected_store ||
+    user?.store ||
+    localStorage.getItem("store_code") ||
+    localStorage.getItem("selected_store_code") ||
+    localStorage.getItem("storeCode") ||
+    localStorage.getItem("selectedStore") ||
+    ""
   );
 
   const organizationId =
@@ -126,13 +130,28 @@ exchangeApi.interceptors.request.use(
   (config) => {
     const token = getTokenFromStorage();
 
-    config.headers = config.headers || {};
+    const scopeHeaders = buildScopeHeaders();
+
+    config.headers = {
+      ...(config.headers || {}),
+      ...scopeHeaders,
+      Accept: "application/json",
+    };
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    config.headers.Accept = "application/json";
+    /**
+     * DEBUG
+     */
+    console.log("================================");
+    console.log("Exchange API Request");
+    console.log("URL =>", config.baseURL + config.url);
+    console.log("TOKEN =>", token);
+    console.log("SCOPE HEADERS =>", scopeHeaders);
+    console.log("FINAL HEADERS =>", config.headers);
+    console.log("================================");
 
     return config;
   },
@@ -357,10 +376,10 @@ function getApiErrorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as
       | {
-          success?: boolean;
-          message?: string;
-          error?: string;
-        }
+        success?: boolean;
+        message?: string;
+        error?: string;
+      }
       | undefined;
 
     return (
@@ -466,9 +485,8 @@ export async function getExchangeDashboard(force = false) {
     throw new Error("Store code missing. Please login again.");
   }
 
-  const scopeKey = `${scope.store_code || "NO_STORE"}-${
-    scope.organization_id || "NO_ORG"
-  }`;
+  const scopeKey = `${scope.store_code || "NO_STORE"}-${scope.organization_id || "NO_ORG"
+    }`;
 
   if (
     !force &&
