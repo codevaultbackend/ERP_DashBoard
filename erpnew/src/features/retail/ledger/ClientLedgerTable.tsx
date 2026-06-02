@@ -36,6 +36,10 @@ import {
 } from "./utils";
 
 import PendingAmountModal from "../../../features/retail/billing/components/PendingAmountModal";
+import { isHeadOfficeUser } from "@/core/auth/permissions";
+
+
+
 
 type Props = {
   rows: ClientInvoiceRow[];
@@ -96,7 +100,7 @@ function getIdFromPathname(
 
   const last =
     segments[
-      segments.length - 1
+    segments.length - 1
     ];
 
   return isValidValue(last)
@@ -134,11 +138,11 @@ function getRowKey(
 
   return String(
     getInvoiceIdFromRow(row) ??
-      row?.invoiceNumber ??
-      row?.invoice_number ??
-      row?.raw
-        ?.invoice_number ??
-      `ledger-row-${index}`
+    row?.invoiceNumber ??
+    row?.invoice_number ??
+    row?.raw
+      ?.invoice_number ??
+    `ledger-row-${index}`
   );
 }
 
@@ -151,6 +155,7 @@ export default function ClientLedgerTable({
 
   const pathname =
     usePathname();
+  const isHeadOffice = isHeadOfficeUser();
 
   const [openKey, setOpenKey] =
     useState<string | null>(
@@ -333,12 +338,12 @@ export default function ClientLedgerTable({
         const res =
           onFetchPayments
             ? await onFetchPayments(
-                invoiceId,
-                row
-              )
+              invoiceId,
+              row
+            )
             : await getPaymentsByInvoice(
-                invoiceId
-              );
+              invoiceId
+            );
 
         if (
           !res?.success
@@ -346,7 +351,7 @@ export default function ClientLedgerTable({
 
           throw new Error(
             res?.message ||
-              "Failed to load payment history."
+            "Failed to load payment history."
           );
         }
 
@@ -378,7 +383,7 @@ export default function ClientLedgerTable({
             ...prev,
             [rowKey]:
               error instanceof
-              Error
+                Error
                 ? error.message
                 : "Failed to load history.",
           })
@@ -422,9 +427,9 @@ export default function ClientLedgerTable({
         if (
           !invoiceId ||
           invoiceId ===
-            "undefined" ||
+          "undefined" ||
           invoiceId ===
-            "null"
+          "null"
         ) {
 
           console.error(
@@ -485,7 +490,7 @@ export default function ClientLedgerTable({
         );
 
       } catch (
-        error: any
+      error: any
       ) {
 
         console.error(
@@ -495,7 +500,7 @@ export default function ClientLedgerTable({
 
         alert(
           error?.message ||
-            "Failed to open invoice."
+          "Failed to open invoice."
         );
 
       } finally {
@@ -563,7 +568,7 @@ export default function ClientLedgerTable({
 
             <tbody>
               {safeRows.length >
-              0 ? (
+                0 ? (
                 safeRows.map(
                   (
                     row:
@@ -584,12 +589,12 @@ export default function ClientLedgerTable({
 
                     const isLoading =
                       !!loadingMap[
-                        rowKey
+                      rowKey
                       ];
 
                     const isViewing =
                       !!viewingMap[
-                        rowKey
+                      rowKey
                       ];
 
                     return (
@@ -684,19 +689,26 @@ export default function ClientLedgerTable({
                               </button>
 
                               {/* EDIT */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleEditInvoice(
-                                    row
-                                  )
-                                }
-                                className="inline-flex items-center gap-1 text-[16px] font-medium text-[#DC6803] underline underline-offset-[3px]"
-                              >
-                                <Pencil className="h-4 w-4" />
+                              {
+                                !isHeadOffice && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleEditInvoice(
+                                          row
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-1 text-[16px] font-medium text-[#DC6803] underline underline-offset-[3px]"
+                                    >
+                                      <Pencil className="h-4 w-4" />
 
-                                Edit
-                              </button>
+                                      Edit
+                                    </button>
+                                  </>
+                                )
+                              }
+
                             </div>
                           </td>
                         </tr>
@@ -733,7 +745,7 @@ export default function ClientLedgerTable({
                                         className={[
                                           "flex items-center justify-center px-4 text-center text-[15px] font-semibold text-[#111827]",
                                           idx !==
-                                          5
+                                            5
                                             ? "border-r border-erp-border"
                                             : "",
                                         ].join(
@@ -759,14 +771,14 @@ export default function ClientLedgerTable({
                                   </div>
 
                                 ) : errorMap[
-                                    rowKey
-                                  ] ? (
+                                  rowKey
+                                ] ? (
 
                                   <div className="flex h-[62px] items-center justify-center bg-[#F8FAFC] px-5 text-center text-[15px] font-medium text-red-500">
 
                                     {
                                       errorMap[
-                                        rowKey
+                                      rowKey
                                       ]
                                     }
 
@@ -774,7 +786,7 @@ export default function ClientLedgerTable({
 
                                 ) : (
                                   historyMap[
-                                    rowKey
+                                  rowKey
                                   ] ??
                                   []
                                 ).length >
@@ -782,7 +794,7 @@ export default function ClientLedgerTable({
 
                                   (
                                     historyMap[
-                                      rowKey
+                                    rowKey
                                     ] ??
                                     []
                                   ).map(
@@ -898,8 +910,8 @@ export default function ClientLedgerTable({
         )}
         pendingAmount={Number(
           selectedInvoice?.pendingAmount ||
-            selectedInvoice?.pending_amount ||
-            0
+          selectedInvoice?.pending_amount ||
+          0
         )}
         client={
           selectedInvoice

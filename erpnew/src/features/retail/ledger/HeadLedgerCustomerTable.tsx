@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import type { HeadLedgerCustomerRow } from "./types";
+import { isHeadOfficeUser } from "@/core/auth/permissions";
+
 
 type Props = {
   rows: HeadLedgerCustomerRow[];
@@ -22,6 +24,7 @@ function displayValue(value: unknown) {
 }
 
 export default function HeadLedgerCustomerTable({ rows }: Props) {
+  const isHeadOffice = isHeadOfficeUser();
   return (
     <div className="w-full overflow-hidden rounded-[31px] border border-[#E5E7EB] bg-white shadow-[1px_1px_4px_0px_rgba(0,0,0,0.10)]">
       <div className="overflow-x-auto dashboard-hidden-scroll">

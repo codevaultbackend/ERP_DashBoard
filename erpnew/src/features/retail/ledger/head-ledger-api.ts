@@ -247,7 +247,7 @@ export function fetchHeadStoreCustomers(storeCode: string) {
   }
 
   return apiFetch<HeadStoreCustomersResponse>(
-    `${HEAD_STORE_BASE}/store/${encodeURIComponent(cleanStoreCode)}/customers`
+    `/headledger/store/${encodeURIComponent(cleanStoreCode)}/customers`
   );
 }
 
@@ -260,7 +260,7 @@ export function fetchHeadCustomerInvoices(customerId: string | number) {
   }
 
   return apiFetch<HeadCustomerInvoicesResponse>(
-    `${HEAD_STORE_BASE}/customer/${encodeURIComponent(
+    `/headledger/customer/${encodeURIComponent(
       String(customerId)
     )}/invoices`
   );
@@ -279,7 +279,7 @@ export function fetchHeadInvoicePayments(invoiceId: string | number) {
   }
 
   return apiFetch<LedgerInvoicePaymentDetailResponse>(
-    `${HEAD_INVOICE_BASE}/invoice/${encodeURIComponent(
+    `/headledger/invoice/${encodeURIComponent(
       String(invoiceId)
     )}/payments`
   );
@@ -298,7 +298,7 @@ export function downloadHeadInvoicePdf(invoiceId: string | number) {
   }
 
   return downloadBlob(
-    `${HEAD_INVOICE_BASE}/invoice/${encodeURIComponent(
+    `/headledger/invoice/${encodeURIComponent(
       String(invoiceId)
     )}/download`,
     `invoice-${invoiceId}.pdf`

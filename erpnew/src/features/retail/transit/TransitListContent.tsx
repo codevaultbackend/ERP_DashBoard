@@ -34,6 +34,7 @@ import {
   isDeliveredStatus,
   isInTransitStatus,
 } from "./utils";
+import { isHeadOfficeUser } from "@/core/auth/permissions";
 
 type SummaryState = {
   in_transit: number;
@@ -222,12 +223,14 @@ export default function TransitListContent({
           <div className="flex flex-col gap-[18px] lg:flex-row lg:items-center lg:justify-between">
             <h2 className="erp-section-title">Active Shipments</h2>
 
-            <TransitDirectionToggle
+           {
+            !isHeadOfficeUser &&  <TransitDirectionToggle
               value={activeTab}
               onChange={setActiveTab}
               incomingCount={incomingCount}
               outgoingCount={outgoingCount}
             />
+           }
           </div>
 
           <div className="mt-[28px] space-y-[20px]">

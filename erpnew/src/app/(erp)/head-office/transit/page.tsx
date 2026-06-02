@@ -1,5 +1,6 @@
+import HeadOfficeTransitPage from "@/features/head-office/transit/HeadOfficeTransitPage";
 import TransitListContent from "../../../../features/retail/transit/TransitListContent";
 
 export default function TransitPage() {
-  return <TransitListContent basePath="/head-office/transit" />;
+  return <HeadOfficeTransitPage basePath="/head-office/transit" />;
 }

@@ -104,7 +104,7 @@ export default function HeadOfficeLedgerPage() {
 
   return (
     <main className="min-h-screen w-full bg-[#F5F6F8] font-erp text-[#111827]">
-      <section className="mx-auto w-full max-w-[1540px]  max-[768px]:px-5 md:px-6  xl:px-0 2xl:px-0">
+      <section className="mx-auto w-full max-w-[1540px] ">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <h1 className="text-[30px] font-semibold leading-[38px] tracking-[-0.04em] text-[#111827] sm:text-[36px] sm:leading-[44px] xl:text-[42px] xl:leading-[52px]">
@@ -127,7 +127,7 @@ export default function HeadOfficeLedgerPage() {
           </button>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 min-[520px]:grid-cols-2 lg:grid-cols-3 xl:mt-[28px] xl:grid-cols-5 xl:gap-[20px]">
+        <div className="mt-6 grid grid-cols-1 gap-4 max-[768px]:grid-cols-2 lg:grid-cols-3 xl:mt-[28px] xl:grid-cols-4 xl:gap-[20px]">
           <FinanceMetricCard
             title="Total Sales"
             value={summary.totalSales}

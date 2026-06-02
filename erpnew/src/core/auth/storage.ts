@@ -174,6 +174,7 @@ export const saveAuthSession = (data: any) => {
   localStorage.setItem("token", token);
   localStorage.setItem("role", role);
   localStorage.setItem("normalized_role", role);
+  // localStorage.setItem("normalized_role", organization);
 
   document.cookie = `token=${encodeURIComponent(
     token

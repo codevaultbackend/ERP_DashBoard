@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 
-import InvoiceDocument from "./InvoiceDocument";
 
 import {
   downloadHeadInvoicePdf,
@@ -197,24 +196,7 @@ export default function InvoicePreviewModal({
 
         <div className="mx-auto w-full max-w-[1100px] bg-white shadow-[0px_22px_80px_rgba(15,23,42,0.18)]">
 
-          {loading ? (
-
-            <div className="flex h-[500px] items-center justify-center">
-
-              <Loader2 className="h-8 w-8 animate-spin" />
-
-            </div>
-
-          ) : (
-
-            <InvoiceDocument
-              invoice={
-                invoiceData ||
-                invoice
-              }
-            />
-
-          )}
+          
         </div>
       </div>
     </div>

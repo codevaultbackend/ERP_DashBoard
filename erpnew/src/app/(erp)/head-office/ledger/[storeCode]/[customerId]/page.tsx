@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -127,15 +127,71 @@ export default function HeadOfficeCustomerLedgerPage() {
     }
   }
 
-  async function handleDownloadInvoice(invoice: ClientInvoiceRow) {
-    const invoiceId = getInvoiceId(invoice);
+  const handleDownloadInvoice =
+    async (
+      invoice:
+        | ClientInvoiceRow
+        | any
+    ) => {
 
-    if (!invoiceId) {
-      throw new Error("Invoice ID missing. Cannot download invoice.");
-    }
+      try {
 
-    await downloadHeadInvoicePdf(invoiceId);
-  }
+        const invoiceId =
+          invoice?.invoiceId ||
+          invoice?.invoice_id ||
+          invoice?.id ||
+          invoice?.reference_id ||
+          invoice?.referenceId ||
+          invoice?.raw
+            ?.invoice_id ||
+          invoice?.raw
+            ?.invoiceId ||
+          invoice?.raw?.id ||
+          null;
+
+        /**
+         * SAFE VALIDATION
+         */
+        if (
+          !invoiceId ||
+          invoiceId ===
+            "undefined" ||
+          invoiceId ===
+            "null"
+        ) {
+
+          console.error(
+            "Invoice ID missing:",
+            invoice
+          );
+
+          alert(
+            "Invoice ID not found."
+          );
+
+          return;
+        }
+
+        /**
+         * DOWNLOAD PDF
+         */
+        await downloadHeadInvoicePdf(
+          invoiceId
+        );
+
+      } catch (error: any) {
+
+        console.error(
+          "Invoice download failed:",
+          error
+        );
+
+        alert(
+          error?.message ||
+            "Failed to download invoice."
+        );
+      }
+    };
 
   return (
     <div className="w-full pb-8">
@@ -144,7 +200,7 @@ export default function HeadOfficeCustomerLedgerPage() {
           href={`/head-office/ledger/${encodeURIComponent(storeCode)}`}
           className="flex h-[58px] w-[58px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)]"
         >
-          <ArrowLeft className="h-7 w-7" />
+          <ChevronLeft className="h-7 w-7" />
         </Link>
 
         <h1 className="text-[34px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[42px]">
@@ -176,12 +232,6 @@ export default function HeadOfficeCustomerLedgerPage() {
           onDownloadInvoice={handleDownloadInvoice}
         />
       )}
-
-      <InvoicePreviewModal
-        open={!!selectedInvoice}
-        invoice={selectedInvoice}
-        onClose={() => setSelectedInvoice(null)}
-      />
     </div>
   );
 }
