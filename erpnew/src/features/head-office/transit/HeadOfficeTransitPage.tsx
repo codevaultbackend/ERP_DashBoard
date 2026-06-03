@@ -1,17 +1,24 @@
+
+
 "use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Package2,
   RefreshCw,
+  Search,
   Store,
   Truck,
 } from "lucide-react";
 
-import { getHeadAllTransfers } from "./api";
+import {
+  getHeadAllTransfers,
+  getOrganizationsByLevel,
+} from "./api";
 
 import {
   DateInfo,
@@ -58,7 +65,13 @@ export default function HeadOfficeTransitPage({
 }: {
   basePath?: string;
 }) {
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] =
+    useState(true);
+
+  const [tableLoading, setTableLoading] =
+    useState(false);
+  const [searchInput, setSearchInput] =
+    useState("");
 
   const [items, setItems] = useState<
     TransitTransfer[]
@@ -66,6 +79,11 @@ export default function HeadOfficeTransitPage({
 
   const [error, setError] =
     useState("");
+  const [districtStores, setDistrictStores] =
+    useState<any[]>([]);
+
+  const [retailStores, setRetailStores] =
+    useState<any[]>([]);
 
   const [selectedMapItem, setSelectedMapItem] =
     useState<TransitTransfer | null>(
@@ -89,14 +107,15 @@ export default function HeadOfficeTransitPage({
 
       district_store_code: "all",
       retail_store_code: "all",
-
-      from_store_code: "all",
-      to_store_code: "all",
     });
 
   async function loadTransfers() {
     try {
-      setLoading(true);
+      if (items.length === 0) {
+        setInitialLoading(true);
+      } else {
+        setTableLoading(true);
+      }
       setError("");
 
       const res =
@@ -148,13 +167,66 @@ export default function HeadOfficeTransitPage({
 
       setItems([]);
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
+      setTableLoading(false);
+    }
+  }
+  async function loadStores() {
+    try {
+      const [districtRes, retailRes] =
+        await Promise.all([
+          getOrganizationsByLevel(
+            "district"
+          ),
+          getOrganizationsByLevel(
+            "retail"
+          ),
+        ]);
+
+      setDistrictStores(
+        Array.isArray(
+          districtRes?.data
+        )
+          ? districtRes.data
+          : []
+      );
+
+      setRetailStores(
+        Array.isArray(
+          retailRes?.data
+        )
+          ? retailRes.data
+          : []
+      );
+    } catch (err) {
+      console.error(
+        "Failed to load stores",
+        err
+      );
+
+      setDistrictStores([]);
+      setRetailStores([]);
     }
   }
 
   useEffect(() => {
     loadTransfers();
   }, [filters]);
+
+  useEffect(() => {
+    loadStores();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters((prev) => ({
+        ...prev,
+        search: searchInput,
+      }));
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const activeShipments = useMemo(() => {
     return items.filter((item) => {
@@ -169,7 +241,8 @@ export default function HeadOfficeTransitPage({
     });
   }, [items]);
 
-  if (loading) {
+
+  if (initialLoading) {
     return (
       <div className="w-full min-w-0 font-erp">
         <TransitPageHeader />
@@ -195,139 +268,9 @@ export default function HeadOfficeTransitPage({
       <div className="w-full min-w-0 font-erp">
         <TransitPageHeader />
 
-        {/* FILTER BAR */}
 
-        <section className="mt-[24px] rounded-[28px] border border-erp-border bg-white p-[22px] shadow-erp-card">
-          <div className="grid grid-cols-1 gap-[16px] md:grid-cols-2 xl:grid-cols-6">
-            <input
-              value={filters.search}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  search:
-                    e.target.value,
-                }))
-              }
-              placeholder="Search tracking / driver"
-              className="h-[48px] rounded-[14px] border border-erp-border px-[16px] outline-none"
-            />
 
-            <select
-              value={filters.status}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  status:
-                    e.target.value,
-                }))
-              }
-              className="h-[48px] rounded-[14px] border border-erp-border px-[14px]"
-            >
-              <option value="all">
-                All Status
-              </option>
-
-              <option value="approved">
-                Approved
-              </option>
-
-              <option value="dispatched">
-                Dispatched
-              </option>
-
-              <option value="in_transit">
-                In Transit
-              </option>
-
-              <option value="received">
-                Received
-              </option>
-
-              <option value="cancelled">
-                Cancelled
-              </option>
-            </select>
-
-            <input
-              value={
-                filters.district_store_code
-              }
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  district_store_code:
-                    e.target.value,
-                }))
-              }
-              placeholder="District Store"
-              className="h-[48px] rounded-[14px] border border-erp-border px-[16px]"
-            />
-
-            <input
-              value={
-                filters.retail_store_code
-              }
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  retail_store_code:
-                    e.target.value,
-                }))
-              }
-              placeholder="Retail Store"
-              className="h-[48px] rounded-[14px] border border-erp-border px-[16px]"
-            />
-
-            <input
-              value={
-                filters.from_store_code
-              }
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  from_store_code:
-                    e.target.value,
-                }))
-              }
-              placeholder="From Store"
-              className="h-[48px] rounded-[14px] border border-erp-border px-[16px]"
-            />
-
-            <input
-              value={
-                filters.to_store_code
-              }
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  to_store_code:
-                    e.target.value,
-                }))
-              }
-              placeholder="To Store"
-              className="h-[48px] rounded-[14px] border border-erp-border px-[16px]"
-            />
-          </div>
-        </section>
-
-        {error ? (
-          <div className="mt-[18px] flex items-start justify-between gap-3 rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
-            <span>{error}</span>
-
-            <button
-              type="button"
-              onClick={loadTransfers}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-red-700 shadow-sm"
-            >
-              <RefreshCw className="h-[14px] w-[14px]" />
-              Retry
-            </button>
-          </div>
-        ) : null}
-
-        {/* SUMMARY CARDS */}
-
-        <section className="mt-[22px] grid grid-cols-1 gap-[20px] md:grid-cols-2 xl:grid-cols-5">
+        <section className="mt-[22px] grid  gap-[20px] grid-cols-2 xl:grid-cols-3 lg:grid-cols-3">
           <StatCard
             icon={
               <Truck className="h-[24px] w-[24px]" />
@@ -357,33 +300,258 @@ export default function HeadOfficeTransitPage({
             iconWrapClass="bg-erp-blue-soft"
             iconClass="text-erp-primary"
           />
-
-          <StatCard
-            icon={
-              <Store className="h-[24px] w-[24px]" />
-            }
-            title="District Transfers"
-            value={
-              summary.districtTransfers
-            }
-            iconWrapClass="bg-orange-100"
-            iconClass="text-orange-600"
-          />
-
-          <StatCard
-            icon={
-              <Store className="h-[24px] w-[24px]" />
-            }
-            title="Retail Transfers"
-            value={
-              summary.retailTransfers
-            }
-            iconWrapClass="bg-pink-100"
-            iconClass="text-pink-600"
-          />
         </section>
 
-        {/* SHIPMENTS */}
+        <section className="mt-6 rounded-[24px] border border-erp-border bg-white p-4 shadow-erp-card">
+          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
+
+            {/* SEARCH */}
+            <div className="relative flex-1">
+              <Search
+                className="
+          absolute
+          left-4
+          top-1/2
+          h-5
+          w-5
+          -translate-y-1/2
+          text-erp-muted
+        "
+              />
+
+              <input
+                value={searchInput}
+                onChange={(e) =>
+                  setSearchInput(e.target.value)
+                }
+                placeholder="Search Tracking ID, District Store or Retail Store..."
+                className="
+          h-14
+          w-full
+          rounded-full
+          border
+          border-erp-border
+          bg-[#F8FAFC]
+          pl-12
+          pr-4
+          text-sm
+          outline-none
+          transition
+          focus:border-erp-primary
+          focus:ring-2
+          focus:ring-erp-primary/10
+        "
+              />
+            </div>
+
+            {/* ALL TRANSITS */}
+            <div className="relative w-full lg:min-w-[180px] lg:max-w-[180px]">
+              <select
+                value={filters.status}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    status: e.target.value,
+                  }))
+                }
+                className="
+h-14
+w-full
+appearance-none
+rounded-full
+border
+border-[#E2E8F0]
+bg-white
+px-5
+pr-10
+text-sm
+font-medium
+text-[#0F172A]
+shadow-sm
+outline-none
+cursor-pointer
+transition-all
+duration-200
+hover:border-[#CBD5E1]
+hover:shadow-md
+focus:border-[#6366F1]
+focus:ring-4
+focus:ring-[#6366F1]/10
+"
+              >
+                <option value="all">
+                  All Transits
+                </option>
+
+                <option value="my_transits">
+                  My Transits
+                </option>
+              </select>
+
+              <ChevronDown
+                className="
+          pointer-events-none
+          absolute
+          right-4
+          top-1/2
+          h-4
+          w-4
+          -translate-y-1/2
+          text-erp-muted
+        "
+              />
+            </div>
+
+            <div className="relative w-full lg:min-w-[180px] lg:max-w-[180px]">
+              <select
+                value={filters.district_store_code}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    district_store_code: e.target.value,
+                    retail_store_code: "all",
+                  }))
+                }
+                className="
+h-14
+w-full
+appearance-none
+rounded-full
+border
+border-[#E2E8F0]
+bg-white
+px-5
+pr-10
+text-sm
+font-medium
+text-[#0F172A]
+shadow-sm
+outline-none
+cursor-pointer
+transition-all
+duration-200
+hover:border-[#CBD5E1]
+hover:shadow-md
+focus:border-[#6366F1]
+focus:ring-4
+focus:ring-[#6366F1]/10
+"
+              >
+                <option value="all">
+                  District Store
+                </option>
+
+                {districtStores.map(
+                  (store: any) => (
+                    <option
+                      key={store.store_code}
+                      value={store.store_code}
+                      title={store.store_name}
+                    >
+                      {store.store_name}
+                    </option>
+                  )
+                )}
+              </select>
+
+              <ChevronDown
+                className="
+          pointer-events-none
+          absolute
+          right-4
+          top-1/2
+          h-4
+          w-4
+          -translate-y-1/2
+          text-erp-muted
+        "
+              />
+            </div>
+
+            {/* RETAIL */}
+            <div className="relative w-full lg:min-w-[180px] lg:max-w-[180px]">
+              <select
+                value={filters.retail_store_code}
+                onChange={(e) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    district_store_code: "all",
+                    retail_store_code: e.target.value,
+                  }))
+                }
+                className="
+h-14
+w-full
+appearance-none
+rounded-full
+border
+border-[#E2E8F0]
+bg-white
+px-5
+pr-10
+text-sm
+font-medium
+text-[#0F172A]
+shadow-sm
+outline-none
+cursor-pointer
+transition-all
+duration-200
+hover:border-[#CBD5E1]
+hover:shadow-md
+focus:border-[#6366F1]
+focus:ring-4
+focus:ring-[#6366F1]/10
+"
+              >
+                <option value="all">
+                  Retail Store
+                </option>
+
+                {retailStores.map(
+                  (store: any) => (
+                    <option
+                      key={store.store_code}
+                      value={store.store_code}
+                      title={store.store_name}
+                    >
+                      {store.store_name}
+                    </option>
+                  )
+                )}
+              </select>
+
+
+              <ChevronDown
+                className="
+    pointer-events-none
+    absolute
+    right-5
+    top-1/2
+    h-5
+    w-5
+    -translate-y-1/2
+    text-slate-500
+  "
+              />
+            </div>
+          </div>
+        </section>
+
+        {error ? (
+          <div className="mt-[18px] flex items-start justify-between gap-3 rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">
+            <span>{error}</span>
+
+            <button
+              type="button"
+              onClick={loadTransfers}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-red-700 shadow-sm"
+            >
+              <RefreshCw className="h-[14px] w-[14px]" />
+              Retry
+            </button>
+          </div>
+        ) : null}
 
         <section className="mt-[32px]">
           <div className="flex items-center justify-between">
@@ -447,12 +615,14 @@ export default function HeadOfficeTransitPage({
                           <div className="mt-[20px] max-w-[650px]">
                             <LocationRow
                               from={
-                                item.from_organization_name ||
-                                "—"
+                                item.from_store_name
+                                  ? `${item.from_store_name} (${item.from_store_level})`
+                                  : "—"
                               }
                               to={
-                                item.to_organization_name ||
-                                "—"
+                                item.to_store_name
+                                  ? `${item.to_store_name} (${item.to_store_level})`
+                                  : "—"
                               }
                             />
                           </div>
@@ -461,7 +631,7 @@ export default function HeadOfficeTransitPage({
                             <DateInfo
                               shippedDate={formatDate(
                                 item.dispatch_date ||
-                                  item.transfer_date
+                                item.transfer_date
                               )}
                               expectedDelivery={formatDate(
                                 item.expected_delivery_date

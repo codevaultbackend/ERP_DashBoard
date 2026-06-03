@@ -40,7 +40,7 @@ export function StatCard({
   iconClass?: string;
 }) {
   return (
-    <div className="flex h-[108px] items-center rounded-[28px] border border-erp-border bg-erp-card px-[26px] shadow-erp-card">
+    <div className="flex h-[108px] items-center rounded-[28px] border border-erp-border bg-erp-card px-[26px] max-[768px]:px-[16px] max-[768px]:gap-0.5 shadow-erp-card">
       <div className="flex items-center gap-[16px]">
         <div
           className={cn(
@@ -48,7 +48,7 @@ export function StatCard({
             iconWrapClass
           )}
         >
-          <span className={cn("flex items-center justify-center", iconClass)}>
+          <span className={cn("flex items-center justify-center ", iconClass)}>
             {icon}
           </span>
         </div>

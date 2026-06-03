@@ -1,3 +1,4 @@
+import HeadTransitDetailContent from "@/features/head-office/transit/HeadTransitDetailContent";
 import TransitDetailContent from "@/features/retail/transit/TransitDetailContent";
 
 type Props = {
@@ -10,7 +11,8 @@ export default async function HeadOfficeTransitDetailPage({ params }: Props) {
   const { transferId } = await params;
 
   return (
-    <TransitDetailContent
+
+    <HeadTransitDetailContent
       transferId={transferId}
       basePath="/head-office/transit"
     />

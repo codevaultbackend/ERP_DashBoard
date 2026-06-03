@@ -8,15 +8,15 @@ import RequestTopHeader from "@/features/retail/request/components/RequestTopHea
 import LowStockAlert from "@/features/retail/request/components/LowStockAlert";
 import EmptyStockRequests from "@/features/retail/request/components/EmptyStockRequests";
 import StockRequestCard from "@/features/retail/request/components/StockRequestCard";
-import DistrictRequestStockModal from "@/features/district/request/components/DistrictRequestStockModal";
+import DistrictRequestStockModal from "@/features/head-office/request/components/HeadRequestStockModal";
 import ApproveDispatchModal from "@/features/retail/request/components/ApproveDispatchModal";
+import TransferRequestModal from "@/features/retail/request/components/TransferRequestModal";
 
 import {
   getMyStockRequests,
   getReceivedStockRequests,
   type StockRequestApi,
 } from "@/features/retail/request/api/request-api";
-import TransferRequestModal from "@/features/retail/request/components/TransferRequestModal";
 
 export type RequestCardProduct = {
   name: string;
@@ -168,17 +168,15 @@ export default function DistrictRequestPage() {
   const [openApproveDispatch, setOpenApproveDispatch] = useState(false);
   const [selectedDispatchRequest, setSelectedDispatchRequest] =
     useState<StockRequestApi | null>(null);
+  const [openTransferModal, setOpenTransferModal] =
+    useState(false);
+
+  const [selectedRequestId, setSelectedRequestId] =
+    useState<number | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [submittingRequest, setSubmittingRequest] = useState(false);
   const [pageError, setPageError] = useState("");
-  const [openTransferModal, setOpenTransferModal] = useState(false);
-
-  const [selectedTransferRequest, setSelectedTransferRequest] =
-    useState<StockRequestApi | null>(null);
-
-const [selectedRequestId, setSelectedRequestId] =
-  useState<number | null>(null);
 
   const [myRequests, setMyRequests] = useState<StockRequestApi[]>([]);
   const [receivedRequests, setReceivedRequests] = useState<StockRequestApi[]>([]);
@@ -186,6 +184,9 @@ const [selectedRequestId, setSelectedRequestId] =
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
+
+
+
 
   const storeId = useMemo(() => getStoreIdFromLocalStorage(), []);
 
@@ -406,15 +407,14 @@ const [selectedRequestId, setSelectedRequestId] =
         onSuccess={loadAllRequests}
       />
       <TransferRequestModal
-  open={openTransferModal}
-  requestId={selectedRequestId}
-  onClose={() => {
-    setOpenTransferModal(false);
-    setSelectedRequestId(null);
-  }}
-  onSuccess={loadAllRequests}
-/>
-
+        open={openTransferModal}
+        requestId={selectedRequestId}
+        onClose={() => {
+          setOpenTransferModal(false);
+          setSelectedRequestId(null);
+        }}
+        onSuccess={loadAllRequests}
+      />
     </>
   );
 }

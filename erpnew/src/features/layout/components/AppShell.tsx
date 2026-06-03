@@ -19,6 +19,7 @@ const NAV_ITEMS: Record<AppRole, NavItem[]> = {
     { label: "Dashboard", href: "/head-office/dashboard" },
     { label: "Stock Management", href: "/head-office/stock-management" },
     { label: "Transit", href: "/head-office/transit" },
+    { label: "Request", href: "/head-office/request" },
     { label: "Ledger", href: "/head-office/ledger" },
     { label: "Staff Management", href: "/head-office/staff-management" },
     { label: "Activities Performed", href: "/head-office/activities-performed" },

@@ -65,3 +65,94 @@ export async function getHeadAllTransfers(
     `/request/transfers/head/all?${params.toString()}`
   );
 }
+
+export async function getOrganizationsByLevel(
+  level: "district" | "retail" | "head"
+) {
+  return apiFetch(
+    `/staff/organizations-by-level?level=${level}`
+  );
+}
+
+export async function getHeadTransitById(
+  id: string | number
+) {
+  const res = await apiFetch<any>(
+    `/request/head/transfers/${id}`
+  );
+
+  return res.data;
+}
+
+export async function markHeadTransferReceived(
+  id: string | number
+) {
+  return apiFetch(
+    `/request/transfers/head/${id}/receive`,
+    {
+      method: "PUT",
+    }
+  );
+}
+export async function getHeadTransferLiveLocation(
+  id: string | number
+) {
+  return apiFetch(
+    `/track/${id}/live-location`
+  );
+}
+
+export async function getHeadTransferRoute(
+  id: string | number
+) {
+  return apiFetch(
+    `/track/${id}/route`
+  );
+}
+
+export async function startHeadTransferLiveTracking(
+  id: string | number,
+  payload: {
+    start_lat: number;
+    start_lng: number;
+  }
+) {
+  return apiFetch(
+    `/track/${id}/start`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+export async function updateHeadTransferLiveLocation(
+  id: string | number,
+  payload: {
+    latitude: number;
+    longitude: number;
+    speed?: number;
+    heading?: number;
+    accuracy?: number;
+    battery_level?: number;
+  }
+) {
+  return apiFetch(
+    `/track/${id}/location`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+export async function stopHeadTransferLiveTracking(
+  id: string | number
+) {
+  return apiFetch(
+    `/track/${id}/stop`,
+    {
+      method: "POST",
+    }
+  );
+}

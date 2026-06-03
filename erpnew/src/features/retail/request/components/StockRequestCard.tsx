@@ -84,8 +84,8 @@ function PriorityBadge({ priority }: { priority?: string }) {
     key === "high"
       ? "border-[#FF9B8F] bg-[#FFF1F0] text-[#F04438]"
       : key === "low"
-      ? "border-[#86EFAC] bg-[#F0FDF4] text-[#16A34A]"
-      : "border-[#F5C27B] bg-[#FFF3E2] text-[#F59E0B]";
+        ? "border-[#86EFAC] bg-[#F0FDF4] text-[#16A34A]"
+        : "border-[#F5C27B] bg-[#FFF3E2] text-[#F59E0B]";
 
   return (
     <span
@@ -125,11 +125,18 @@ type Props = {
   item: RequestCardData;
   compact?: boolean;
   onDispatch?: (item: RequestCardData) => void;
+  onTransfer?: (item: RequestCardData) => void;
 };
 
 /* ================= MAIN ================= */
 
-export default function StockRequestCard({ item, onDispatch }: Props) {
+
+
+export default function StockRequestCard({
+  item,
+  onDispatch,
+  onTransfer,
+}: Props) {
   const dispatched = isDispatched(item);
   const createdDate = formatDate(item?.raw?.createdAt);
 
@@ -217,7 +224,22 @@ export default function StockRequestCard({ item, onDispatch }: Props) {
           )}
         </div>
 
-        <StatusBadge item={item} />
+        <div className="flex items-center gap-3">
+          {onTransfer && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onTransfer(item);
+              }}
+              className="h-[36px] rounded-full border border-[#D0D5DD] px-5 text-[14px] font-medium"
+            >
+              Transfer
+            </button>
+          )}
+
+          <StatusBadge item={item} />
+        </div>
       </div>
 
       {/* INFO */}
