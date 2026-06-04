@@ -213,7 +213,7 @@ export default function StockRequestCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h3 className="truncate text-[20px] font-semibold text-erp-heading">
-            Request #{item?.id ?? "Not found"}
+            {item?.id ?? "Not found"}
           </h3>
 
           {dispatched && (

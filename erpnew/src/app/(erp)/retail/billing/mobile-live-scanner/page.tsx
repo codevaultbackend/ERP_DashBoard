@@ -237,7 +237,7 @@ function MobileScannerInner() {
 
       setError(
         error?.message ||
-          "Camera failed"
+        "Camera failed"
       );
     }
   }
@@ -269,7 +269,7 @@ function MobileScannerInner() {
         false
       );
 
-    } catch {}
+    } catch { }
   }
 
   /**
@@ -335,17 +335,23 @@ function MobileScannerInner() {
         true
       );
 
+      console.log(
+        "EMITTING ITEM",
+        {
+          sessionId,
+          storeCode,
+          organizationId,
+          data: item,
+        }
+      );
+
       socket.emit(
         "billing:item_scanned",
         {
           sessionId,
-
           storeCode,
-
           organizationId,
-
           data: item,
-
           sent_at:
             new Date().toISOString(),
         }
@@ -371,7 +377,7 @@ function MobileScannerInner() {
 
       setError(
         error?.message ||
-          "Scan failed"
+        "Scan failed"
       );
 
     } finally {
@@ -420,11 +426,10 @@ function MobileScannerInner() {
             </div>
 
             <div
-              className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                socketConnected
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${socketConnected
                   ? "bg-green-100 text-green-600"
                   : "bg-red-100 text-red-600"
-              }`}
+                }`}
             >
               <Wifi className="h-5 w-5" />
             </div>
@@ -526,15 +531,15 @@ function MobileScannerInner() {
 
           {(loading ||
             sending) && (
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-white p-4 text-sm font-semibold">
+              <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-white p-4 text-sm font-semibold">
 
-              <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
 
-              {sending
-                ? "Sending to desktop..."
-                : "Fetching item..."}
-            </div>
-          )}
+                {sending
+                  ? "Sending to desktop..."
+                  : "Fetching item..."}
+              </div>
+            )}
         </div>
       </div>
     </main>

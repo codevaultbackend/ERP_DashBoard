@@ -36,8 +36,8 @@ export default function RefundSearchFilters({
   setDate,
 }: Props) {
   return (
-    <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-[10px] shadow-[0px_2px_10px_rgba(15,23,42,0.02)]">
-      <div className="flex flex-col gap-3 xl:flex-row">
+    <div className="rounded-[28px] border border-[#E5E7EB] bg-white p-[10px] shadow-erp-sm">
+      <div className="lg:flex xl:flex lg:flex-col lg:gap-3 xl:flex-row">
         <div className="flex h-[56px] flex-1 items-center gap-3 rounded-[18px] bg-[#F7F7F8] px-4 sm:px-5">
           <Search className="h-[18px] w-[18px] text-[#8B94A7]" />
           <input
@@ -49,7 +49,7 @@ export default function RefundSearchFilters({
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row xl:w-auto">
-          <div className="flex h-[56px] min-w-[160px] items-center gap-3 rounded-[18px] bg-[#F7F7F8] px-4">
+          <div className="flex h-[56px] min-w-[160px] items-center gap-3 rounded-[18px] bg-[#F7F7F8] px-4 max-[768px]:mt-[12px]">
             <CalendarDays className="h-[18px] w-[18px] text-[#8B94A7]" />
             <input
               type="text"
@@ -60,7 +60,7 @@ export default function RefundSearchFilters({
             />
           </div>
 
-          <div className="relative min-w-[170px]">
+          <div className="relative min-w-[170px] max-[768px]:mt-[12px]">
             <select
               value={month}
               onChange={(e) => setMonth(e.target.value)}

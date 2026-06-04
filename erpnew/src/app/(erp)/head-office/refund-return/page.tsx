@@ -13,27 +13,34 @@ export default function RefundReturnPage() {
   const [month, setMonth] = useState("Select Month");
   const [date, setDate] = useState("");
 
-  const filteredRequests = useMemo(() => {
-    return refundRequests.filter((item) => {
-      const matchesSearch =
-        item.customerName.toLowerCase().includes(search.toLowerCase()) ||
-        item.id.toLowerCase().includes(search.toLowerCase()) ||
-        item.billNo.toLowerCase().includes(search.toLowerCase()) ||
-        item.productName.toLowerCase().includes(search.toLowerCase());
+const filteredRequests = useMemo(() => {
+  const query = search.trim().toLowerCase();
+  const selectedDate = normalizeDateToISO(date.trim());
 
-      const matchesMonth =
-        month === "Select Month" ||
-        new Date(item.refundDate).toLocaleString("en-US", { month: "long" }) === month;
+  return requests.filter((item) => {
+    const matchesSearch =
+      !query ||
+      item.customerName.toLowerCase().includes(query) ||
+      item.id.toLowerCase().includes(query) ||
+      item.billNo.toLowerCase().includes(query) ||
+      item.old_product_name.toLowerCase().includes(query) ||
+      item.old_product_code.toLowerCase().includes(query) ||
+      item.new_product_name.toLowerCase().includes(query) ||
+      item.new_product_code.toLowerCase().includes(query);
 
-      const normalizedDate = date.trim();
-      const matchesDate =
-        !normalizedDate ||
-        item.refundDate === normalizeDateToISO(normalizedDate) ||
-        item.purchaseDate === normalizeDateToISO(normalizedDate);
+    const matchesMonth =
+      month === "Select Month" ||
+      getMonthName(item.exchangeDate) === month ||
+      getMonthName(item.purchaseDate) === month;
 
-      return matchesSearch && matchesMonth && matchesDate;
-    });
-  }, [search, month, date]);
+    const matchesDate =
+      !selectedDate ||
+      normalizeDisplayDate(item.exchangeDate) === selectedDate ||
+      normalizeDisplayDate(item.purchaseDate) === selectedDate;
+
+    return matchesSearch && matchesMonth && matchesDate;
+  });
+}, [requests, search, month, date]);
 
   return (
     <div className="w-full pb-8">
@@ -53,17 +60,17 @@ export default function RefundReturnPage() {
         </button>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-4">
         <RefundPolicyCard points={refundPolicyPoints} />
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
         {refundStats.map((item) => (
           <RefundMetricCard key={item.title} item={item} />
         ))}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-4">
         <RefundSearchFilters
           search={search}
           setSearch={setSearch}

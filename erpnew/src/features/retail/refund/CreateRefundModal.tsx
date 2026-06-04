@@ -2,7 +2,10 @@
 
 import { Box, Loader2, X } from "lucide-react";
 import { FormEvent, useState } from "react";
-import { createExchange } from "./api/exchange-api";
+import {
+  createExchange,
+  getInvoiceForExchange,
+} from "./api/exchange-api";
 
 type Props = {
   open: boolean;
@@ -72,48 +75,149 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loadingInvoice, setLoadingInvoice] = useState(false);
+  const [invoiceLoaded, setInvoiceLoaded] = useState(false);
 
   if (!open) return null;
 
   function updateField(key: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
+  async function handleFetchInvoice() {
+    try {
+      if (!form.invoice_number.trim()) {
+        setError("Please enter invoice number");
+        return;
+      }
+
+      setLoadingInvoice(true);
+      setError("");
+
+      const response = await getInvoiceForExchange(
+        form.invoice_number.trim()
+      );
+
+      const invoiceData = response.data;
+
+      const oldProduct =
+        invoiceData.latest_exchange_product ||
+        invoiceData.items?.[0];
+
+      if (!oldProduct) {
+        throw new Error("No product found");
+      }
+
+      setForm((prev) => ({
+        ...prev,
+
+        old_product_code: oldProduct.product_code || "",
+        old_product_name: oldProduct.product_name || "",
+        old_purity: oldProduct.purity || "",
+
+        old_gross_weight: String(
+          oldProduct.gross_weight ?? ""
+        ),
+
+        old_net_weight: String(
+          oldProduct.net_weight ?? ""
+        ),
+
+        old_stone_weight: String(
+          oldProduct.stone_weight ?? ""
+        ),
+
+        old_value: String(
+          oldProduct.value ?? ""
+        ),
+      }));
+
+      setInvoiceLoaded(true);
+    } catch (error: any) {
+      setInvoiceLoaded(false);
+
+      setError(
+        error?.message ||
+        "Failed to fetch invoice"
+      );
+    } finally {
+      setLoadingInvoice(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
     try {
+      if (!invoiceLoaded) {
+        setError(
+          "Please fetch invoice first"
+        );
+        return;
+      }
       setSubmitting(true);
       setError("");
 
       await createExchange({
-        invoice_number: form.invoice_number,
-        original_product: {
-          item_id: Number(form.old_item_id || 0),
-          product_code: form.old_product_code,
-          product_name: form.old_product_name,
-          metal: form.old_metal,
-          purity: form.old_purity,
-          gross_weight: Number(form.old_gross_weight || 0),
-          net_weight: Number(form.old_net_weight || 0),
-          stone_weight: Number(form.old_stone_weight || 0),
-          condition: form.old_condition,
-          value: Number(form.old_value || 0),
-        },
-        new_product: {
-          item_id: Number(form.new_item_id || 0),
-          product_code: form.new_product_code,
-          product_name: form.new_product_name,
-          metal: form.new_metal,
-          purity: form.new_purity,
-          gross_weight: Number(form.new_gross_weight || 0),
-          net_weight: Number(form.new_net_weight || 0),
-          stone_weight: Number(form.new_stone_weight || 0),
-          condition: form.new_condition,
-          value: Number(form.new_value || 0),
-        },
-        making_charge: Number(form.making_charge || 0),
-        stone_amount: Number(form.stone_amount || 0),
+        invoice_number:
+          form.invoice_number,
+
+        original_products: [
+          {
+            product_code:
+              form.old_product_code,
+
+            product_name:
+              form.old_product_name,
+
+            value:
+              Number(
+                form.old_value || 0
+              ),
+          },
+        ],
+
+        new_products: [
+          {
+            product_code:
+              form.new_product_code,
+
+            product_name:
+              form.new_product_name,
+
+            purity:
+              form.new_purity,
+
+            gross_weight:
+              Number(
+                form.new_gross_weight || 0
+              ),
+
+            net_weight:
+              Number(
+                form.new_net_weight || 0
+              ),
+
+            stone_weight:
+              Number(
+                form.new_stone_weight || 0
+              ),
+
+            value:
+              Number(
+                form.new_value || 0
+              ),
+          },
+        ],
+
+        making_charge:
+          Number(
+            form.making_charge || 0
+          ),
+
+        stone_amount:
+          Number(
+            form.stone_amount || 0
+          ),
       });
 
       setForm(initialForm);
@@ -121,8 +225,8 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
-          err?.message ||
-          "Failed to create exchange"
+        err?.message ||
+        "Failed to create exchange"
       );
     } finally {
       setSubmitting(false);
@@ -130,10 +234,22 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/35 px-4 py-6 backdrop-blur-[1.5px]">
+    <div className="fixed inset-0 z-[9999]  flex items-center justify-center bg-black/40 p-3 sm:p-5 backdrop-blur-sm">
       <form
         onSubmit={handleSubmit}
-        className="relative flex max-h-[92vh] w-full max-w-[760px] flex-col overflow-hidden rounded-[28px] bg-white shadow-[0px_24px_80px_rgba(15,23,42,0.30)]"
+        className="
+      relative
+      flex
+      h-[95vh]
+      w-full
+      max-w-[691px]
+      flex-col
+      overflow-hidden
+      rounded-2xl
+      sm:rounded-3xl
+      bg-white
+      shadow-erp-sm
+    "
       >
         <button
           type="button"
@@ -143,79 +259,125 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
           <X className="h-5 w-5" />
         </button>
 
-        <div className="shrink-0 px-[26px] pt-[24px] sm:px-[30px]">
-          <h2 className="text-[22px] font-semibold leading-[28px] tracking-[-0.035em] text-[#020617]">
+        <div className="shrink-0 border-b border-slate-100 px-4 py-4 sm:px-6">
+          <h2 className="pr-10 text-lg font-semibold text-[#020617] sm:text-2xl">
             Enter Exchange Details
           </h2>
         </div>
 
-        <div className="dashboard-hidden-scroll flex-1 overflow-y-auto px-[26px] pb-[20px] pt-[22px] sm:px-[30px]">
+        <div className="dashboard-hidden-scroll flex-1 overflow-y-auto px-[26px] pb-[20px] pt-[22px] max-[768px]:px-[10px]">
           <ProductSection
             variant="old"
             title="Original Product"
             borderClass="border-[#FF2020]"
             bgClass="bg-[#FFF5F5]"
           >
-            <div className="grid grid-cols-12 gap-x-[18px] gap-y-[18px]">
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Invoice Number"
-                value={form.invoice_number}
-                onChange={(v) => updateField("invoice_number", v)}
-              />
+            <div className="grid grid-cols-12 gap-x-[20px] gap-y-[20px]">
+              <div className="col-span-12">
+                <label className="flex flex-col">
+                  <span className="mb-[8px] block text-[15px]">
+                    Invoice Number
+                  </span>
+
+                  <div className="lg:flex gap-3 ">
+                    <input
+                      value={form.invoice_number}
+                      onChange={(e) =>
+                        updateField(
+                          "invoice_number",
+                          e.target.value
+                        )
+                      }
+                      className="h-[45px] flex-1 rounded-[10px] max-[768px]:w-full border border-gray-300 px-3"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleFetchInvoice}
+                      disabled={loadingInvoice}
+                      className="
+h-[39px]
+min-w-[100px]
+rounded-[10px]
+bg-black
+px-4
+text-white
+font-medium
+hover:bg-[#111827]
+transition
+max-[768px]:mt-[12px]
+max-[768px]:w-full
+"
+                    >
+                      {loadingInvoice
+                        ? "..."
+                        : "Fetch"}
+                    </button>
+                  </div>
+                </label>
+              </div>
               <Field
                 className="col-span-12 md:col-span-4"
                 label="Product Code"
                 value={form.old_product_code}
-                onChange={(v) => updateField("old_product_code", v)}
+                readOnly
+                onChange={() => { }}
               />
               <Field
                 className="col-span-12 md:col-span-4"
                 label="Product Name"
+                readOnly
                 value={form.old_product_name}
                 onChange={(v) => updateField("old_product_name", v)}
               />
 
               <Field
-                className="col-span-6 md:col-span-3"
+                className="col-span-12 md:col-span-4"
                 label="Metal"
+                readOnly
                 value={form.old_metal}
                 onChange={(v) => updateField("old_metal", v)}
               />
               <Field
-                className="col-span-6 md:col-span-3"
+                className="col-span-12 md:col-span-4"
                 label="Purity"
+                readOnly
                 value={form.old_purity}
                 onChange={(v) => updateField("old_purity", v)}
               />
               <Field
-                className="col-span-6 md:col-span-2"
+                className="col-span-12 md:col-span-4"
                 label="Stone Wt."
+                readOnly
                 value={form.old_stone_weight}
                 onChange={(v) => updateField("old_stone_weight", v)}
               />
               <Field
-                className="col-span-6 md:col-span-2"
+                className="col-span-12 md:col-span-4"
                 label="Net Wt."
+                readOnly
                 value={form.old_net_weight}
                 onChange={(v) => updateField("old_net_weight", v)}
               />
               <Field
-                className="col-span-12 md:col-span-2"
+                className="col-span-12 md:col-span-4"
                 label="Gross Wt."
+                readOnly
                 value={form.old_gross_weight}
                 onChange={(v) => updateField("old_gross_weight", v)}
               />
 
               <Field
-                className="col-span-12 md:col-span-8"
+                className="col-span-12 md:col-span-4"
                 label="Condition"
+                readOnly
                 value={form.old_condition}
                 onChange={(v) => updateField("old_condition", v)}
               />
               <Field
                 className="col-span-12 md:col-span-4"
                 label="Value"
+                readOnly
                 value={form.old_value}
                 onChange={(v) => updateField("old_value", v)}
               />
@@ -228,7 +390,7 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
             borderClass="border-[#16B833]"
             bgClass="bg-[#F0FFF5]"
           >
-            <div className="grid grid-cols-12 gap-x-[18px] gap-y-[18px]">
+            <div className="grid grid-cols-12 gap-x-[20px] gap-y-[20px]">
               <Field
                 className="col-span-4 md:col-span-2"
                 label="Item ID"
@@ -308,7 +470,7 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
           </ProductSection>
 
           {error ? (
-            <div className="mt-[16px] rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600">
+            <div className="mt-[20px] rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600">
               {error}
             </div>
           ) : null}
@@ -319,7 +481,7 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="h-[44px] rounded-[10px] border border-[#E5E7EB] bg-white text-[15px] font-medium text-[#020617] shadow-[0px_1px_2px_rgba(15,23,42,0.04)] transition hover:bg-[#F8FAFC]"
+              className="h-[44px] rounded-[10px] border border-[#E5E7EB] bg-white text-[15px] font-medium text-[#020617] shadow-erp-sm transition hover:bg-[#F8FAFC]"
             >
               Cancel
             </button>
@@ -327,7 +489,7 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
             <button
               type="submit"
               disabled={submitting}
-              className="flex h-[44px] items-center justify-center gap-2 rounded-[10px] bg-[#02031A] text-[15px] font-medium text-white shadow-[0px_10px_24px_rgba(2,3,26,0.18)] transition hover:bg-[#111827] disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-[44px] items-center justify-center gap-2 rounded-[10px] bg-[#02031A] text-[15px] font-medium text-white shadow-erp-sm transition hover:bg-[#111827] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Create Invoice
@@ -356,19 +518,24 @@ function ProductSection({
 
   return (
     <section
-      className={`rounded-[20px] border px-[16px] py-[18px] sm:px-[18px] ${
-        isOld ? "mb-[22px]" : ""
-      } ${borderClass} ${bgClass}`}
+      className={`
+    rounded-2xl
+    border
+    p-6
+    max-[768px]:p-3
+    shadow-erp-sm
+    ${isOld ? "mb-6" : ""}
+    ${borderClass}
+    ${bgClass}
+  `}
     >
       <div
-        className={`mb-[18px] flex items-center gap-[10px] text-[20px] font-semibold leading-[26px] tracking-[-0.035em] ${
-          isOld ? "text-[#8C1014]" : "text-[#08751F]"
-        }`}
+        className={`mb-[18px] flex items-center gap-[10px] text-[20px] font-semibold leading-[26px] tracking-[-0.035em] ${isOld ? "text-[#8C1014]" : "text-[#08751F]"
+          }`}
       >
         <Box
-          className={`h-5 w-5 ${
-            isOld ? "text-[#FF1F1F]" : "text-[#16B833]"
-          }`}
+          className={`h-5 w-5 ${isOld ? "text-[#FF1F1F]" : "text-[#16B833]"
+            }`}
         />
         {title}
       </div>
@@ -383,22 +550,39 @@ function Field({
   value,
   onChange,
   className,
+  readOnly = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  readOnly?: boolean;
 }) {
   return (
     <label className={className}>
-      <span className="mb-[8px] block text-[15px] font-normal leading-[20px] whitespace-nowrap text-[#020617]">
+      <span className="mb-2 block text-sm sm:text-[15px] font-normal leading-5 whitespace-nowrap text-[#020617]">
         {label}
       </span>
 
       <input
         value={value}
+        readOnly={readOnly}
         onChange={(e) => onChange(e.target.value)}
-        className="h-[39px] w-full rounded-[10px] border border-transparent bg-white px-3 text-[14px] font-medium text-[#111827] outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10"
+        className={`
+  h-11
+  w-full
+  rounded-xl
+  border
+  px-4
+  text-sm
+  font-medium
+  outline-none
+  transition-all
+  ${readOnly
+            ? "border-slate-200 bg-slate-50 text-slate-500"
+            : "border-slate-300 bg-white text-slate-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+          }
+`}
       />
     </label>
   );

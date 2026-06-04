@@ -44,8 +44,12 @@ export default function DesktopBillingScannerReceiver({
       `billing_session_${billingSessionId}`;
 
     console.log(
-      "ROOM NAME:",
+      "DESKTOP ROOM:",
       roomName
+    );
+    console.log(
+      "SESSION ID:",
+      billingSessionId
     );
 
     /**

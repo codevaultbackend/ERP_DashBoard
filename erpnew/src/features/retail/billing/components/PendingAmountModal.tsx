@@ -419,7 +419,7 @@ export default function PendingAmountModal({
           </div>
 
           {/* FOOTER */}
-          <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
+          <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row">
             <button
               onClick={onClose}
               className="h-14 w-full rounded-2xl border border-gray-200 bg-white font-semibold transition hover:bg-gray-100"

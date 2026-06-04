@@ -46,9 +46,9 @@ type RequestableProduct = {
   article_code?: string;
   qty: string;
   tone:
-    | "critical"
-    | "medium"
-    | "optimum";
+  | "critical"
+  | "medium"
+  | "optimum";
 };
 
 type SelectedRequestItem = {
@@ -165,7 +165,7 @@ function mapCategoryItemToRequestProduct(
 ): RequestableProduct {
   const stock = safeNumber(
     row?.available_qty ??
-      row?.quantity
+    row?.quantity
   );
 
   return {
@@ -183,7 +183,7 @@ function mapCategoryItemToRequestProduct(
 
     article_code: safeText(
       row?.article_code ||
-        row?.sku_code,
+      row?.sku_code,
       ""
     ),
 
@@ -422,8 +422,8 @@ export default function DistrictRequestStockModal({
             )
               ? response.data
               : Array.isArray(
-                    response
-                  )
+                response
+              )
                 ? response
                 : [];
 
@@ -445,8 +445,8 @@ export default function DistrictRequestStockModal({
           setError(
             err?.response?.data
               ?.message ||
-              err?.message ||
-              "Failed to load stores"
+            err?.message ||
+            "Failed to load stores"
           );
         } finally {
           setLoadingTargets(false);
@@ -476,13 +476,13 @@ export default function DistrictRequestStockModal({
 
           const organizationId =
             targetLevel ===
-            "head"
+              "head"
               ? 21
               : selectedTarget.id;
 
           const organizationLevel =
             targetLevel ===
-            "head"
+              "head"
               ? "head_office"
               : "retail";
 
@@ -503,8 +503,8 @@ export default function DistrictRequestStockModal({
             )
               ? response
               : Array.isArray(
-                    response?.data
-                  )
+                response?.data
+              )
                 ? response.data
                 : [];
 
@@ -519,8 +519,8 @@ export default function DistrictRequestStockModal({
           setError(
             err?.response?.data
               ?.message ||
-              err?.message ||
-              "Failed to load categories"
+            err?.message ||
+            "Failed to load categories"
           );
         } finally {
           setLoadingCategories(
@@ -557,13 +557,13 @@ export default function DistrictRequestStockModal({
 
           const organizationId =
             targetLevel ===
-            "head"
+              "head"
               ? 21
               : selectedTarget.id;
 
           const organizationLevel =
             targetLevel ===
-            "head"
+              "head"
               ? "head_office"
               : "retail";
 
@@ -587,8 +587,8 @@ export default function DistrictRequestStockModal({
             )
               ? response
               : Array.isArray(
-                    response?.data
-                  )
+                response?.data
+              )
                 ? response.data
                 : [];
 
@@ -606,8 +606,8 @@ export default function DistrictRequestStockModal({
           setError(
             err?.response?.data
               ?.message ||
-              err?.message ||
-              "Failed to load products"
+            err?.message ||
+            "Failed to load products"
           );
         } finally {
           setLoadingItems(false);
@@ -666,6 +666,19 @@ export default function DistrictRequestStockModal({
     Object.keys(selectedItems)
       .length;
 
+  const selectedCount = useMemo(
+    () => Object.keys(selectedItems).length,
+    [selectedItems]
+  );
+
+  const selectedCategoryCount = useMemo(() => {
+    return new Set(
+      Object.values(selectedItems).map(
+        (item) => item.category
+      )
+    ).size;
+  }, [selectedItems]);
+
   if (!mounted || !open)
     return null;
 
@@ -687,11 +700,11 @@ export default function DistrictRequestStockModal({
     setProducts((prev) =>
       prev.map((item) =>
         item.item_id ===
-        product.item_id
+          product.item_id
           ? {
-              ...item,
-              qty: value,
-            }
+            ...item,
+            qty: value,
+          }
           : item
       )
     );
@@ -727,7 +740,28 @@ export default function DistrictRequestStockModal({
       return next;
     });
   };
+  const removeSelectedItem = (
+    itemId: number
+  ) => {
+    setSelectedItems((prev) => {
+      const next = { ...prev };
 
+      delete next[itemId];
+
+      return next;
+    });
+
+    setProducts((prev) =>
+      prev.map((item) =>
+        item.item_id === itemId
+          ? {
+            ...item,
+            qty: "",
+          }
+          : item
+      )
+    );
+  };
   /**
    * SUBMIT
    */
@@ -805,35 +839,23 @@ export default function DistrictRequestStockModal({
           }
         );
 
-        /**
-         * SUCCESS UX
-         */
-
         setSuccessMessage(
           "Stock request submitted successfully"
         );
 
-        await onSuccess();
+        setTimeout(async () => {
+          await onSuccess();
 
-        /**
-         * RESET FORM AFTER SUCCESS
-         */
+          resetForm();
 
-        resetForm();
-
-        /**
-         * AUTO REMOVE SUCCESS
-         */
-
-        setTimeout(() => {
-          setSuccessMessage("");
-        }, 3000);
+          onClose();
+        }, 1500);
       } catch (err: any) {
         setError(
           err?.response?.data
             ?.message ||
-            err?.message ||
-            "Failed to create request"
+          err?.message ||
+          "Failed to create request"
         );
       } finally {
         setSubmitting(false);
@@ -995,8 +1017,8 @@ export default function DistrictRequestStockModal({
               <span className="truncate text-sm font-medium text-[#0F172A]">
                 {selectedTarget
                   ? getOrganizationLabel(
-                      selectedTarget
-                    )
+                    selectedTarget
+                  )
                   : loadingTargets
                     ? "Loading..."
                     : "Select Store"}
@@ -1207,27 +1229,36 @@ export default function DistrictRequestStockModal({
 
           {/* SUMMARY */}
 
-          {totalSelectedItems > 0 && (
-            <div className="mb-6 grid grid-cols-2 gap-4">
-              <div className="rounded-[22px] border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#64748B]">
-                  Selected Items
-                </p>
+          <p className="mb-[9px] text-[16px] font-normal leading-[22px] tracking-[-0.02em] text-[#0A0A0A]">
+            Select Products
+            {selectedCount > 0
+              ? ` (${selectedCount} selected from ${selectedCategoryCount} categories)`
+              : ""}
+          </p>
 
-                <h3 className="mt-2 text-[26px] font-bold text-[#02011A]">
-                  {totalSelectedItems}
-                </h3>
-              </div>
+          {selectedCount > 0 && (
+            <div className="mb-[10px] flex max-h-[82px] flex-wrap gap-2 overflow-y-auto rounded-[12px] border border-[#E1E4EA] bg-[#FAFBFC] p-2">
+              {Object.values(selectedItems).map(
+                (item) => (
+                  <button
+                    key={item.item_id}
+                    type="button"
+                    onClick={() =>
+                      removeSelectedItem(
+                        item.item_id
+                      )
+                    }
+                    className="inline-flex max-w-full items-center gap-2 rounded-full border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium shadow-sm"
+                  >
+                    <span className="truncate">
+                      {item.name} · Qty{" "}
+                      {item.request_qty}
+                    </span>
 
-              <div className="rounded-[22px] border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#64748B]">
-                  Total Quantity
-                </p>
-
-                <h3 className="mt-2 text-[26px] font-bold text-[#02011A]">
-                  {totalSelectedQty}
-                </h3>
-              </div>
+                    <X className="h-[14px] w-[14px]" />
+                  </button>
+                )
+              )}
             </div>
           )}
 
@@ -1253,16 +1284,14 @@ export default function DistrictRequestStockModal({
                       key={
                         item.item_id
                       }
-                      className="
-                        rounded-[24px]
-                        border
-                        border-[#E2E8F0]
-                        bg-white
-                        p-4
-                        shadow-sm
-                        transition-all
-                        hover:shadow-md
-                      "
+                      className={cn(
+                        "grid min-h-[74px] items-center rounded-[13px] border bg-white px-[14px] py-[10px] transition",
+                        "grid-cols-[minmax(0,1fr)_120px] gap-[14px]",
+                        "max-sm:grid-cols-1",
+                        safeNumber(item.qty) > 0
+                          ? "border-[#02011A] bg-[#F8FAFC]"
+                          : "border-[#E1E4EA]"
+                      )}
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0 flex-1">

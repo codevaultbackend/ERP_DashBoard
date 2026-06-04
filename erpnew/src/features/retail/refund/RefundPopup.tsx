@@ -157,7 +157,7 @@ export default function RefundPopup({ open, onClose, onSuccess }: Props) {
 
   return (
     <div className="fixed inset-0 z-[999] flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-10 font-erp backdrop-blur-[1px]">
-      <div className="relative w-full max-w-[740px] rounded-erp-2xl bg-white px-7 pb-7 pt-7 shadow-[0px_18px_42px_rgba(15,23,42,0.25)]">
+      <div className="relative w-full max-w-[740px] rounded-erp-2xl bg-white px-7 pb-7 pt-7 shadow-erp-sm">
         <button
           type="button"
           onClick={handleClose}

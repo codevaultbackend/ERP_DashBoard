@@ -226,32 +226,58 @@ export type ExchangeDashboardResponse = {
 
 export type CreateExchangePayload = {
   invoice_number: string;
-  original_product: {
-    item_id: number;
+
+  original_products: Array<{
     product_code: string;
     product_name: string;
-    metal: string;
+    value: number;
+  }>;
+
+  new_products: Array<{
+    product_code: string;
+    product_name: string;
     purity: string;
     gross_weight: number;
     net_weight: number;
     stone_weight: number;
-    condition: string;
     value: number;
-  };
-  new_product: {
-    item_id: number;
-    product_code: string;
-    product_name: string;
-    metal: string;
-    purity: string;
-    gross_weight: number;
-    net_weight: number;
-    stone_weight: number;
-    condition: string;
-    value: number;
-  };
+  }>;
+
   making_charge: number;
   stone_amount: number;
+};
+
+export type ExchangeInvoiceItem = {
+  invoice_id: number;
+  product_code: string;
+  product_name: string;
+  purity: string;
+  gross_weight: number;
+  net_weight: number;
+  stone_weight: number;
+  value: number;
+};
+
+export type ExchangeInvoiceResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    invoice_id: number;
+    invoice_number: string;
+    customer_name: string;
+    phone: string;
+    total_items: number;
+    items: ExchangeInvoiceItem[];
+    latest_exchange_product: {
+      product_code: string;
+      product_name: string;
+      purity: string;
+      gross_weight: number;
+      net_weight: number;
+      stone_weight: number;
+      value: number;
+    } | null;
+  };
 };
 
 export type RefundStat = {
@@ -271,25 +297,34 @@ export type RefundRequest = {
   customerName: string;
   phone: string;
   billNo: string;
+
   exchangeDate: string;
   purchaseDate: string;
+
   statusBadge: string;
   status: "approved" | "pending" | "processing" | "rejected";
+
   refundReason: string;
   refundMethod: string;
   refundAmount: string;
   deduction: string;
   finalRefund: string;
-  productName: string;
-  productCode: string;
-  metal: string;
-  weight: string;
-  originalValue: string;
-  newProductName: string;
-  newProductCode: string;
-  newValue: string;
-  makingCharges: string;
+
+  old_product_code: string;
+  old_product_name: string;
+  old_purity: string | null;
+  old_net_weight: string | null;
+  old_value: string;
+
+  new_product_code: string;
+  new_product_name: string;
+  new_purity: string | null;
+  new_net_weight: string | null;
+  new_value: string;
+
+  making_charges: string;
   difference: string;
+
   expanded?: boolean;
 };
 
@@ -438,35 +473,62 @@ export function mapExchangeToRefundRequest(
 
   return {
     id: item.exchange_number || `EXG-${item.id}`,
+
     customerName: item.name || "-",
     phone: item.phone || "-",
     billNo: item.invoice_number || "-",
+
     purchaseDate: formatDate(item.invoice_date),
     exchangeDate: formatDate(item.exchange_date),
+
     statusBadge: `${days} days since purchase`,
     status: getStatus(days),
 
     refundReason: "Product exchange",
-    refundMethod: difference >= 0 ? "Customer payable" : "Store payable",
+    refundMethod:
+      difference >= 0
+        ? "Customer payable"
+        : "Store payable",
+
     refundAmount: formatCurrency(oldValue),
     deduction: getDeduction(days),
     finalRefund: formatCurrency(finalAmount),
 
-    productName: item.old_product_name || "-",
-    productCode: item.old_product_code || "-",
-    metal: getMetalName(item.old_product_name, item.old_purity),
-    weight: getWeight(
-      item.old_gross_weight,
-      item.old_net_weight,
-      item.old_stone_weight
-    ),
-    originalValue: formatCurrency(item.old_value),
+    old_product_code:
+      item.old_product_code || "-",
 
-    newProductName: item.new_product_name || "-",
-    newProductCode: item.new_product_code || "-",
-    newValue: formatCurrency(item.new_value),
-    makingCharges: formatCurrency(makingCharges),
-    difference: formatCurrency(difference),
+    old_product_name:
+      item.old_product_name || "-",
+
+    old_purity:
+      item.old_purity || "-",
+
+    old_net_weight:
+      item.old_net_weight || "-",
+
+    old_value:
+      formatCurrency(item.old_value),
+
+    new_product_code:
+      item.new_product_code || "-",
+
+    new_product_name:
+      item.new_product_name || "-",
+
+    new_purity:
+      item.new_purity || "-",
+
+    new_net_weight:
+      item.new_net_weight || "-",
+
+    new_value:
+      formatCurrency(item.new_value),
+
+    making_charges:
+      formatCurrency(makingCharges),
+
+    difference:
+      formatCurrency(difference),
 
     expanded: index === 0,
   };
@@ -533,6 +595,43 @@ export async function getExchangeRefundData(force = false) {
   };
 }
 
+export async function getInvoiceForExchange(
+  invoiceNumber: string
+): Promise<ExchangeInvoiceResponse> {
+  const token = getTokenFromStorage();
+  const scope = getExchangeScope();
+
+  if (!token) {
+    throw new Error(
+      "Authorization token missing. Please login again."
+    );
+  }
+
+  if (!scope.store_code) {
+    throw new Error(
+      "Store code missing. Please login again."
+    );
+  }
+
+  try {
+    const res =
+      await exchangeApi.get<ExchangeInvoiceResponse>(
+        `/exchange/invoice/${encodeURIComponent(
+          invoiceNumber
+        )}`,
+        {
+          headers: {
+            ...buildScopeHeaders(),
+          },
+        }
+      );
+
+    return res.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
+}
+
 export async function createExchange(payload: CreateExchangePayload) {
   const token = getTokenFromStorage();
   const scope = getExchangeScope();
@@ -549,13 +648,25 @@ export async function createExchange(payload: CreateExchangePayload) {
     const res = await exchangeApi.post(
       "/exchange/create",
       {
-        ...payload,
+        invoice_number: payload.invoice_number,
 
-        /**
-         * Body me bhi scope bhej rahe hain for backend compatibility.
-         */
-        store_code: scope.store_code,
-        organization_id: scope.organization_id || undefined,
+        original_products:
+          payload.original_products,
+
+        new_products:
+          payload.new_products,
+
+        making_charge:
+          payload.making_charge,
+
+        stone_amount:
+          payload.stone_amount,
+
+        store_code:
+          scope.store_code,
+
+        organization_id:
+          scope.organization_id || undefined,
       },
       {
         headers: {

@@ -99,33 +99,33 @@ export default function RefundReturnPage() {
   }, [stats]);
 
   const filteredRequests = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const normalizedDate = normalizeDateToISO(date.trim());
+  const query = search.trim().toLowerCase();
+  const selectedDate = normalizeDateToISO(date.trim());
 
-    return requests.filter((item) => {
-      const matchesSearch =
-        !query ||
-        safe(item.customerName).includes(query) ||
-        safe(item.id).includes(query) ||
-        safe(item.billNo).includes(query) ||
-        safe(item.productName).includes(query) ||
-        safe(item.productCode).includes(query) ||
-        safe(item.newProductName).includes(query) ||
-        safe(item.newProductCode).includes(query);
+  return requests.filter((item) => {
+    const matchesSearch =
+      !query ||
+      item.customerName.toLowerCase().includes(query) ||
+      item.id.toLowerCase().includes(query) ||
+      item.billNo.toLowerCase().includes(query) ||
+      item.old_product_name.toLowerCase().includes(query) ||
+      item.old_product_code.toLowerCase().includes(query) ||
+      item.new_product_name.toLowerCase().includes(query) ||
+      item.new_product_code.toLowerCase().includes(query);
 
-      const matchesMonth =
-        month === "Select Month" ||
-        getMonthName(item.exchangeDate) === month ||
-        getMonthName(item.purchaseDate) === month;
+    const matchesMonth =
+      month === "Select Month" ||
+      getMonthName(item.exchangeDate) === month ||
+      getMonthName(item.purchaseDate) === month;
 
-      const matchesDate =
-        !normalizedDate ||
-        normalizeDateToISO(item.exchangeDate) === normalizedDate ||
-        normalizeDateToISO(item.purchaseDate) === normalizedDate;
+    const matchesDate =
+      !selectedDate ||
+      normalizeDisplayDate(item.exchangeDate) === selectedDate ||
+      normalizeDisplayDate(item.purchaseDate) === selectedDate;
 
-      return matchesSearch && matchesMonth && matchesDate;
-    });
-  }, [requests, search, month, date]);
+    return matchesSearch && matchesMonth && matchesDate;
+  });
+}, [requests, search, month, date]);
 
   return (
     <>
@@ -141,18 +141,18 @@ export default function RefundReturnPage() {
           <button
             type="button"
             onClick={() => setOpenModal(true)}
-            className="inline-flex h-[56px] items-center justify-center gap-3 rounded-full bg-[#02031A] px-7 text-[16px] font-medium text-white shadow-[0px_10px_24px_rgba(2,3,26,0.18)] max-sm:w-full"
+            className="inline-flex h-[56px] items-center justify-center gap-3 rounded-full bg-[#02031A] px-7 text-[16px] font-medium text-white shadow-erp-sm max-sm:w-full"
           >
             <Plus className="h-5 w-5" />
             New Exchange
           </button>
         </section>
 
-        <section className="mt-8">
+        <section className="mt-4">
           <RefundPolicyCard points={refundPolicyPoints} />
         </section>
 
-        <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+        <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
           {loading
             ? Array.from({ length: 4 }).map((_, i) => (
                 <div
@@ -165,7 +165,7 @@ export default function RefundReturnPage() {
               ))}
         </section>
 
-        <section className="mt-8">
+        <section className="mt-4">
           <RefundSearchFilters
             search={search}
             setSearch={setSearch}

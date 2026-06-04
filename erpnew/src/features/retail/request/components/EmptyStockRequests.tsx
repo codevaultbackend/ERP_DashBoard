@@ -12,7 +12,7 @@ export default function EmptyStockRequests({ onCreate }: Props) {
       <div className="flex min-h-[300px] flex-col items-center justify-center text-center">
         <FileText className="h-[76px] w-[76px] text-[#98A2B3] stroke-[1.6]" />
 
-        <h3 className="mt-8 text-[22px] font-semibold leading-[28px] tracking-[-0.04em] text-erp-heading sm:text-[24px] sm:leading-[30px]">
+        <h3 className="mt-4 text-[22px] font-semibold leading-[28px] tracking-[-0.04em] text-erp-heading sm:text-[24px] sm:leading-[30px]">
           No Stock Requests
         </h3>
 

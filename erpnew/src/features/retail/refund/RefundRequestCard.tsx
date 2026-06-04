@@ -12,7 +12,7 @@ export default function RefundRequestCard({ item }: Props) {
   const [open, setOpen] = useState(!!item.expanded);
 
   return (
-    <div className="rounded-[30px] border border-[#E5E7EB] bg-white px-4 py-4 shadow-[0px_2px_10px_rgba(15,23,42,0.02)] sm:px-6 sm:py-5">
+    <div className="rounded-[30px] border border-[#E5E7EB] bg-white px-4 py-4 shadow-erp-sm sm:px-6 sm:py-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex min-w-0 gap-4">
           <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[14px] bg-[#DCFCE7] sm:h-[52px] sm:w-[52px] sm:rounded-[16px]">
@@ -37,23 +37,25 @@ export default function RefundRequestCard({ item }: Props) {
           </div>
         </div>
 
-        <div className="flex flex-col items-start gap-3 xl:items-end">
-          <span className="inline-flex rounded-full bg-[#DDF7E4] px-4 py-1.5 text-[14px] font-medium text-[#15803D]">
-            {item.statusBadge}
-          </span>
+        <div className="flex gap-[60px] ">
+          <div className="flex flex-col items-start gap-3 xl:items-end">
+            <span className="inline-flex rounded-full bg-[#DDF7E4] px-4 py-1.5 text-[14px] font-medium text-[#15803D]">
+              {item.statusBadge}
+            </span>
 
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-[14px] text-[#667085] sm:text-[15px]">
-            <span>Purchase: {item.purchaseDate}</span>
-            <span>Refund: {item.refundDate}</span>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-[14px] text-[#667085] sm:text-[15px]">
+              <span>Purchase: {item.purchaseDate}</span>
+              <span>Refund: {item.refundDate}</span>
+            </div>
           </div>
-        </div>
 
-        <button
-          onClick={() => setOpen((prev) => !prev)}
-          className="ml-auto flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[#F7F7F8] text-[#111827] xl:ml-0"
-        >
-          {open ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-        </button>
+          <button
+            onClick={() => setOpen((prev) => !prev)}
+            className="ml-auto flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[#F7F7F8] text-[#111827] xl:ml-0"
+          >
+            {open ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {open && (
@@ -66,40 +68,36 @@ export default function RefundRequestCard({ item }: Props) {
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-[14px] sm:text-[15px]">
-                <LabelValue label="Code:" value={item.productCode} />
-                <LabelValue label="Name:" value={item.productName} />
-                <LabelValue label="Metal:" value={item.metal} />
-                <LabelValue label="Weight:" value={item.weight} />
+                <LabelValue label="Code:" value={item.old_product_code || "-"} />
+                <LabelValue label="Name:" value={item.old_product_name || "-"} />
+                <LabelValue label="Purity:" value={item.old_purity || "-"} />
+                <LabelValue label="Net Weight:" value={item.old_net_weight || "-"} />
               </div>
 
               <div className="mt-4 border-t border-[#F3B2B2] pt-3">
-                <div className="flex items-center justify-between text-[15px] font-medium text-[#667085]">
-                  <span>Value:</span>
-                  <span className="text-[16px] font-semibold text-[#EF4444]">
-                    {item.originalValue}
-                  </span>
-                </div>
+                <span className="text-[16px] font-semibold text-[#EF4444]">
+                  ₹{item.old_value || "0"}
+                </span>
               </div>
             </div>
 
             <div className="rounded-[24px] border border-[#B7E8C7] bg-[#F5FFF8] px-4 py-4 sm:px-5">
               <div className="flex items-center gap-2 text-[17px] font-semibold text-[#166534]">
                 <span>₹</span>
-                <h4>Refund Details</h4>
+                <h4>New Product</h4>
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-[14px] sm:text-[15px]">
-                <LabelValue label="Reason:" value={item.refundReason} />
-                <LabelValue label="Method:" value={item.refundMethod} />
-                <LabelValue label="Refund:" value={item.refundAmount} />
-                <LabelValue label="Status:" value={formatStatus(item.status)} />
+                <LabelValue label="Code:" value={item.new_product_code || "-"} />
+                <LabelValue label="Name:" value={item.new_product_name || "-"} />
+                <LabelValue label="Purity:" value={item.new_purity || "-"} />
+                <LabelValue label="Net Weight:" value={item.new_net_weight || "-"} />
               </div>
 
               <div className="mt-4 border-t border-[#B7E8C7] pt-3">
                 <div className="flex items-center justify-between text-[15px] font-medium text-[#667085]">
-                  <span>Final Refund:</span>
                   <span className="text-[16px] font-semibold text-[#16A34A]">
-                    {item.finalRefund}
+                    ₹{item.new_value || "0"}
                   </span>
                 </div>
               </div>
@@ -107,12 +105,12 @@ export default function RefundRequestCard({ item }: Props) {
           </div>
 
           <div className="rounded-[24px] border border-[#E9D5FF] bg-[#FBF7FF] px-4 py-4 sm:px-5">
-            <h4 className="text-[18px] font-semibold text-[#111827]">Refund Summary</h4>
+            <h4 className="text-[18px] font-semibold text-[#111827]">Exchange Summary</h4>
 
             <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-              <SummaryBox label="Original Value" value={item.originalValue} valueClassName="text-[#111827]" />
-              <SummaryBox label="Deduction" value={item.deduction} valueClassName={item.deduction === "FREE" ? "text-[#16A34A]" : "text-[#F97316]"} />
-              <SummaryBox label="Final Refund" value={item.finalRefund} valueClassName="text-[#9333EA]" />
+              <SummaryBox label="Difference" value={item.difference} valueClassName="text-[#111827]" />
+              <SummaryBox label="Making Charges" value={item?.making_charges} valueClassName={item.deduction === "FREE" ? "text-[#16A34A]" : "text-[#F97316]"} />
+              <SummaryBox label="Total Payable" value={item.new_value} valueClassName="text-[#9333EA]" />
               <div className="rounded-[18px] bg-white/80 p-3.5">
                 <p className="text-[14px] text-[#667085]">Status</p>
                 <div className="mt-2">

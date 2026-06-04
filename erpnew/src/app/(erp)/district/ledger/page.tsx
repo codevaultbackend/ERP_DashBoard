@@ -141,7 +141,7 @@ export default function LedgerPage() {
         </button>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <FinanceMetricCard
           title="Total Sales"
           value={formatMetricValue(summary.total_sales)}
@@ -164,7 +164,7 @@ export default function LedgerPage() {
         />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-4">
         <FinanceSearchBar
           value={search}
           onChange={setSearch}
@@ -172,7 +172,7 @@ export default function LedgerPage() {
         />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-4">
         {loading ? (
           <div className="rounded-[24px] border border-[#E3E6EB] bg-white p-6 text-[15px] font-medium text-[#6B7280] shadow-[0px_3px_12px_rgba(15,23,42,0.03)]">
             Loading ledger data...

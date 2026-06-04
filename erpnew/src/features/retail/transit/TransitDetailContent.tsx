@@ -235,7 +235,7 @@ export default function TransitDetailContent({
               <button
                 type="button"
                 onClick={() => setOpenPartner((prev) => !prev)}
-                className="mt-8 inline-flex items-center gap-3"
+                className="4 inline-flex items-center gap-3"
               >
                 <UserRound className="h-5 w-5 text-erp-success" />
                 <span className="text-[18px] font-semibold tracking-[-0.02em] text-erp-heading">
@@ -312,7 +312,7 @@ export default function TransitDetailContent({
             </div>
           </div>
 
-          <div className="mt-8 h-px bg-erp-border" />
+          <div className="mt-4 h-px bg-erp-border" />
 
           <div className="mt-5">
             <h3 className="text-[15px] font-semibold text-erp-text-soft">

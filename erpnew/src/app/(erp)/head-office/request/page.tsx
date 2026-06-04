@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, Flag, Search, SlidersHorizontal } from "lucide-react";
 
 import RequestStatCards from "@/features/retail/request/components/RequestStatCards";
 import RequestTopHeader from "@/features/retail/request/components/RequestTopHeader";
@@ -10,7 +10,7 @@ import EmptyStockRequests from "@/features/retail/request/components/EmptyStockR
 import StockRequestCard from "@/features/retail/request/components/StockRequestCard";
 import DistrictRequestStockModal from "@/features/head-office/request/components/HeadRequestStockModal";
 import ApproveDispatchModal from "@/features/retail/request/components/ApproveDispatchModal";
-import TransferRequestModal from "@/features/retail/request/components/TransferRequestModal";
+import TransferRequestModal from "@/features/district/request/components/TransferRequestModal";
 
 import {
   getMyStockRequests,
@@ -280,45 +280,68 @@ export default function DistrictRequestPage() {
           onRequestStock={() => setOpenNewRequest(true)}
         />
 
-        <div className="flex flex-col gap-3 rounded-[24px] border border-[#E4E7EC] bg-white p-4 shadow-[0px_4px_14px_rgba(15,23,42,0.035)] lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex h-[44px] flex-1 items-center gap-3 rounded-full bg-[#F5F6F8] px-4">
-            <Search className="h-5 w-5 text-[#98A2B3]" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by request no, product, category, status..."
-              className="w-full bg-transparent text-[14px] text-[#111827] outline-none placeholder:text-[#98A2B3]"
-            />
-          </div>
+        <div className="rounded-3xl border border-[#E4E7EC] bg-white p-4 shadow-[0px_4px_14px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <div className="flex items-center gap-2 rounded-full bg-[#F5F6F8] px-4">
-              <SlidersHorizontal className="h-4 w-4 text-[#667085]" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="h-[44px] bg-transparent text-[14px] outline-none"
-              >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="partially_approved">Partially Approved</option>
-                <option value="dispatch">Dispatch</option>
-                <option value="completed">Completed</option>
-                <option value="rejected">Rejected</option>
-              </select>
+            {/* Search */}
+            <div className="relative w-full lg:flex-1">
+              <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#98A2B3]" />
+
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by request no, product, category, status..."
+                className="h-[48px] w-full rounded-full border border-transparent bg-[#F5F6F8] pl-12 pr-4 text-[14px] text-[#111827] transition-all outline-none placeholder:text-[#98A2B3] focus:border-[#D0D5DD] focus:bg-white focus:ring-2 focus:ring-[#EAECF0]"
+              />
             </div>
 
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value as PriorityFilter)}
-              className="h-[44px] rounded-full bg-[#F5F6F8] px-4 text-[14px] outline-none"
-            >
-              <option value="all">All Priority</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+            {/* Filters */}
+            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:w-auto">
+
+              {/* Status Filter */}
+              <div className="relative">
+                <SlidersHorizontal className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as StatusFilter)
+                  }
+                  className="h-[48px] w-full appearance-none rounded-full border border-transparent bg-[#F5F6F8] pl-11 pr-10 text-[14px] font-medium text-[#344054] outline-none transition-all focus:border-[#D0D5DD] focus:bg-white focus:ring-2 focus:ring-[#EAECF0] lg:min-w-[180px]"
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="partially_approved">
+                    Partially Approved
+                  </option>
+                  <option value="dispatch">Dispatch</option>
+                  <option value="completed">Completed</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+              </div>
+
+              {/* Priority Filter */}
+              <div className="relative">
+                <Flag className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+                <select
+                  value={priorityFilter}
+                  onChange={(e) =>
+                    setPriorityFilter(e.target.value as PriorityFilter)
+                  }
+                  className="h-[48px] w-full appearance-none rounded-full border border-transparent bg-[#F5F6F8] pl-11 pr-10 text-[14px] font-medium text-[#344054] outline-none transition-all focus:border-[#D0D5DD] focus:bg-white focus:ring-2 focus:ring-[#EAECF0] lg:min-w-[170px]"
+                >
+                  <option value="all">All Priority</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+
+                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#667085]" />
+              </div>
+            </div>
           </div>
         </div>
 
