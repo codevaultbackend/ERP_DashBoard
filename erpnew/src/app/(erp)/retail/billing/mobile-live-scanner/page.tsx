@@ -279,6 +279,8 @@ function MobileScannerInner() {
     qrCode: string
   ) {
 
+    console.log("QR DETECTED =>", qrCode);
+
     if (
       scanLockRef.current
     ) {
@@ -318,6 +320,10 @@ function MobileScannerInner() {
         await scanBillingItemByCode(
           qrCode
         );
+      console.log("CALLING API WITH =>", qrCode);
+
+
+      console.log("API RESPONSE =>", item);
 
       if (
         !item
@@ -427,8 +433,8 @@ function MobileScannerInner() {
 
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-full ${socketConnected
-                  ? "bg-green-100 text-green-600"
-                  : "bg-red-100 text-red-600"
+                ? "bg-green-100 text-green-600"
+                : "bg-red-100 text-red-600"
                 }`}
             >
               <Wifi className="h-5 w-5" />
