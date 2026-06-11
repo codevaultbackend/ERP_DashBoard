@@ -6,6 +6,7 @@ import {
   createExchange,
   getInvoiceForExchange,
 } from "./api/exchange-api";
+import { scanBillingItemByCode } from "@/features/retail/billing/billing-api";
 
 type Props = {
   open: boolean;
@@ -77,11 +78,87 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
   const [error, setError] = useState("");
   const [loadingInvoice, setLoadingInvoice] = useState(false);
   const [invoiceLoaded, setInvoiceLoaded] = useState(false);
+  const [loadingNewProduct, setLoadingNewProduct] =
+    useState(false);
 
   if (!open) return null;
 
   function updateField(key: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+  async function handleFetchNewProduct() {
+    try {
+      if (!form.new_product_code.trim()) {
+        setError("Please enter product code");
+        return;
+      }
+
+      setLoadingNewProduct(true);
+      setError("");
+
+      const product =
+        await scanBillingItemByCode(
+          form.new_product_code.trim()
+        );
+
+      setForm((prev) => ({
+        ...prev,
+
+        new_item_id: String(
+          product.item_id ||
+          product.id ||
+          ""
+        ),
+
+        new_product_code:
+          product.product_code ||
+          product.article_code ||
+          product.sku_code ||
+          "",
+
+        new_product_name:
+          product.item_name ||
+          product.name ||
+          "",
+
+        new_metal:
+          product.metal_type ||
+          product.category ||
+          "",
+
+        new_purity:
+          product.purity || "",
+
+        new_gross_weight: String(
+          product.gross_weight ?? ""
+        ),
+
+        new_net_weight: String(
+          product.net_weight ?? ""
+        ),
+
+        new_stone_weight: String(
+          product.stone_weight ?? ""
+        ),
+
+        new_value: String(
+          product.total_amount ??
+          product.metal_value ??
+          0
+        ),
+      }));
+
+    } catch (error: any) {
+
+      setError(
+        error?.message ||
+        "Failed to fetch product"
+      );
+
+    } finally {
+
+      setLoadingNewProduct(false);
+    }
   }
   async function handleFetchInvoice() {
     try {
@@ -272,7 +349,14 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
             borderClass="border-[#FF2020]"
             bgClass="bg-[#FFF5F5]"
           >
-            <div className="grid grid-cols-12 gap-x-[20px] gap-y-[20px]">
+            <div
+              className="
+    grid
+    grid-cols-1
+    gap-4
+    md:grid-cols-12
+  "
+            >
               <div className="col-span-12">
                 <label className="flex flex-col">
                   <span className="mb-[8px] block text-[15px]">
@@ -390,83 +474,171 @@ max-[768px]:w-full
             borderClass="border-[#16B833]"
             bgClass="bg-[#F0FFF5]"
           >
-            <div className="grid grid-cols-12 gap-x-[20px] gap-y-[20px]">
-              <Field
-                className="col-span-4 md:col-span-2"
-                label="Item ID"
-                value={form.new_item_id}
-                onChange={(v) => updateField("new_item_id", v)}
-              />
-              <Field
-                className="col-span-8 md:col-span-4"
-                label="Product Code"
-                value={form.new_product_code}
-                onChange={(v) => updateField("new_product_code", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-6"
-                label="Product Name"
-                value={form.new_product_name}
-                onChange={(v) => updateField("new_product_name", v)}
-              />
+            <>
+              {/* Product Code + Fetch */}
+              <div className="mb-5">
+                <label className="flex flex-col">
+                  <span className="mb-[8px] block text-[15px]">
+                    Product Code
+                  </span>
 
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Metal"
-                value={form.new_metal}
-                onChange={(v) => updateField("new_metal", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Purity"
-                value={form.new_purity}
-                onChange={(v) => updateField("new_purity", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Stone Wt."
-                value={form.new_stone_weight}
-                onChange={(v) => updateField("new_stone_weight", v)}
-              />
+                  <div className="flex gap-3 max-[768px]:flex-col">
+                    <input
+                      value={form.new_product_code}
+                      onChange={(e) =>
+                        updateField(
+                          "new_product_code",
+                          e.target.value
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleFetchNewProduct();
+                        }
+                      }}
+                      className="
+            h-[45px]
+            flex-1
+            rounded-[10px]
+            border
+            border-gray-300
+            bg-white
+            px-3
+          "
+                    />
 
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Net Wt."
-                value={form.new_net_weight}
-                onChange={(v) => updateField("new_net_weight", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Gross Wt."
-                value={form.new_gross_weight}
-                onChange={(v) => updateField("new_gross_weight", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Value"
-                value={form.new_value}
-                onChange={(v) => updateField("new_value", v)}
-              />
+                    <button
+                      type="button"
+                      onClick={handleFetchNewProduct}
+                      disabled={loadingNewProduct}
+                      className="
+            h-[45px]
+            min-w-[120px]
+            rounded-[10px]
+            bg-black
+            px-4
+            text-white
+            font-medium
+            transition
+            hover:bg-[#111827]
+            disabled:opacity-50
+            max-[768px]:w-full
+          "
+                    >
+                      {loadingNewProduct
+                        ? "Loading..."
+                        : "Fetch"}
+                    </button>
+                  </div>
+                </label>
+              </div>
 
-              <Field
-                className="col-span-12 md:col-span-6"
-                label="Condition"
-                value={form.new_condition}
-                onChange={(v) => updateField("new_condition", v)}
-              />
-              <Field
-                className="col-span-8 md:col-span-4"
-                label="Making Charge"
-                value={form.making_charge}
-                onChange={(v) => updateField("making_charge", v)}
-              />
-              <Field
-                className="col-span-4 md:col-span-2"
-                label="Stone Amount"
-                value={form.stone_amount}
-                onChange={(v) => updateField("stone_amount", v)}
-              />
-            </div>
+              <div className="grid grid-cols-12 gap-x-5 gap-y-5">
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Item ID"
+                  readOnly
+                  value={form.new_item_id}
+                  onChange={() => { }}
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Product Name"
+                  readOnly
+                  value={form.new_product_name}
+                  onChange={() => { }}
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Metal"
+                  readOnly
+                  value={form.new_metal}
+                  onChange={() => { }}
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Purity"
+                  readOnly
+                  value={form.new_purity}
+                  onChange={() => { }}
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Stone Wt."
+                  readOnly
+                  value={form.new_stone_weight}
+                  onChange={() => { }}
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Net Wt."
+                  readOnly
+                  value={form.new_net_weight}
+                  onChange={() => { }}
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Gross Wt."
+                  readOnly
+                  value={form.new_gross_weight}
+                  onChange={() => { }}
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Condition"
+                  value={form.new_condition}
+                  onChange={(v) =>
+                    updateField(
+                      "new_condition",
+                      v
+                    )
+                  }
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-4"
+                  label="Value"
+                  readOnly
+                  value={form.new_value}
+                  onChange={() => { }}
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-6"
+                  label="Making Charge"
+                  value={form.making_charge}
+                  onChange={(v) =>
+                    updateField(
+                      "making_charge",
+                      v
+                    )
+                  }
+                />
+
+                <Field
+                  className="col-span-12 md:col-span-6"
+                  label="Stone Amount"
+                  value={form.stone_amount}
+                  onChange={(v) =>
+                    updateField(
+                      "stone_amount",
+                      v
+                    )
+                  }
+                />
+              </div>
+            </>
+
+
           </ProductSection>
 
           {error ? (
