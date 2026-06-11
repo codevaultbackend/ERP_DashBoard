@@ -13,7 +13,7 @@ type PendingTask = {
   store_name?: string;
   store_code?: string | null;
   district_code?: string | null;
-  createdAt?: string;
+  created_at?: string;
 };
 
 type Props = {
@@ -112,7 +112,7 @@ export default function PendingTasksCard({ data = [], loading = false }: Props) 
 
                   <div className="flex shrink-0 items-center gap-[7px] pt-[2px] text-[13px] text-[#64748B]">
                     <Clock3 className="h-[14px] w-[14px]" strokeWidth={2} />
-                    <span>{formatTime(task.createdAt)}</span>
+                    <span>{formatTime(task.created_at)}</span>
                   </div>
                 </div>
 

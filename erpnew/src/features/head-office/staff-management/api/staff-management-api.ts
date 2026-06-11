@@ -44,7 +44,7 @@ export function getApiError(error: unknown, fallback = "Something went wrong.") 
 
 export const staffApi = axios.create({
   baseURL: API_BASE,
-  timeout: 30000,
+  timeout: 120000,
 });
 
 staffApi.interceptors.request.use((config) => {

@@ -306,16 +306,12 @@ export default function EditStockPricingModal({
 
   return (
     <div className="fixed inset-0 z-[99999] flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-8 font-erp backdrop-blur-[1px] sm:items-center">
-      <div className="w-full max-w-[610px] rounded-[28px] border border-erp-border bg-erp-card shadow-[0px_18px_60px_rgba(15,23,42,0.24)]">
+      <div className="w-full max-w-[610px] rounded-[32px] border border-erp-border bg-erp-card shadow-erp-bg">
         <div className="flex items-center justify-between px-[28px] pb-[18px] pt-[26px] max-sm:px-[20px] max-sm:pt-[20px]">
           <div className="min-w-0">
-            <h2 className="text-[22px] font-semibold leading-[28px] tracking-[-0.04em] text-erp-heading">
+            <h2 className="text-[18px] font-semibold leading-[100%] tracking-[-0.44px] text-erp-heading">
               Edit Stock Pricing
             </h2>
-
-            <p className="mt-1 truncate text-[14px] font-medium text-erp-muted">
-              {itemName} · {itemCode}
-            </p>
           </div>
 
           <button
@@ -330,8 +326,8 @@ export default function EditStockPricingModal({
 
         <div className="px-[28px] pb-[28px] max-sm:px-[20px]">
           <div className="rounded-[22px] bg-erp-card-soft px-[18px] pb-[20px] pt-[18px]">
-            <h3 className="text-[20px] font-semibold leading-[26px] tracking-[-0.035em] text-erp-heading">
-              Pricing Details
+            <h3 className="text-[16px] font-semibold leading-[20px] tracking-[-0.15px] text-erp-heading">
+              Item Details
             </h3>
 
             {error ? (
@@ -357,26 +353,8 @@ export default function EditStockPricingModal({
                   className="h-[42px] w-full rounded-[12px] border border-transparent bg-white px-4 text-[15px] font-medium text-erp-heading outline-none transition placeholder:text-erp-placeholder focus:border-erp-primary/25 focus:ring-2 focus:ring-erp-primary/10 disabled:cursor-not-allowed disabled:opacity-70"
                 />
               </div>
-
-              <div>
-                <label className="mb-2 block text-[14px] font-medium tracking-[-0.02em] text-erp-heading">
-                  Purchase Price
-                </label>
-
-                <input
-                  value={purchasePrice}
-                  disabled={submitting}
-                  inputMode="decimal"
-                  placeholder="78000"
-                  onChange={(event) =>
-                    handleAmountChange(event.target.value, setPurchasePrice)
-                  }
-                  className="h-[42px] w-full rounded-[12px] border border-transparent bg-white px-4 text-[15px] font-medium text-erp-heading outline-none transition placeholder:text-erp-placeholder focus:border-erp-primary/25 focus:ring-2 focus:ring-erp-primary/10 disabled:cursor-not-allowed disabled:opacity-70"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="mb-2 block text-[14px] font-medium tracking-[-0.02em] text-erp-heading">
+              <div className="sm:col-span-1">
+                <label className="mb-2 block text-[14px] font-[400] leading-[20px] tracking-[-0.02em] text-erp-heading">
                   Making Charge
                 </label>
 

@@ -69,6 +69,29 @@ export default function DesktopBillingScannerReceiver({
       "join-billing-session",
       roomName
     );
+    const storeCode =
+      localStorage.getItem(
+        "store_code"
+      );
+
+    const organizationId =
+      localStorage.getItem(
+        "organization_id"
+      );
+
+    if (storeCode) {
+      socket.emit(
+        "join-billing-store",
+        storeCode
+      );
+    }
+
+    if (organizationId) {
+      socket.emit(
+        "join-billing-org",
+        organizationId
+      );
+    }
 
     console.log(
       "Joined billing room:",
@@ -93,6 +116,19 @@ export default function DesktopBillingScannerReceiver({
           "join-billing-session",
           roomName
         );
+        if (storeCode) {
+          socket.emit(
+            "join-billing-store",
+            storeCode
+          );
+        }
+
+        if (organizationId) {
+          socket.emit(
+            "join-billing-org",
+            organizationId
+          );
+        }
       };
 
     /**

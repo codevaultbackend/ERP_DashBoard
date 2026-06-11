@@ -127,7 +127,7 @@ export default function HeadOfficeLedgerPage() {
           </button>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 max-[768px]:grid-cols-2 lg:grid-cols-3 xl:mt-[28px] xl:grid-cols-4 xl:gap-[20px]">
+        <div className="mt-6 grid grid-cols-1 gap-4 max-[768px]:grid-cols-2 lg:grid-cols-5 xl:mt-[28px] xl:grid-cols-5 xl:gap-[20px]">
           <FinanceMetricCard
             title="Total Sales"
             value={summary.totalSales}

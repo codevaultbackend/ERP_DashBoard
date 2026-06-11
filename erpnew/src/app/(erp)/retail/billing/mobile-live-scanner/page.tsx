@@ -334,9 +334,6 @@ function MobileScannerInner() {
         );
       }
 
-      /**
-       * realtime emit
-       */
       setSending(
         true
       );

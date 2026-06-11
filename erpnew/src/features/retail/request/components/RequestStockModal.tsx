@@ -213,25 +213,69 @@ export default function RequestStockModal({
     fetchCategories();
   }, [open]);
 
-useEffect(() => {
-  if (!selectedTarget) {
-    setCategoryOptions([]);
+  useEffect(() => {
+  if (!selectedCategory) {
+    setProducts([]);
     return;
   }
 
-  const inventory =
-    selectedTarget.inventory || [];
+  let active = true;
 
-  const categories = inventory.map(
-    (item) => ({
-      label: item.category,
-      value: item.category,
-      quantity: item.total_qty || 0,
-    })
-  );
+  const fetchItems = async () => {
+    try {
+      setLoadingItems(true);
 
-  setCategoryOptions(categories);
-}, [selectedTarget]);
+      console.log(
+        "LOADING ITEMS FOR CATEGORY:",
+        selectedCategory
+      );
+
+      const res =
+        await getStockItemsByCategory(
+          selectedCategory
+        );
+
+      console.log(
+        "ITEM RESPONSE:",
+        res
+      );
+
+      if (!active) return;
+
+      const rows = Array.isArray(res?.data)
+        ? res.data
+        : [];
+
+      setProducts(
+        rows.map((row) =>
+          mapCategoryItemToRequestProduct(
+            row,
+            selectedCategory
+          )
+        )
+      );
+    } catch (err) {
+      console.error(
+        "ITEM LOAD ERROR:",
+        err
+      );
+
+      if (active) {
+        setProducts([]);
+      }
+    } finally {
+      if (active) {
+        setLoadingItems(false);
+      }
+    }
+  };
+
+  fetchItems();
+
+  return () => {
+    active = false;
+  };
+}, [selectedCategory]);
 
   const selectedCount = useMemo(
     () => Object.keys(selectedItems).length,

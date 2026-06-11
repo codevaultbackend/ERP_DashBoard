@@ -178,10 +178,10 @@ export default function RetailRequestPage() {
           <RequestTopHeader onOpenNewRequest={() => setOpenNewRequest(true)} />
 
           <RequestStatCards
-            totalRequests={450}
-            approvedRequests={20}
-            lowStock={24}
-            transitGoods={150}
+            totalRequests={0}
+            approvedRequests={0}
+            lowStock={0}
+            transitGoods={0}
           />
 
           <LowStockAlert onRequestStock={() => setOpenNewRequest(true)} />
