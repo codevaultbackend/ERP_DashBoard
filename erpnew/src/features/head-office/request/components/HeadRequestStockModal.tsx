@@ -13,7 +13,6 @@ import {
 import {
   createDistrictStockRequest,
   getDistrictStores,
-  getStockCategories,
   getStockItemsByCategory,
   type CategoryItemApi,
   type CategoryRowApi,
@@ -22,6 +21,13 @@ import {
 type RequestTargetLevel =
   | "district";
 
+
+type InventoryCategory = {
+  category: string;
+  total_items?: number;
+  total_qty?: number;
+};
+
 type OrganizationOption = {
   id: number;
   store_code: string;
@@ -29,8 +35,9 @@ type OrganizationOption = {
   organization_level: string;
   district_id?: number | null;
   is_active?: boolean;
-};
 
+  inventory?: InventoryCategory[];
+};
 type RequestCategoryOption = {
   label: string;
   value: string;
@@ -129,17 +136,9 @@ function mapCategoryRowToOption(
   row: CategoryRowApi
 ): RequestCategoryOption {
   return {
-    label: safeText(
-      row?.category,
-      ""
-    ),
-    value: safeText(
-      row?.category,
-      ""
-    ),
-    quantity: safeNumber(
-      row?.quantity
-    ),
+    label: row.category,
+    value: row.category,
+    quantity: row.total_qty || 0,
   };
 }
 
@@ -443,70 +442,28 @@ export default function HeadRequestStockModal({
    */
 
   useEffect(() => {
-    if (
-      !open ||
-      !selectedTarget
-    )
+    if (!selectedTarget) {
+      setCategoryOptions([]);
       return;
+    }
 
-    const fetchCategories =
-      async () => {
-        try {
-          setLoadingCategories(
-            true
-          );
+    setLoadingCategories(true);
 
-          const organizationId =
-            selectedTarget.id;
+    try {
+      const categories =
+        selectedTarget.inventory || [];
 
-          const response =
-            await getStockCategories({
-              organization_id:
-                organizationId,
-
-              organization_level:
-                "district",
-            });
-
-
-          const rows =
-            Array.isArray(
-              response
-            )
-              ? response
-              : Array.isArray(
-                response?.data
-              )
-                ? response.data
-                : [];
-
-          setCategoryOptions(
-            rows.map(
-              mapCategoryRowToOption
-            )
-          );
-        } catch (err: any) {
-          setCategoryOptions([]);
-
-          setError(
-            err?.response?.data
-              ?.message ||
-            err?.message ||
-            "Failed to load categories"
-          );
-        } finally {
-          setLoadingCategories(
-            false
-          );
-        }
-      };
-
-    fetchCategories();
-  }, [
-    open,
-    selectedTarget,
-    targetLevel,
-  ]);
+      setCategoryOptions(
+        categories.map((item) => ({
+          label: item.category,
+          value: item.category,
+          quantity: item.total_qty || 0,
+        }))
+      );
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, [selectedTarget]);
 
   /**
    * FETCH PRODUCTS
@@ -514,81 +471,55 @@ export default function HeadRequestStockModal({
 
   useEffect(() => {
     if (
-      !open ||
-      !selectedCategory ||
-      !selectedTarget
+      !selectedTarget ||
+      !selectedCategory
     ) {
       setProducts([]);
       return;
     }
 
-    const fetchItems =
-      async () => {
-        try {
-          setLoadingItems(true);
+    const categoryData =
+      selectedTarget.inventory?.find(
+        (inv) =>
+          inv.category === selectedCategory
+      );
 
-          const organizationId =
-            targetLevel ===
-              "head"
-              ? 21
-              : selectedTarget.id;
+    if (!categoryData) {
+      setProducts([]);
+      return;
+    }
 
-          const organizationLevel =
-  "district";
+    setProducts(
+      categoryData.items.map((item) => ({
+        item_id: Number(item.id),
 
-          const response =
-            await getStockItemsByCategory(
-              {
-                category:
-                  selectedCategory,
+        category:
+          item.category,
 
-                organization_id:
-                  organizationId,
+        name:
+          item.item_name,
 
-                organization_level:
-                  organizationLevel,
-              }
-            );
+        stock:
+          Number(
+            item.available_qty || 0
+          ),
 
-          const rows =
-            Array.isArray(
-              response
+        article_code:
+          item.article_code,
+
+        qty: "",
+
+        tone:
+          getToneFromStock(
+            Number(
+              item.available_qty || 0
             )
-              ? response
-              : Array.isArray(
-                response?.data
-              )
-                ? response.data
-                : [];
-
-          setProducts(
-            rows.map((row) =>
-              mapCategoryItemToRequestProduct(
-                row,
-                selectedCategory
-              )
-            )
-          );
-        } catch (err: any) {
-          setProducts([]);
-
-          setError(
-            err?.response?.data
-              ?.message ||
-            err?.message ||
-            "Failed to load products"
-          );
-        } finally {
-          setLoadingItems(false);
-        }
-      };
-
-    fetchItems();
+          ),
+      }))
+    );
   }, [
-    open,
-    selectedCategory,
     selectedTarget,
-    targetLevel,
+    selectedCategory,
   ]);
 
   const filteredOrganizations =
@@ -635,7 +566,13 @@ export default function HeadRequestStockModal({
     Object.keys(selectedItems)
       .length;
   useEffect(() => { if (!targetDropdownOpen) { setTargetSearch(""); } }, [targetDropdownOpen]);
-
+  const selectedCategoryCount = useMemo(() => {
+    return new Set(
+      Object.values(selectedItems).map(
+        (item) => item.category
+      )
+    ).size;
+  }, [selectedItems]);
   if (!mounted || !open)
     return null;
 
@@ -698,6 +635,25 @@ export default function HeadRequestStockModal({
 
       return next;
     });
+  };
+
+  const removeSelectedItem = (itemId: number) => {
+    setSelectedItems((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+
+    setProducts((prev) =>
+      prev.map((item) =>
+        item.item_id === itemId
+          ? {
+            ...item,
+            qty: "",
+          }
+          : item
+      )
+    );
   };
 
   /**
@@ -957,28 +913,15 @@ export default function HeadRequestStockModal({
                       <button
                         key={org.id}
                         onClick={() => {
-                          if (
-                            Object.keys(selectedItems)
-                              .length > 0
-                          ) {
-                            const confirmed =
-                              window.confirm(
-                                "Changing store will reset selected products."
-                              );
-
-                            if (!confirmed) return;
-                          }
-
                           setSelectedTarget(org);
 
                           setSelectedItems({});
-
                           setProducts([]);
 
                           setSelectedCategory("");
+                          setCategoryOptions([]);
 
                           setTargetSearch("");
-
                           setTargetDropdownOpen(false);
                         }}
                         className="
@@ -1164,26 +1107,73 @@ export default function HeadRequestStockModal({
 
           {/* SUMMARY */}
 
+          {/* SELECTED ITEMS PREVIEW */}
+
           {totalSelectedItems > 0 && (
-            <div className="mb-6 grid grid-cols-2 gap-4">
-              <div className="rounded-[22px] border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#64748B]">
-                  Selected Items
+            <div className="mb-6">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[15px] font-semibold text-[#0F172A]">
+                  Selected Products
                 </p>
 
-                <h3 className="mt-2 text-[26px] font-bold text-[#02011A]">
-                  {totalSelectedItems}
-                </h3>
+                <span className="text-xs text-[#64748B]">
+                  {totalSelectedItems} selected from{" "}
+                  {selectedCategoryCount} categories
+                </span>
               </div>
 
-              <div className="rounded-[22px] border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-[#64748B]">
-                  Total Quantity
-                </p>
+              <div
+                className="
+        flex
+        max-h-[90px]
+        flex-wrap
+        gap-2
+        overflow-y-auto
+        rounded-[18px]
+        border
+        border-[#E2E8F0]
+        bg-[#F8FAFC]
+        p-3
+      "
+              >
+                {Object.values(selectedItems).map(
+                  (item) => (
+                    <button
+                      key={item.item_id}
+                      type="button"
+                      onClick={() =>
+                        removeSelectedItem(
+                          item.item_id
+                        )
+                      }
+                      className="
+              inline-flex
+              max-w-full
+              items-center
+              gap-2
+              rounded-full
+              border
+              border-[#E2E8F0]
+              bg-white
+              px-3
+              py-1.5
+              text-xs
+              font-medium
+              text-[#0F172A]
+              shadow-sm
+              transition-all
+              hover:bg-[#F8FAFC]
+            "
+                    >
+                      <span className="truncate">
+                        {item.name} · Qty{" "}
+                        {item.request_qty}
+                      </span>
 
-                <h3 className="mt-2 text-[26px] font-bold text-[#02011A]">
-                  {totalSelectedQty}
-                </h3>
+                      <X className="h-3.5 w-3.5 text-[#64748B]" />
+                    </button>
+                  )
+                )}
               </div>
             </div>
           )}

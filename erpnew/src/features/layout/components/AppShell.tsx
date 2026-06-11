@@ -23,6 +23,7 @@ const NAV_ITEMS: Record<AppRole, NavItem[]> = {
     { label: "Ledger", href: "/head-office/ledger" },
     { label: "Staff Management", href: "/head-office/staff-management" },
     { label: "Activities Performed", href: "/head-office/activities-performed" },
+    { label: "District Audit", href: "/head-office/district-audit" },
     { label: "Store Management", href: "/head-office/store-management" },
     { label: "Reports & Analytics", href: "/head-office/reports-analytics" },
   ],
@@ -47,6 +48,7 @@ const NAV_ITEMS: Record<AppRole, NavItem[]> = {
     { label: "Ledger", href: "/district/ledger" },
     { label: "Activities Performed", href: "/district/activities-performed" },
     { label: "Exchange", href: "/district/Exachange" },
+    { label: "Retail Audit", href: "/district/retail-audit" },
     { label: "Reports & Analytics", href: "/district/reports-analytics" },
   ],
   retail: [

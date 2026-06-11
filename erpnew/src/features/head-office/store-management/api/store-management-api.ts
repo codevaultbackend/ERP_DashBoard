@@ -58,6 +58,7 @@ export type CreateStorePayload = {
   address: string;
   pincode: string;
   store_code: string;
+  district_store_code?: string;
 };
 
 export type MapStoresToDistrictPayload = {

@@ -360,36 +360,79 @@ function validateAddStockPayload(payload: {
   }
 }
 
-async function addDistrictStockItem(payload: DistrictAddStockFormPayload) {
+async function addDistrictStockItem(
+  payload: DistrictAddStockFormPayload
+) {
   const scope = getDistrictScope();
 
   if (!scope.store_code) {
-    throw new Error("District store_code missing. Please login again.");
+    throw new Error(
+      "District store_code missing. Please login again."
+    );
   }
 
   if (!scope.organization_id) {
-    throw new Error("District organization_id missing. Please login again.");
+    throw new Error(
+      "District organization_id missing. Please login again."
+    );
   }
 
-  const cleanPayload = {
-    item_name: normalizeText(payload.item_name),
-    metal_type: payload.metal_type,
-    category: normalizeText(payload.category),
-    purity: normalizeText(payload.purity),
-    qty: normalizeNumber(payload.qty),
-    net_weight: normalizeNumber(payload.net_weight),
-    store_code: scope.store_code,
-    organization_id: scope.organization_id,
-  };
+  const formData = new FormData();
 
-  validateAddStockPayload(cleanPayload);
+  const items = [
+    {
+      item_name: normalizeText(payload.item_name),
 
-  const res = await stockApi.post<AddStockResponse>(
+      item_code: normalizeText(
+        payload.item_code
+      ),
+
+      metal_type: payload.metal_type,
+
+      category: normalizeText(
+        payload.category
+      ),
+
+      purity: normalizeText(
+        payload.purity
+      ),
+
+      qty: Number(payload.qty),
+
+      net_weight: Number(
+        payload.net_weight
+      ),
+
+      stone_weight: Number(
+        payload.stone_weight || 0
+      ),
+
+      making_charge: Number(
+        payload.making_charge || 0
+      ),
+    },
+  ];
+
+  formData.append(
+    "items",
+    JSON.stringify(items)
+  );
+
+  if (payload.image) {
+    formData.append(
+      "images",
+      payload.image,
+      payload.image.name
+    );
+  }
+
+  const res = await stockApi.post(
     "/stock/stock-in",
-    cleanPayload,
+    formData,
     {
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "multipart/form-data",
       },
     }
   );

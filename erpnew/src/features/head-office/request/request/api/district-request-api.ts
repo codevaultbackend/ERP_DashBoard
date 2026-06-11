@@ -74,6 +74,21 @@ export type DistrictRetailStoreApi = {
   is_active?: boolean;
 };
 
+export type InventoryItemApi = {
+  category: string;
+  total_items: number;
+  total_qty: number;
+  items: CategoryItemApi[];
+};
+
+export type DistrictStoreApi = {
+  id: number;
+  store_code: string;
+  store_name: string;
+  organization_level: string;
+
+  inventory?: InventoryItemApi[];
+};
 export type HeadOfficeApi = {
   id: number;
   store_code: string;
@@ -85,7 +100,8 @@ export type HeadOfficeApi = {
 
 export type CategoryRowApi = {
   category: string;
-  quantity: number;
+  total_qty?: number;
+  total_items?: number;
 };
 
 export type CategoryItemApi = {
@@ -111,23 +127,12 @@ export type DistrictStockRequestPayload = {
     }
   ]
 }
-export type DistrictStoreApi = {
-  id: number;
-  store_code: string;
-  store_name: string;
-  organization_level: string;
-  district_id?: number;
-};
+
 
 export const getDistrictStores =
   async (): Promise<DistrictStoreApi[]> => {
     const res = await requestApi.get(
-      "/staff/organizations-by-level",
-      {
-        params: {
-          level: "district",
-        },
-      }
+      "/request/available-stores/district",
     );
 
     return Array.isArray(
@@ -231,62 +236,6 @@ export const getHeadOffice =
       : [];
   };
 
-
-
-export const getStockCategories =
-  async ({
-    organization_id,
-    organization_level,
-  }: {
-    organization_id: number;
-    organization_level: string;
-  }): Promise<
-    CategoryRowApi[]
-  > => {
-    try {
-      console.log(
-        "Fetching stock categories...",
-        {
-          organization_id,
-          organization_level,
-        }
-      );
-
-      const res = await requestApi.get(
-        "/stock/list",
-        {
-          params: {
-            organization_id,
-            organization_level,
-          },
-        }
-      );
-
-      console.log(
-        "CATEGORY RESPONSE:",
-        res.data
-      );
-
-      /**
-       * IMPORTANT FIX
-       */
-
-      return Array.isArray(
-        res?.data?.data
-      )
-        ? res.data.data
-        : Array.isArray(res?.data)
-          ? res.data
-          : [];
-    } catch (error: any) {
-      console.error(
-        "Category fetch error:",
-        error?.response?.data || error
-      );
-
-      throw error;
-    }
-  };
 
 /* -------------------------------------------------------------------------- */
 /*                         GET ITEMS BY CATEGORY                              */

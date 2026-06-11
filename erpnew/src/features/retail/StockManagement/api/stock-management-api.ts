@@ -131,6 +131,7 @@ export type AddStockPayload = {
   purity: string;
   qty: number;
   net_weight: number;
+  image?: File | null;
 };
 
 export type AddStockResponse = {
@@ -154,25 +155,43 @@ export type AddStockResponse = {
  *   net_weight: 15
  * }
  */
-export async function addStockItem(payload: AddStockPayload) {
-  const cleanPayload: AddStockPayload = {
-    item_name: payload.item_name.trim(),
-    metal_type: payload.metal_type,
-    category: payload.category.trim(),
-    purity: payload.purity.trim(),
-    qty: Number(payload.qty),
-    net_weight: Number(payload.net_weight),
-  };
+export async function addStockItem(
+  payload: AddStockPayload
+) {
+  const formData = new FormData();
 
-  const res = await stockApi.post<AddStockResponse>(
-    "/stock/stock-in",
-    cleanPayload,
-    {
-      headers: {
-        "Content-Type": "application/json",
+  formData.append(
+    "items",
+    JSON.stringify([
+      {
+        item_name: payload.item_name.trim(),
+        metal_type: payload.metal_type,
+        category: payload.category.trim(),
+        purity: payload.purity.trim(),
+        qty: Number(payload.qty),
+        net_weight: Number(payload.net_weight),
       },
-    }
+    ])
   );
+
+  if (payload.image) {
+  formData.append(
+    "images",
+    payload.image
+  );
+}
+
+  const res =
+    await stockApi.post<AddStockResponse>(
+      "/stock/stock-in",
+      formData,
+      {
+        headers: {
+          "Content-Type":
+            "multipart/form-data",
+        },
+      }
+    );
 
   return res.data;
 }

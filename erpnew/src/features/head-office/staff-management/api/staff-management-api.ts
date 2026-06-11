@@ -85,34 +85,88 @@ export type AddEmployeePayload = {
   phoneNumber?: string;
   address?: string;
   organization_id: string | number;
-  isPoliceVerified?: boolean | string;
   aadhaar?: File | null;
   pan?: File | null;
   policeDoc?: File | null;
 };
 
-function buildEmployeeFormData(payload: AddEmployeePayload, isEdit = false) {
+export type UpdateEmployeePayload =
+  Partial<AddEmployeePayload>;
+
+function buildEmployeeFormData(
+  payload: Partial<AddEmployeePayload>,
+  isEdit = false
+) {
   const formData = new FormData();
+
+  const appendIfExists = (
+    key: string,
+    value: string | number | boolean | File | null | undefined
+  ) => {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      formData.append(key, String(value));
+    }
+  };
+
+  if (isEdit) {
+    appendIfExists("email", payload.email?.trim());
+    appendIfExists("username", payload.username?.trim());
+    appendIfExists("password", payload.password?.trim());
+    appendIfExists("role", payload.role);
+    appendIfExists("organization_id", payload.organization_id);
+    appendIfExists("phoneNumber", payload.phoneNumber?.trim());
+    appendIfExists("address", payload.address?.trim());
+
+
+    if (payload.aadhaar) {
+      formData.append("aadhaar", payload.aadhaar);
+    }
+
+    if (payload.pan) {
+      formData.append("pan", payload.pan);
+    }
+
+    if (payload.policeDoc) {
+      formData.append("policeDoc", payload.policeDoc);
+    }
+
+    return formData;
+  }
+
+  // CREATE EMPLOYEE (all required)
 
   formData.append("email", payload.email?.trim() || "");
   formData.append("username", payload.username?.trim() || "");
-
-  if (!isEdit || payload.password?.trim()) {
-    formData.append("password", payload.password?.trim() || "");
-  }
-
+  formData.append("password", payload.password?.trim() || "");
   formData.append("role", payload.role || "");
-  formData.append("organization_id", String(payload.organization_id || ""));
-  formData.append("phoneNumber", payload.phoneNumber?.trim() || "");
-  formData.append("address", payload.address?.trim() || "");
   formData.append(
-    "isPoliceVerified",
-    String(payload.isPoliceVerified === true || payload.isPoliceVerified === "true")
+    "organization_id",
+    String(payload.organization_id || "")
+  );
+  formData.append(
+    "phoneNumber",
+    payload.phoneNumber?.trim() || ""
+  );
+  formData.append(
+    "address",
+    payload.address?.trim() || ""
   );
 
-  if (payload.aadhaar) formData.append("aadhaar", payload.aadhaar);
-  if (payload.pan) formData.append("pan", payload.pan);
-  if (payload.policeDoc) formData.append("policeDoc", payload.policeDoc);
+  if (payload.aadhaar) {
+    formData.append("aadhaar", payload.aadhaar);
+  }
+
+  if (payload.pan) {
+    formData.append("pan", payload.pan);
+  }
+
+  if (payload.policeDoc) {
+    formData.append("policeDoc", payload.policeDoc);
+  }
 
   return formData;
 }
@@ -141,14 +195,25 @@ export async function addEmployee(payload: AddEmployeePayload) {
   return res.data;
 }
 
-export async function updateEmployee(id: number | string, payload: AddEmployeePayload) {
-  if (!id) throw new Error("Staff id is required.");
+export async function updateEmployee(
+  id: number | string,
+  payload: Partial<AddEmployeePayload>
+) {
+  if (!id) {
+    throw new Error("Staff id is required.");
+  }
 
   const formData = buildEmployeeFormData(payload, true);
 
-  const res = await staffApi.put(`/staff/${id}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const res = await staffApi.put(
+    `/staff/${id}`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
 
   return res.data;
 }

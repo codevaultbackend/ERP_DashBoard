@@ -6,11 +6,23 @@ import { createPortal } from "react-dom";
 
 export type DistrictAddStockFormPayload = {
   item_name: string;
+  item_code: string;
+
   metal_type: "Gold" | "Silver";
+
   category: string;
+
   purity: string;
+
   qty: number;
+
   net_weight: number;
+
+  stone_weight: number;
+
+  making_charge: number;
+
+  image?: File | null;
 };
 
 type Props = {
@@ -23,11 +35,23 @@ type Props = {
 
 const INITIAL_FORM = {
   item_name: "",
+  item_code: "",
+
   metal_type: "Gold" as const,
+
   category: "",
+
   purity: "",
+
   qty: "",
+
   net_weight: "",
+
+  stone_weight: "",
+
+  making_charge: "",
+
+  image: null as File | null,
 };
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -62,11 +86,13 @@ export default function DistrictAddStockPopup({
   const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
   const [localError, setLocalError] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const stoneWeight = Number(form.stone_weight);
   useEffect(() => {
     if (!open) return;
 
@@ -101,6 +127,7 @@ export default function DistrictAddStockPopup({
   };
 
   const resetForm = () => {
+    setImagePreview(null);
     setForm(INITIAL_FORM);
     setLocalError("");
   };
@@ -130,7 +157,20 @@ export default function DistrictAddStockPopup({
 
     return "";
   };
+  const handleImageChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
 
+    if (!file) {
+      updateField("image", null);
+      setImagePreview(null);
+      return;
+    }
+
+    updateField("image", file);
+    setImagePreview(URL.createObjectURL(file));
+  };
   const handleSubmit = async () => {
     const validationMessage = validate();
 
@@ -143,13 +183,30 @@ export default function DistrictAddStockPopup({
       setLocalError("");
 
       await onSubmit({
-        item_name: form.item_name.trim(),
-        metal_type: form.metal_type,
-        category: form.category.trim(),
-        purity: form.purity.trim(),
-        qty: Number(form.qty),
-        net_weight: Number(form.net_weight),
-      });
+  item_name: form.item_name.trim(),
+
+  item_code: form.item_code.trim(),
+
+  metal_type: form.metal_type,
+
+  category: form.category.trim(),
+
+  purity: form.purity.trim(),
+
+  qty: Number(form.qty),
+
+  net_weight: Number(form.net_weight),
+
+  stone_weight: Number(
+    form.stone_weight || 0
+  ),
+
+  making_charge: Number(
+    form.making_charge || 0
+  ),
+
+  image: form.image,
+});
 
       resetForm();
     } catch (submitError) {
@@ -215,6 +272,21 @@ export default function DistrictAddStockPopup({
                   className={inputClass(Boolean(form.item_name))}
                 />
               </div>
+              <div>
+            <label className="mb-[7px] block text-[15px] font-normal leading-[20px]">
+              Item Code
+            </label>
+
+            <input
+              value={form.item_code}
+              disabled={loading}
+              onChange={(e) =>
+                updateField("item_code", e.target.value)
+              }
+              placeholder="5704-1234"
+              className={inputClass(Boolean(form.item_code))}
+            />
+          </div>
 
               <div>
                 <label className="mb-[7px] block text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-[#111111]">
@@ -265,6 +337,30 @@ export default function DistrictAddStockPopup({
                 />
               </div>
 
+              <div className="sm:col-span-2">
+                <label className="mb-[7px] block text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-[#111111]">
+                  Item Image
+                </label>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={loading}
+                  onChange={handleImageChange}
+                  className="block w-full rounded-[10px] border border-dashed border-[#D1D5DB] bg-white px-3 py-3 text-sm"
+                />
+
+                {imagePreview && (
+                  <div className="mt-3 overflow-hidden rounded-[12px] border border-[#E5E7EB]">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="h-[180px] w-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="mb-[7px] block text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-[#111111]">
                   Quantity
@@ -280,6 +376,26 @@ export default function DistrictAddStockPopup({
                   }
                   placeholder="2"
                   className={inputClass(Boolean(form.qty))}
+                />
+              </div>
+              <div>
+                <label className="mb-[7px] block text-[15px] font-normal leading-[20px]">
+                  Making Charge
+                </label>
+
+                <input
+                  value={form.making_charge}
+                  disabled={loading}
+                  type="text"
+                  inputMode="decimal"
+                  onChange={(e) =>
+                    updateField(
+                      "making_charge",
+                      normalizeDecimalInput(e.target.value)
+                    )
+                  }
+                  placeholder="500"
+                  className={inputClass(Boolean(form.making_charge))}
                 />
               </div>
 
@@ -300,8 +416,30 @@ export default function DistrictAddStockPopup({
                   className={inputClass(Boolean(form.net_weight))}
                 />
               </div>
+              <div>
+                <label className="mb-[7px] block text-[15px] font-normal leading-[20px]">
+                  Stone Weight
+                </label>
+
+                <input
+                  value={form.stone_weight}
+                  disabled={loading}
+                  type="text"
+                  inputMode="decimal"
+                  onChange={(e) =>
+                    updateField(
+                      "stone_weight",
+                      normalizeDecimalInput(e.target.value)
+                    )
+                  }
+                  placeholder="2"
+                  className={inputClass(Boolean(form.stone_weight))}
+                />
+              </div>
             </div>
+
           </div>
+          
         </div>
 
         <div className="grid shrink-0 grid-cols-1 gap-[10px] bg-white px-[28px] pb-[27px] pt-[12px] sm:grid-cols-2 sm:gap-[12px] max-sm:px-[20px] max-sm:pb-[18px]">

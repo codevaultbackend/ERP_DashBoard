@@ -583,9 +583,17 @@ function StockTable({
       if (!query) return true;
 
       return (
-        row.category.toLowerCase().includes(query) ||
-        row.code.toLowerCase().includes(query) ||
-        row.purity.toLowerCase().includes(query) ||
+        String(row.category ?? "")
+  .toLowerCase()
+  .includes(query) ||
+
+String(row.code ?? "")
+  .toLowerCase()
+  .includes(query) ||
+
+String(row.purity ?? "")
+  .toLowerCase()
+  .includes(query) ||
         row.articles?.some(
           (article) =>
             article.article.toLowerCase().includes(query) ||

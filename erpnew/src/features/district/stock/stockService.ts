@@ -3,23 +3,20 @@ import { stockApi } from "./stockApi";
 
 export type AddStockPayload = {
   item_name: string;
+  item_code?: string;
   metal_type: "Gold" | "Silver";
   category: string;
   purity: string;
   qty: number;
   net_weight: number;
-
-  /**
-   * Optional district support.
-   * Retail existing flow will not break because these are optional.
-   */
-  store_code?: string;
-  organization_id?: number | string;
+  stone_weight?: number;
+  making_charge?: number;
+  image?: File | null;
 };
 
 export type AddStockResponse = {
   success: boolean;
-  message: string;
+  message?: string;
   data?: unknown;
   error?: string;
 };
@@ -162,84 +159,52 @@ function validateAddStockPayload(payload: AddStockPayload) {
  * })
  */
 export async function addStockItem(
-  payload: AddStockPayload,
-  scope?: AddStockScope
+  payload: AddStockPayload
 ) {
-  const role = scope?.role;
+  const formData = new FormData();
 
-  const storeCode = normalizeStoreCode(
-    scope?.store_code || payload.store_code || getLoggedInStoreCode()
+  const items = [
+    {
+      item_name: payload.item_name.trim(),
+      item_code: payload.item_code?.trim() || "",
+
+      metal_type: payload.metal_type,
+      category: payload.category.trim(),
+
+      purity: payload.purity.trim(),
+
+      qty: Number(payload.qty),
+
+      net_weight: Number(payload.net_weight),
+
+      stone_weight: Number(
+        payload.stone_weight || 0
+      ),
+
+      making_charge: Number(
+        payload.making_charge || 0
+      ),
+    },
+  ];
+
+  formData.append(
+    "items",
+    JSON.stringify(items)
   );
 
-  const organizationId =
-    scope?.organization_id ||
-    payload.organization_id ||
-    getLoggedInOrganizationId();
-
-  const cleanPayload: AddStockPayload = {
-    item_name: normalizeText(payload.item_name),
-    metal_type: payload.metal_type,
-    category: normalizeText(payload.category),
-    purity: normalizeText(payload.purity),
-    qty: normalizeNumber(payload.qty),
-    net_weight: normalizeNumber(payload.net_weight),
-  };
-
-  /**
-   * Retail old flow safe:
-   * store_code only attach hoga agar:
-   * 1. District role hai
-   * 2. Ya payload/scope me explicitly store_code diya gaya hai
-   */
-  const shouldAttachStoreCode =
-    role === "district" || Boolean(scope?.store_code) || Boolean(payload.store_code);
-
-  if (shouldAttachStoreCode) {
-    if (!storeCode) {
-      throw new Error("District store_code is required to add stock");
-    }
-
-    cleanPayload.store_code = storeCode;
+  if (payload.image) {
+    formData.append(
+      "images",
+      payload.image,
+      payload.image.name
+    );
   }
 
-  if (organizationId) {
-    cleanPayload.organization_id = organizationId;
-  }
-
-  validateAddStockPayload(cleanPayload);
-
-  try {
-    const res = await stockApi.post<AddStockResponse>(
+  const response =
+    await stockApi.post<AddStockResponse>(
       "/stock/stock-in",
-      cleanPayload,
-      {
-        headers: {
-          "Content-Type": "application/json",
-
-          /**
-           * Backend compatibility:
-           * Agar backend req.headers se store_code / org read karta hai,
-           * tab bhi district flow work karega.
-           */
-          ...(storeCode
-            ? {
-                store_code: storeCode,
-                "x-store-code": storeCode,
-              }
-            : {}),
-
-          ...(organizationId
-            ? {
-                organization_id: String(organizationId),
-                "x-organization-id": String(organizationId),
-              }
-            : {}),
-        },
-      }
+      formData
     );
 
-    return res.data;
-  } catch (error) {
-    throw new Error(getApiError(error));
-  }
+  return response.data;
 }

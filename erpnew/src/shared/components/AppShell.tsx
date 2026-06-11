@@ -74,7 +74,7 @@ export default function AppShell({
   const profileRole = formatRoleLabel(profile?.role, TITLES[role]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen ">
       <header className="fixed left-0 right-0 top-0 z-50 h-[72px] border-b border-[#E5E7EB] bg-white">
         <div className="flex h-full items-center justify-between gap-3 px-4 md:px-6">
           <h1 className="truncate text-base font-semibold text-[#111827] sm:text-lg">

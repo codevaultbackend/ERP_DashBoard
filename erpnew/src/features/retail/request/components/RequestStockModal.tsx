@@ -213,65 +213,25 @@ export default function RequestStockModal({
     fetchCategories();
   }, [open]);
 
-  useEffect(() => {
-    if (!open || !selectedCategory) {
-      setProducts([]);
-      return;
-    }
+useEffect(() => {
+  if (!selectedTarget) {
+    setCategoryOptions([]);
+    return;
+  }
 
-    let cancelled = false;
+  const inventory =
+    selectedTarget.inventory || [];
 
-    const fetchItems = async () => {
-      try {
-        setLoadingItems(true);
-        setError("");
+  const categories = inventory.map(
+    (item) => ({
+      label: item.category,
+      value: item.category,
+      quantity: item.total_qty || 0,
+    })
+  );
 
-        const res = await getStockItemsByCategory(selectedCategory);
-        const rows: CategoryItemApi[] = Array.isArray(res?.data) ? res.data : [];
-
-        if (cancelled) return;
-
-        setProducts(
-          rows
-            .map((row) => {
-              const id = safeNumber(row?.id);
-
-              return mapCategoryItemToRequestProduct(
-                row,
-                selectedCategory,
-                selectedItems[id]?.request_qty
-                  ? String(selectedItems[id]?.request_qty)
-                  : ""
-              );
-            })
-            .filter((item) => item.item_id > 0)
-        );
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(
-            safeText(
-              err?.response?.data?.message ||
-                err?.response?.data?.error ||
-                err?.message,
-              "Failed to load products"
-            )
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingItems(false);
-        }
-      }
-    };
-
-    fetchItems();
-
-    return () => {
-      cancelled = true;
-    };
-    // selectedItems intentionally removed for smooth qty typing
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, selectedCategory]);
+  setCategoryOptions(categories);
+}, [selectedTarget]);
 
   const selectedCount = useMemo(
     () => Object.keys(selectedItems).length,

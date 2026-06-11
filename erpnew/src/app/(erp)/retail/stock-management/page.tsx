@@ -19,6 +19,7 @@ import {
   createDailyAudit,
   type AuditStatus,
 } from "../../../../features/retail/StockManagement/api/audit-api";
+import DistrictAddStockPopup from "@/features/district/stock/component/DistrictAddStockPopup";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -511,7 +512,7 @@ export default function StockManagementPage() {
   };
 
   const handleCreateAudit = async () => {
-    console.log("🔵 AUDIT DEBUG START");
+    console.log(" AUDIT DEBUG START");
 
     try {
       if (submitting) return;
@@ -565,11 +566,11 @@ export default function StockManagementPage() {
         items,
       };
 
-      console.log("✅ FINAL AUDIT PAYLOAD:", JSON.stringify(payload, null, 2));
+      console.log(" FINAL AUDIT PAYLOAD:", JSON.stringify(payload, null, 2));
 
       const result = await createDailyAudit(payload);
 
-      console.log("✅ AUDIT RESPONSE:", result);
+      console.log(" AUDIT RESPONSE:", result);
 
       setReportedArticles((prev) => {
         const next = { ...prev };
@@ -659,8 +660,7 @@ export default function StockManagementPage() {
         submitting={submitting}
       />
 
-      <AddStockPopup
-        open={addStockOpen}
+      <DistrictAddStockPopup open={addStockOpen}
         loading={addStockLoading}
         error={addStockError}
         onClose={() => {
@@ -670,6 +670,7 @@ export default function StockManagementPage() {
           setAddStockError("");
         }}
         onSubmit={handleAddStockSubmit}
+
       />
 
       {pageError ? (

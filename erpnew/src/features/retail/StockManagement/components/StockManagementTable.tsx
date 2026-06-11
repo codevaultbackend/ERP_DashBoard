@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import StockAuditPopup from "./StockAuditPopup";
 import type { AuditStatus } from "../api/audit-api";
+import { stockApi } from "../api/stock-management-api";
 
 type StockArticle = {
   id: string;
@@ -117,6 +118,29 @@ function isAuditDoneToday(article: StockArticle) {
   );
 }
 
+ export async function updateItemImage(
+    itemId: string | number,
+    image: File
+  ) {
+    const formData = new FormData();
+
+    formData.append("image", image);
+    
+
+    const res = await stockApi.patch(
+      `/stock/item/${itemId}/image`,
+      formData,
+      {
+        headers: {
+          "Content-Type":
+            "multipart/form-data",
+        },
+      }
+    );
+
+    return res.data;
+  }
+
 export default function StockManagementTable({
   rows = [],
   loading,
@@ -130,6 +154,8 @@ export default function StockManagementTable({
 }: Props) {
   const [openRowId, setOpenRowId] = useState<string | number | null>(null);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
+  const [uploadingImageId, setUploadingImageId] =
+    useState<string | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
 
   const [reasonPopup, setReasonPopup] = useState<{
@@ -180,6 +206,51 @@ export default function StockManagementTable({
 
     if (nextOpen === row.id && !row.articles?.length) {
       await onLoadArticles(row.category);
+    }
+  };
+
+ 
+
+  const handleImageUpload = async (
+    itemId: string,
+    file: File
+  ) => {
+    try {
+      setUploadingImageId(itemId);
+
+      const formData = new FormData();
+
+      formData.append("image", file);
+
+      const response =
+        await stockApi.patch(
+          `stock/item/${itemId}/image`,
+          formData,
+          {
+            headers: {
+              "Content-Type":
+                "multipart/form-data",
+            },
+          }
+        );
+
+      console.log(
+        "IMAGE UPDATED",
+        response.data
+      );
+
+      window.location.reload();
+    } catch (error) {
+      console.error(
+        "Failed to update image",
+        error
+      );
+
+      alert(
+        "Failed to update item image"
+      );
+    } finally {
+      setUploadingImageId(null);
     }
   };
 
@@ -361,7 +432,7 @@ export default function StockManagementTable({
                       "h-[56px] border-r border-black px-6 text-left text-[15px] font-semibold leading-none whitespace-nowrap text-white",
                       index === 0 && "rounded-tl-[30px]",
                       index === headers.length - 1 &&
-                        "rounded-tr-[30px] border-r-0",
+                      "rounded-tr-[30px] border-r-0",
                       [
                         "Quantity",
                         "Selling Price",
@@ -477,7 +548,7 @@ export default function StockManagementTable({
                                             "Checklist",
                                           ].includes(header) && "text-center",
                                           index === childHeaders.length - 1 &&
-                                            "border-r-0"
+                                          "border-r-0"
                                         )}
                                       >
                                         {header}
@@ -502,30 +573,54 @@ export default function StockManagementTable({
                                         className="bg-[#F7FAFC] transition hover:bg-[#F2F7FB]"
                                       >
                                         <td className="border-b border-r border-erp-border px-6 py-4">
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              openImagePreview(
-                                                rowImages,
-                                                articleIndex
-                                              )
-                                            }
-                                            className="block w-fit cursor-pointer"
-                                          >
-                                            <div className="relative h-[28px] w-[76px] overflow-hidden rounded-[6px] bg-[#F4DCE6] transition hover:opacity-90">
-                                              <Image
-                                                src={articleImage}
-                                                alt={safeValue(
-                                                  article.article,
-                                                  "Article image"
-                                                )}
-                                                fill
-                                                sizes="76px"
-                                                className="object-cover"
-                                                draggable={false}
+                                          <div className="flex flex-col items-center gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                openImagePreview(
+                                                  rowImages,
+                                                  articleIndex
+                                                )
+                                              }
+                                              className="block"
+                                            >
+                                              <div className="relative h-[28px] w-[76px] overflow-hidden rounded-[6px]">
+                                                <Image
+                                                  src={articleImage}
+                                                  alt={article.article}
+                                                  fill
+                                                  sizes="76px"
+                                                  className="object-contain"
+                                                />
+                                              </div>
+                                            </button>
+
+                                            <label className="cursor-pointer text-[11px] font-medium text-blue-600 underline">
+                                              {uploadingImageId === article.id
+                                                ? "Uploading..."
+                                                : "Edit Image"}
+
+                                              <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                disabled={
+                                                  uploadingImageId === article.id
+                                                }
+                                                onChange={(e) => {
+                                                  const file =
+                                                    e.target.files?.[0];
+
+                                                  if (!file) return;
+
+                                                  handleImageUpload(
+                                                    article.id,
+                                                    file
+                                                  );
+                                                }}
                                               />
-                                            </div>
-                                          </button>
+                                            </label>
+                                          </div>
                                         </td>
 
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-[14px] font-medium text-[#1F2937]">
@@ -543,14 +638,14 @@ export default function StockManagementTable({
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
                                           {safeValue(
                                             article.sellingPrice ||
-                                              row.sellingPrice
+                                            row.sellingPrice
                                           )}
                                         </td>
 
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
                                           {safeValue(
                                             article.makingCharge ||
-                                              row.makingCharge
+                                            row.makingCharge
                                           )}
                                         </td>
 
@@ -640,8 +735,8 @@ export default function StockManagementTable({
                                           ) : null}
 
                                           {!isCompleted &&
-                                          isMissing &&
-                                          audit?.remark ? (
+                                            isMissing &&
+                                            audit?.remark ? (
                                             <p className="mt-1 line-clamp-1 text-[11px] font-medium text-erp-danger">
                                               {audit.remark}
                                             </p>

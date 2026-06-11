@@ -60,7 +60,9 @@
   --shadow-erp-card: 1px 1px 4px 0px #0000001a;
   --shadow-erp-topbar: 1px 1px 4px 0px #0000001a;
 }
-
+*{
+  outline:none;
+}
 html,
 body {
   margin: 0;

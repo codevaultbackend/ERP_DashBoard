@@ -12,16 +12,18 @@ import {
 
 export type StaffRow = {
   id: string;
-  name: string;
-  email: string;
-  contact: string;
-  role: string;
-  branch: string;
-  employeeId: string;
-  address: string;
-  identityProof: string;
-  policeVerification: string;
-  image: string;
+  name?: string;
+  username?: string;
+  email?: string;
+  contact?: string;
+  phoneNumber?: string;
+  role?: string;
+  branch?: string;
+  employeeId?: string;
+  address?: string;
+  identityProof?: string;
+  policeVerification?: string;
+  image?: string;
   organization_id?: string | number;
   organizationLevel?: string;
 };
@@ -40,9 +42,9 @@ const LEVEL_OPTIONS: { label: string; value: OrganizationLevel }[] = [
 ];
 
 const ROLE_OPTIONS: Record<OrganizationLevel, string[]> = {
-  retail: ["INVENTORY_MANAGER", "SALES_MANAGER"],
-  district: ["INVENTORY_MANAGER", "SALES_MANAGER"],
-  head: ["ADMIN", "SUPER_ADMIN"],
+  retail: ["Retail-Manager", "Retail-TL"],
+  district: ["District-TL", "District-Manager"],
+  head: ["Super-Admin"],
 };
 
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -85,7 +87,10 @@ export default function AddEmployeeModal({
     address: "",
     organizationLevel: "retail" as OrganizationLevel,
     organization_id: "",
-    isPoliceVerified: false,
+
+
+    profileImage: null as File | null,
+
     aadhaar: null as File | null,
     pan: null as File | null,
     policeDoc: null as File | null,
@@ -106,26 +111,36 @@ export default function AddEmployeeModal({
     selectedLevelLabel === "Retail"
       ? "Store List"
       : selectedLevelLabel === "District"
-      ? "District List"
-      : "Head Office List";
+        ? "District List"
+        : "Head Office List";
 
   useEffect(() => {
     if (!open) return;
 
-    const level = normalizeLevel(editRow?.organizationLevel);
+    console.log("EDIT ROW:", editRow);
+
+    const level = normalizeLevel(
+      editRow?.organizationLevel
+    );
 
     setForm({
-      username: editRow?.name || "",
+      username:
+        editRow?.username ||
+        editRow?.name ||
+        "",
       email: editRow?.email || "",
       password: "",
       role: editRow?.role || "",
-      phoneNumber: editRow?.contact || "",
+      phoneNumber:
+        editRow?.contact ||
+        editRow?.phoneNumber ||
+        "",
       address: editRow?.address || "",
       organizationLevel: level,
-      organization_id: editRow?.organization_id
-        ? String(editRow.organization_id)
-        : "",
-      isPoliceVerified: Boolean(editRow?.policeVerification),
+      organization_id:
+        editRow?.organization_id != null
+          ? String(editRow.organization_id)
+          : "",
       aadhaar: null,
       pan: null,
       policeDoc: null,
@@ -190,44 +205,75 @@ export default function AddEmployeeModal({
       const phoneNumber = form.phoneNumber.trim();
       const address = form.address.trim();
 
-      if (!username) return alert("Name is required");
-      if (!email) return alert("Email is required");
-      if (!isEdit && !password) return alert("Password is required");
-      if (!form.role) return alert("Role is required");
-      if (!form.organization_id) {
-        return alert(`${selectedLevelLabel} is required`);
+      if (!isEdit) {
+        if (!username) return alert("Name is required");
+        if (!email) return alert("Email is required");
+        if (!password) return alert("Password is required");
+        if (!form.role) return alert("Role is required");
+
+        if (!form.organization_id) {
+          return alert(`${selectedLevelLabel} is required`);
+        }
       }
 
-      if (
-        form.isPoliceVerified &&
-        !isEdit &&
-        (!form.aadhaar || !form.pan || !form.policeDoc)
-      ) {
-        return alert(
-          "Aadhaar, PAN and Police Verification documents are required"
-        );
-      }
+
 
       setSubmitting(true);
 
-      const payload = {
-        username,
-        email,
-        password,
-        role: form.role,
-        phoneNumber,
-        address,
-        organization_id: form.organization_id,
-        isPoliceVerified: form.isPoliceVerified,
-        aadhaar: form.aadhaar,
-        pan: form.pan,
-        policeDoc: form.policeDoc,
-      };
+      const payload: any = {};
+
+      if (username !== (editRow?.username || editRow?.name || ""))
+        payload.username = username;
+
+      if (email !== (editRow?.email || ""))
+        payload.email = email;
+
+      if (password)
+        payload.password = password;
+
+      if (form.role !== (editRow?.role || ""))
+        payload.role = form.role;
+
+      if (
+        phoneNumber !==
+        (editRow?.phoneNumber || editRow?.contact || "")
+      )
+        payload.phoneNumber = phoneNumber;
+
+      if (address !== (editRow?.address || ""))
+        payload.address = address;
+
+      if (
+        String(form.organization_id) !==
+        String(editRow?.organization_id || "")
+      )
+        payload.organization_id = form.organization_id;
+
+      if (form.aadhaar)
+        payload.aadhaar = form.aadhaar;
+
+      if (form.pan)
+        payload.pan = form.pan;
+
+      if (form.policeDoc)
+        payload.policeDoc = form.policeDoc;
+
 
       if (isEdit && editRow?.id) {
         await updateEmployee(editRow.id, payload);
       } else {
-        await addEmployee(payload);
+        await addEmployee({
+          username,
+          email,
+          password,
+          role: form.role,
+          phoneNumber,
+          address,
+          organization_id: form.organization_id,
+          aadhaar: form.aadhaar,
+          pan: form.pan,
+          policeDoc: form.policeDoc,
+        });
       }
 
       onSuccess();
@@ -237,8 +283,8 @@ export default function AddEmployeeModal({
 
       alert(
         err?.response?.data?.error ||
-          err?.response?.data?.message ||
-          "Failed to save employee"
+        err?.response?.data?.message ||
+        "Failed to save employee"
       );
     } finally {
       setSubmitting(false);
@@ -273,20 +319,102 @@ export default function AddEmployeeModal({
             </h3>
 
             <div className="space-y-5">
+
               <Field
                 label="Name"
                 value={form.username}
-                onChange={(value) => setForm({ ...form, username: value })}
                 disabled={submitting}
+                onChange={(value) =>
+                  setForm({ ...form, username: value })
+                }
               />
 
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+
+                <SelectField
+                  label="Role"
+                  value={form.role}
+                  disabled={submitting}
+                  onChange={(value) =>
+                    setForm({ ...form, role: value })
+                  }
+                >
+                  <option value="">Select Role</option>
+
+                  {ROLE_OPTIONS[
+                    form.organizationLevel
+                  ].map((role) => (
+                    <option
+                      key={role}
+                      value={role}
+                    >
+                      {role.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </SelectField>
+
+                <ImageUploadField
+                  label="Upload Image"
+                  imageUrl={editRow?.image}
+                  file={form.profileImage}
+                  onChange={(file) =>
+                    setForm({
+                      ...form,
+                      profileImage: file,
+                    })
+                  }
+                  disabled={submitting}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                <Field
+                  label="Email"
+                  value={form.email}
+                  type="email"
+                  disabled={submitting || isEdit}
+                  onChange={(value) =>
+                    setForm({
+                      ...form,
+                      email: value,
+                    })
+                  }
+                />
+
+                <Field
+                  label="Contact No."
+                  value={form.phoneNumber}
+                  disabled={submitting}
+                  onChange={(value) =>
+                    setForm({
+                      ...form,
+                      phoneNumber: value.replace(/\D/g, "").slice(0, 10),
+                    })
+                  }
+                />
+              </div>
+
+              <Field
+                label="Address"
+                value={form.address}
+                disabled={submitting}
+                onChange={(value) =>
+                  setForm({
+                    ...form,
+                    address: value,
+                  })
+                }
+              />
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+
                 <SelectField
                   label="Level"
                   value={form.organizationLevel}
                   disabled={submitting}
                   onChange={(value) => {
-                    const nextLevel = value as OrganizationLevel;
+                    const nextLevel =
+                      value as OrganizationLevel;
 
                     setForm({
                       ...form,
@@ -297,118 +425,104 @@ export default function AddEmployeeModal({
                   }}
                 >
                   {LEVEL_OPTIONS.map((level) => (
-                    <option key={level.value} value={level.value}>
+                    <option
+                      key={level.value}
+                      value={level.value}
+                    >
                       {level.label}
                     </option>
                   ))}
                 </SelectField>
 
                 <SelectField
-                  label="Role"
-                  value={form.role}
-                  disabled={submitting}
-                  onChange={(value) => setForm({ ...form, role: value })}
+                  label={organizationLabel}
+                  value={form.organization_id}
+                  disabled={
+                    submitting ||
+                    loadingOrganizations
+                  }
+                  onChange={(value) => {
+                    const selected =
+                      organizations.find(
+                        (item) =>
+                          String(item.id) === value
+                      );
+
+                    setForm({
+                      ...form,
+                      organization_id: value,
+                      address:
+                        selected?.address ||
+                        form.address,
+                    });
+                  }}
                 >
-                  <option value="">Select Role</option>
-                  {ROLE_OPTIONS[form.organizationLevel].map((role) => (
-                    <option key={role} value={role}>
-                      {role}
+                  <option value="">
+                    Select
+                  </option>
+
+                  {organizations.map((item) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                    >
+                      {getOrganizationName(item)}
                     </option>
                   ))}
                 </SelectField>
               </div>
 
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              {!isEdit && (
                 <Field
-                  label="Email"
-                  value={form.email}
-                  disabled={submitting || isEdit}
-                  type="email"
-                  onChange={(value) => setForm({ ...form, email: value })}
-                />
-
-                <Field
-                  label="Contact No."
-                  value={form.phoneNumber}
+                  label="Password"
+                  value={form.password}
+                  type="password"
                   disabled={submitting}
                   onChange={(value) =>
-                    setForm({ ...form, phoneNumber: value })
+                    setForm({
+                      ...form,
+                      password: value,
+                    })
                   }
                 />
-              </div>
+              )}
 
-              <Field
-                label={
-                  isEdit ? "Password (leave empty to keep old)" : "Password"
-                }
-                value={form.password}
-                disabled={submitting}
-                type="password"
-                onChange={(value) => setForm({ ...form, password: value })}
-              />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
 
-              <Field
-                label="Address"
-                value={form.address}
-                disabled={submitting}
-                onChange={(value) => setForm({ ...form, address: value })}
-              />
-
-              <SelectField
-                label={organizationLabel}
-                value={form.organization_id}
-                disabled={submitting || loadingOrganizations}
-                onChange={(value) => {
-                  const selected = organizations.find(
-                    (item) => String(item.id) === value
-                  );
-
-                  setForm({
-                    ...form,
-                    organization_id: value,
-                    address:
-                      selected?.address ||
-                      selected?.location ||
-                      form.address,
-                  });
-                }}
-                rightIcon={
-                  loadingOrganizations ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-erp-muted" />
-                  ) : undefined
-                }
-              >
-                <option value="">
-                  {loadingOrganizations ? "Loading..." : "Select"}
-                </option>
-
-                {organizations.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {getOrganizationName(item)}
-                  </option>
-                ))}
-              </SelectField>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <FileButton
-                  label="Upload Aadhaar"
+                  label="Upload Identity"
                   value={form.aadhaar}
                   disabled={submitting}
-                  onChange={(file) => setForm({ ...form, aadhaar: file })}
+                  onChange={(file) =>
+                    setForm({
+                      ...form,
+                      aadhaar: file,
+                    })
+                  }
                 />
 
                 <FileButton
                   label="PAN Card"
                   value={form.pan}
                   disabled={submitting}
-                  onChange={(file) => setForm({ ...form, pan: file })}
+                  onChange={(file) =>
+                    setForm({
+                      ...form,
+                      pan: file,
+                    })
+                  }
                 />
 
                 <FileButton
                   label="Police Verification"
                   value={form.policeDoc}
                   disabled={submitting}
-                  onChange={(file) => setForm({ ...form, policeDoc: file })}
+                  onChange={(file) =>
+                    setForm({
+                      ...form,
+                      policeDoc: file,
+                    })
+                  }
                 />
               </div>
             </div>
@@ -516,6 +630,63 @@ function SelectField({
         </div>
       </div>
     </label>
+  );
+}
+function ImageUploadField({
+  label,
+  file,
+  imageUrl,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  file: File | null;
+  imageUrl?: string;
+  onChange: (file: File | null) => void;
+  disabled?: boolean;
+}) {
+  const preview =
+    file
+      ? URL.createObjectURL(file)
+      : imageUrl;
+
+  return (
+    <div>
+      <label className="mb-2 block text-[14px] font-medium">
+        {label}
+      </label>
+
+      <label className="flex h-[48px] cursor-pointer items-center gap-3 rounded-[11px] bg-[#F1F3F6] px-3">
+
+        {preview ? (
+          <img
+            src={preview}
+            alt=""
+            className="h-8 w-8 rounded-full object-cover"
+          />
+        ) : (
+          <Upload className="h-4 w-4" />
+        )}
+
+        <span className="truncate text-[14px]">
+          {file
+            ? file.name
+            : "Choose Image"}
+        </span>
+
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          disabled={disabled}
+          onChange={(e) =>
+            onChange(
+              e.target.files?.[0] || null
+            )
+          }
+        />
+      </label>
+    </div>
   );
 }
 

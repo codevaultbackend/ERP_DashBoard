@@ -18,7 +18,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   createHeadStore,
   getStoreDashboard,
-  mapStoresToDistrict,
   type CreateStorePayload,
   type DashboardStore,
 } from "@/features/head-office/store-management/api/store-management-api";
@@ -48,7 +47,8 @@ function cn(...classes: Array<string | false | null | undefined>) {
 
 export default function HeadOfficeStoreManagementPage() {
   const [stores, setStores] = useState<DistrictStore[]>([]);
-  const [mappableStores, setMappableStores] = useState<DistrictStore[]>([]);
+
+
   const [summary, setSummary] = useState({
     totalStores: 0,
     activeStores: 0,
@@ -87,28 +87,12 @@ export default function HeadOfficeStoreManagementPage() {
 
       const districts = normalizeStores(
         data?.districts ||
-          data?.districtStores ||
-          data?.district_stores ||
-          []
-      );
-
-      const available = normalizeStores(
-        data?.nonAssignedStores ||
-          data?.non_assigned_stores ||
-          data?.unmappedStores ||
-          data?.unmapped_stores ||
-          data?.retailStores ||
-          data?.retail_stores ||
-          data?.stores ||
-          []
-      ).filter(
-        (item) =>
-          item.code &&
-          !districts.some((district) => district.code === item.code)
+        data?.districtStores ||
+        data?.district_stores ||
+        []
       );
 
       setStores(districts);
-      setMappableStores(available);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load stores");
     } finally {
@@ -158,7 +142,7 @@ export default function HeadOfficeStoreManagementPage() {
 
   async function handleCreateStore(
     form: StoreForm,
-    selectedStoreCodes: string[]
+    districtStoreCode?: string
   ) {
     setSuccess("");
     setError("");
@@ -171,14 +155,9 @@ export default function HeadOfficeStoreManagementPage() {
       address: form.address.trim(),
       pincode: form.pincode.trim(),
       store_code: storeCode,
+      district_store_code: districtStoreCode,
     });
 
-    if (form.level === "District" && selectedStoreCodes.length > 0) {
-      await mapStoresToDistrict({
-        district_store_code: storeCode,
-        store_codes: selectedStoreCodes,
-      });
-    }
 
     setOpenCreate(false);
     setSuccess("Store created successfully.");
@@ -298,7 +277,7 @@ export default function HeadOfficeStoreManagementPage() {
 
       {openCreate ? (
         <CreateStoreModal
-          associatedStores={mappableStores}
+          districts={stores}
           onClose={() => setOpenCreate(false)}
           onSubmit={handleCreateStore}
         />
@@ -337,41 +316,26 @@ function StoreCard({ id, name, code }: DistrictStore) {
 }
 
 function CreateStoreModal({
-  associatedStores,
+  districts,
   onClose,
   onSubmit,
 }: {
-  associatedStores: DistrictStore[];
+  districts: DistrictStore[];
   onClose: () => void;
-  onSubmit: (form: StoreForm, selectedStoreCodes: string[]) => Promise<void>;
+  onSubmit: (
+    form: StoreForm,
+    districtCode?: string
+  ) => Promise<void>;
 }) {
   const [form, setForm] = useState<StoreForm>(initialForm);
-  const [selected, setSelected] = useState<string[]>([]);
   const [openLevel, setOpenLevel] = useState(false);
-  const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
 
-  const showAssociatedStores = form.level === "District";
+  const showDistrictSelector =
+    form.level === "Retail";
 
-  const filteredStores = useMemo(() => {
-    const q = search.trim().toLowerCase();
-
-    if (!q) return associatedStores;
-
-    return associatedStores.filter(
-      (store) =>
-        store.name.toLowerCase().includes(q) ||
-        store.code.toLowerCase().includes(q)
-    );
-  }, [associatedStores, search]);
-
-  useEffect(() => {
-    if (form.level !== "District") {
-      setSelected([]);
-      setSearch("");
-    }
-  }, [form.level]);
 
   function updateField<K extends keyof StoreForm>(key: K, value: StoreForm[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -388,6 +352,12 @@ function CreateStoreModal({
     }
 
     if (!form.store_code.trim()) return "Store code is required.";
+    if (
+      form.level === "Retail" &&
+      !selectedDistrict
+    ) {
+      return "District Store is required.";
+    }
 
     return "";
   }
@@ -404,7 +374,7 @@ function CreateStoreModal({
       setSaving(true);
       setError("");
 
-      await onSubmit(form, selected);
+      await onSubmit(form, selectedDistrict);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create store.");
     } finally {
@@ -412,13 +382,6 @@ function CreateStoreModal({
     }
   }
 
-  function toggleStore(code: string) {
-    setSelected((prev) =>
-      prev.includes(code)
-        ? prev.filter((item) => item !== code)
-        : [...prev, code]
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/30 px-3 py-4 backdrop-blur-[2px] sm:px-6">
@@ -544,65 +507,30 @@ function CreateStoreModal({
             </div>
           </section>
 
-          {showAssociatedStores ? (
-            <section className="mt-[18px] rounded-[20px] bg-erp-card-soft px-[18px] pb-[18px] pt-[18px] sm:rounded-[22px]">
-              <h4 className="text-[17px] font-bold leading-none tracking-[-0.02em] text-erp-text">
-                Select Associated Stores
-              </h4>
+          {showDistrictSelector && (
+            <Field label="District Store">
+              <select
+                value={selectedDistrict}
+                onChange={(e) =>
+                  setSelectedDistrict(e.target.value)
+                }
+                className="field-input"
+              >
+                <option value="">
+                  Select District Store
+                </option>
 
-              <label className="mt-[18px] block text-[15px] font-medium leading-none text-erp-text">
-                Stores List
-              </label>
-
-              <div className="mt-[10px] flex h-[38px] items-center rounded-[10px] bg-white px-3">
-                <Search className="mr-2 h-4 w-4 shrink-0 text-erp-muted" />
-
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search stores..."
-                  className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-medium text-erp-text outline-none placeholder:text-erp-muted"
-                />
-              </div>
-
-              <div className="mt-[10px] max-h-[92px] space-y-[8px] overflow-y-auto pr-1">
-                {filteredStores.map((store) => {
-                  const active = selected.includes(store.code);
-
-                  return (
-                    <button
-                      key={store.code}
-                      type="button"
-                      onClick={() => toggleStore(store.code)}
-                      className="flex h-[38px] w-full items-center justify-between rounded-[10px] bg-white px-[14px] text-left text-[14px] font-medium text-erp-text transition hover:bg-[#F8FAFC]"
-                    >
-                      <span className="truncate">
-                        {store.name}{" "}
-                        <span className="text-erp-muted">({store.code})</span>
-                      </span>
-
-                      <span
-                        className={cn(
-                          "ml-3 flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-[7px] transition",
-                          active
-                            ? "bg-erp-dark text-white"
-                            : "bg-[#D9D9D9] text-transparent"
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </span>
-                    </button>
-                  );
-                })}
-
-                {filteredStores.length === 0 ? (
-                  <div className="flex h-[46px] items-center justify-center rounded-[10px] bg-white text-[13px] font-semibold text-erp-muted">
-                    No stores available for mapping.
-                  </div>
-                ) : null}
-              </div>
-            </section>
-          ) : null}
+                {districts.map((district) => (
+                  <option
+                    key={district.code}
+                    value={district.code}
+                  >
+                    {district.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           {error ? (
             <p className="mt-4 rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-700">

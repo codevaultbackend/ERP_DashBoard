@@ -10,7 +10,10 @@ export type AddStockFormPayload = {
   purity: string;
   qty: number;
   net_weight: number;
+  image?: File | null;
 };
+
+
 
 type AddStockPopupProps = {
   open: boolean;
@@ -27,10 +30,12 @@ const initialForm = {
   purity: "",
   qty: "",
   net_weight: "",
+  image: null as File | null,
 };
 
 const purityOptions = ["24KT", "22KT", "18KT", "14KT", "925"];
 const metalOptions: Array<"Gold" | "Silver"> = ["Gold", "Silver"];
+
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -116,9 +121,11 @@ export default function AddStockPopup({
 }: AddStockPopupProps) {
   const [form, setForm] = useState(initialForm);
   const [touched, setTouched] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    setImagePreview(null);
 
     setForm(initialForm);
     setTouched(false);
@@ -167,6 +174,23 @@ export default function AddStockPopup({
       [key]: value,
     }));
   };
+  const handleImageChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      setImagePreview(null);
+
+      updateField("image", null);
+
+      return;
+    }
+
+    updateField("image", file);
+
+    setImagePreview(URL.createObjectURL(file));
+  };
 
   const handleSubmit = async () => {
     setTouched(true);
@@ -180,6 +204,7 @@ export default function AddStockPopup({
       purity: form.purity.trim(),
       qty: Number(form.qty),
       net_weight: Number(form.net_weight),
+      image: form.image,
     });
   };
 
@@ -257,6 +282,29 @@ export default function AddStockPopup({
                 options={purityOptions}
                 onChange={(value) => updateField("purity", value)}
               />
+            </div>
+            <div className="sm:col-span-2">
+              <FieldLabel>Item Image</FieldLabel>
+
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={loading}
+                  onChange={handleImageChange}
+                  className="block w-full rounded-[10px] border border-dashed border-[#D1D5DB] bg-white px-3 py-3 text-sm"
+                />
+
+                {imagePreview && (
+                  <div className="overflow-hidden rounded-[12px] border border-[#E5E7EB]">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="h-[180px] w-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
