@@ -58,24 +58,50 @@ async function parseApiResponse(
    SCAN ITEM
 ========================================================= */
 
-    export async function scanBillingItemByCode(
+  export async function scanBillingItemByCode(
   code: string,
   sessionId?: string
 ) {
   const token =
     localStorage.getItem("token");
 
-  const response = await axios.get(
-    `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "x-billing-session-id": sessionId || "",
-      },
-    }
+  console.log("TOKEN:", token);
+  console.log("SESSION ID:", sessionId);
+  console.log(
+    "URL:",
+    `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`
   );
 
-  return response.data.data;
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "x-billing-session-id": sessionId || "",
+        },
+      }
+    );
+
+    console.log(
+      "SCAN RESPONSE:",
+      response.data
+    );
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "SCAN ERROR:",
+      error
+    );
+
+    console.error(
+      "SCAN ERROR RESPONSE:",
+      error?.response?.data
+    );
+
+    throw error;
+  }
 }
 
 /* =========================================================
