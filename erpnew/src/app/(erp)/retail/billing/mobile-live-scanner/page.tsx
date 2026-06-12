@@ -292,12 +292,12 @@ function MobileScannerInner() {
   async function onScanSuccess(
     qrCode: string
   ) {
+    console.log(
+      "QR DETECTED =>",
+      qrCode
+    );
 
-    console.log("QR DETECTED =>", qrCode);
-
-    if (
-      scanLockRef.current
-    ) {
+    if (scanLockRef.current) {
       return;
     }
 
@@ -306,7 +306,6 @@ function MobileScannerInner() {
         qrCode
       )
     ) {
-
       setSuccess(
         "Item sent to desktop"
       );
@@ -317,60 +316,42 @@ function MobileScannerInner() {
     }
 
     try {
+      scanLockRef.current = true;
 
-      scanLockRef.current =
-        true;
-
-      setLoading(
-        true
-      );
+      setLoading(true);
 
       setError("");
 
       setSuccess("");
 
-      /**
-       * backend api
-       */
       const item =
         await scanBillingItemByCode(
-          qrCode
+          qrCode,
+          sessionId
         );
-      console.log("CALLING API WITH =>", qrCode);
 
+      console.log(
+        "API RESPONSE =>",
+        item
+      );
 
-      console.log("API RESPONSE =>", item);
-
-      if (
-        !item
-      ) {
-
+      if (!item) {
         throw new Error(
           "Item not found"
         );
       }
 
-      setSending(
-        true
-      );
+      setSending(true);
 
       console.log(
-        "EMITTING ITEM",
+        "ITEM FETCHED SUCCESSFULLY",
         {
           sessionId,
           storeCode,
           organizationId,
-          data: item,
+          item,
         }
       );
-
-      socket.emit("billing-item-scanned", {
-        success: true,
-        organization_id: organizationId,
-        store_code: storeCode,
-        session_id: sessionId,
-        item,
-      });
 
       sentCodesRef.current.add(
         qrCode
@@ -380,30 +361,19 @@ function MobileScannerInner() {
         "Item sent to desktop"
       );
 
-      navigator.vibrate?.(
-        [120]
-      );
+      navigator.vibrate?.([120]);
 
     } catch (error: any) {
-
-      console.error(
-        error
-      );
+      console.error(error);
 
       setError(
         error?.message ||
         "Scan failed"
       );
-
     } finally {
+      setLoading(false);
 
-      setLoading(
-        false
-      );
-
-      setSending(
-        false
-      );
+      setSending(false);
 
       scanLockRef.current =
         false;

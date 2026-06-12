@@ -1,3 +1,4 @@
+import axios from "axios";
 import type { LiveScannedBillingItem } from "./live-scanner-types";
 
 const API_BASE_URL =
@@ -57,60 +58,24 @@ async function parseApiResponse(
    SCAN ITEM
 ========================================================= */
 
-export async function scanBillingItemByCode(
-  rawCode: string
-): Promise<LiveScannedBillingItem> {
-
-  const code = String(
-    rawCode || ""
-  ).trim();
-
-  if (!code) {
-    throw new Error(
-      "QR/Barcode code is required"
-    );
-  }
-
+    export async function scanBillingItemByCode(
+  code: string,
+  sessionId?: string
+) {
   const token =
-    getAuthToken();
+    localStorage.getItem("token");
 
-  if (!token) {
-    throw new Error(
-      "Login token missing"
-    );
-  }
+  const response = await axios.get(
+    `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-billing-session-id": sessionId || "",
+      },
+    }
+  );
 
-  const response =
-    await fetch(
-      `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(
-        code
-      )}`,
-      {
-        method: "GET",
-
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type":
-            "application/json",
-        },
-
-        cache: "no-store",
-      }
-    );
-
-  const json =
-    await parseApiResponse(
-      response
-    );
-
-  return {
-    ...json.data,
-
-    raw_qr_value: code,
-
-    scanned_at:
-      new Date().toISOString(),
-  };
+  return response.data.data;
 }
 
 /* =========================================================
