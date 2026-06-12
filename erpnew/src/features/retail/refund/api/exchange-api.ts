@@ -1,4 +1,5 @@
 import axios from "axios";
+import type { LiveScannedBillingItem } from "../../billing/live-scanner-types";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -532,6 +533,37 @@ export function mapExchangeToRefundRequest(
 
     expanded: index === 0,
   };
+}
+
+export async function scanBillingItemByCode(
+  rawCode: string
+): Promise<LiveScannedBillingItem> {
+  const code = String(rawCode || "").trim();
+
+  if (!code) {
+    throw new Error("QR/Barcode code is required");
+  }
+
+  try {
+    const response = await exchangeApi.get(
+      `/exchange/scan/${encodeURIComponent(code)}`,
+      {
+        headers: {
+          ...buildScopeHeaders(),
+        },
+      }
+    );
+
+    const data = response.data;
+
+    return {
+      ...data.data,
+      raw_qr_value: code,
+      scanned_at: new Date().toISOString(),
+    };
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error));
+  }
 }
 
 export async function getExchangeDashboard(force = false) {

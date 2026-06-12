@@ -118,7 +118,7 @@ export default function AppSidebar({
             })}
           </nav>
 
-          <div className="mt-auto pt-3">
+          <div className="mt-auto pt-3 shrink-0">
             <div className="mb-3 h-px w-full bg-[#EEF0F3]" />
 
             <button

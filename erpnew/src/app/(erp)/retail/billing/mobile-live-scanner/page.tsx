@@ -47,6 +47,20 @@ function MobileScannerInner() {
       "session_id"
     ) || "";
 
+  useEffect(() => {
+    if (sessionId) {
+      localStorage.setItem(
+        "billing_session_id",
+        sessionId
+      );
+
+      console.log(
+        "MOBILE SESSION:",
+        sessionId
+      );
+    }
+  }, [sessionId]);
+
   const storeCode =
     searchParams.get(
       "store_code"
@@ -294,8 +308,10 @@ function MobileScannerInner() {
     ) {
 
       setSuccess(
-        "Already scanned"
+        "Item sent to desktop"
       );
+
+      navigator.vibrate?.([120]);
 
       return;
     }
@@ -345,18 +361,6 @@ function MobileScannerInner() {
           storeCode,
           organizationId,
           data: item,
-        }
-      );
-
-      socket.emit(
-        "billing:item_scanned",
-        {
-          sessionId,
-          storeCode,
-          organizationId,
-          data: item,
-          sent_at:
-            new Date().toISOString(),
         }
       );
 

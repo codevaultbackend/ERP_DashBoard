@@ -6,7 +6,7 @@ import {
   createExchange,
   getInvoiceForExchange,
 } from "./api/exchange-api";
-import { scanBillingItemByCode } from "@/features/retail/billing/billing-api";
+import { scanBillingItemByCode } from "@/features/retail/refund/api/exchange-api";
 
 type Props = {
   open: boolean;
