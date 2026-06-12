@@ -65,39 +65,65 @@ async function parseApiResponse(
   const token =
     localStorage.getItem("token");
 
-  console.log("TOKEN:", token);
-  console.log("SESSION ID:", sessionId);
   console.log(
-    "URL:",
+    "========== SCAN DEBUG =========="
+  );
+
+  console.log(
+    "TOKEN:",
+    token
+  );
+
+  console.log(
+    "SESSION ID:",
+    sessionId
+  );
+
+  console.log(
+    "API URL:",
     `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`
   );
 
   try {
-    const response = await axios.get(
-      `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "x-billing-session-id": sessionId || "",
-        },
-      }
-    );
+    const response =
+      await axios.get(
+        `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "x-billing-session-id":
+              sessionId || "",
+          },
+        }
+      );
 
     console.log(
-      "SCAN RESPONSE:",
+      "SCAN SUCCESS:",
       response.data
     );
 
     return response.data.data;
+
   } catch (error: any) {
+
     console.error(
-      "SCAN ERROR:",
+      "SCAN FAILED:",
       error
     );
 
     console.error(
-      "SCAN ERROR RESPONSE:",
+      "STATUS:",
+      error?.response?.status
+    );
+
+    console.error(
+      "DATA:",
       error?.response?.data
+    );
+
+    console.error(
+      "HEADERS:",
+      error?.response?.headers
     );
 
     throw error;

@@ -323,6 +323,15 @@ function MobileScannerInner() {
       setError("");
 
       setSuccess("");
+      console.log(
+        "MOBILE SESSION ID:",
+        sessionId
+      );
+
+      console.log(
+        "SCANNING QR:",
+        qrCode
+      );
 
       const item =
         await scanBillingItemByCode(
