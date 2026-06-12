@@ -364,6 +364,14 @@ function MobileScannerInner() {
         }
       );
 
+      socket.emit("billing-item-scanned", {
+        success: true,
+        organization_id: organizationId,
+        store_code: storeCode,
+        session_id: sessionId,
+        item,
+      });
+
       sentCodesRef.current.add(
         qrCode
       );
