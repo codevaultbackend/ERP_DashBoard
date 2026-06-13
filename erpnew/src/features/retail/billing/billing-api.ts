@@ -77,7 +77,7 @@ export async function scanBillingItemByCode(
 
   console.log(
     "REQUEST URL:",
-    `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`
+    `${API_BASE_URL}/billing/scan-item/${encodeURIComponent(code)}`
   );
 
   try {
@@ -139,7 +139,7 @@ export async function scanBillingItemByCode(
           status: error?.response?.status,
           data: error?.response?.data,
           tokenExists: !!token,
-          apiUrl: `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`,
+          apiUrl: `${API_BASE_URL}/billing/scan-item/${encodeURIComponent(code)}`,
         },
         null,
         2
