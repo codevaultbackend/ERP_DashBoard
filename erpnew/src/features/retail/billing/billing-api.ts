@@ -83,7 +83,7 @@ export async function scanBillingItemByCode(
   try {
     const response =
       await axios.get(
-        `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`,
+        `${API_BASE_URL}/billing/scan-item/${encodeURIComponent(code)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
