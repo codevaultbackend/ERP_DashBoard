@@ -336,11 +336,38 @@ function MobileScannerInner() {
         qrCode
       );
 
-      const item =
-        await scanBillingItemByCode(
-          qrCode,
-          sessionId
-        );
+      let scanCode = qrCode;
+
+try {
+  const parsed = JSON.parse(qrCode);
+
+  console.log(
+    "PARSED QR:",
+    parsed
+  );
+
+  scanCode =
+    parsed?.payload?.code ||
+    parsed?.code ||
+    parsed?.product_code ||
+    qrCode;
+
+  console.log(
+    "EXTRACTED CODE:",
+    scanCode
+  );
+} catch {
+  console.log(
+    "PLAIN QR:",
+    qrCode
+  );
+}
+
+const item =
+  await scanBillingItemByCode(
+    scanCode,
+    sessionId
+  );
 
       console.log(
         "API RESPONSE =>",
