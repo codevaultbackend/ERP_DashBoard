@@ -18,6 +18,11 @@ import {
 } from "../../../../features/retail/ledger/head-ledger-api";
 import { mapHeadStoresToLedgerRows } from "../../../../features/retail/ledger/head-ledger-utils";
 import type { HeadLedgerStoreRow } from "../../../../features/retail/ledger/types";
+import {
+  getRetailStores,
+  getStoreDashboard,
+} from "../../../../features/head-office/store-management/api/store-management-api";
+import type { DashboardStore } from "../../../../features/head-office/store-management/api/store-management-api";
 
 export default function HeadOfficeLedgerPage() {
   const [search, setSearch] = useState("");
@@ -29,6 +34,12 @@ export default function HeadOfficeLedgerPage() {
     totalRevenue: "₹0",
     collectableAmount: "₹0",
   });
+
+  const [districts, setDistricts] = useState<DashboardStore[]>([]);
+  const [retailStores, setRetailStores] = useState<DashboardStore[]>([]);
+
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedRetailStore, setSelectedRetailStore] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -42,12 +53,13 @@ export default function HeadOfficeLedgerPage() {
         setLoading(true);
         setError("");
 
-        const response = await fetchHeadLedgerStores();
-        const mapped = mapHeadStoresToLedgerRows(response);
+        const ledgerResponse = await fetchHeadLedgerStores();
+        const mapped = mapHeadStoresToLedgerRows(ledgerResponse);
 
         if (!active) return;
 
         setRows(mapped.rows || []);
+
         setSummary({
           totalSales: mapped.summary?.totalSales || "₹0",
           loss: mapped.summary?.loss || "₹0",
@@ -55,10 +67,23 @@ export default function HeadOfficeLedgerPage() {
           totalRevenue: mapped.summary?.totalRevenue || "₹0",
           collectableAmount: mapped.summary?.collectableAmount || "₹0",
         });
+
+        const dashboard = await getStoreDashboard();
+
+        if (!active) return;
+
+        const districtList =
+          dashboard.data?.districtStores ||
+          dashboard.data?.district_stores ||
+          dashboard.data?.districts ||
+          [];
+
+        setDistricts(districtList);
       } catch (err) {
         if (!active) return;
 
         setRows([]);
+
         setError(
           err instanceof Error
             ? err.message
@@ -76,20 +101,82 @@ export default function HeadOfficeLedgerPage() {
     };
   }, []);
 
+ useEffect(() => {
+  async function loadRetailStores() {
+    try {
+      console.log("Selected District", selectedDistrict);
+
+      if (!selectedDistrict) {
+        setRetailStores([]);
+        setSelectedRetailStore("");
+        return;
+      }
+
+      const response = await getRetailStores(selectedDistrict);
+
+      console.log("Retail API Response", response);
+
+      setRetailStores(response.data || []);
+    } catch (error) {
+      console.error("Retail Store Error", error);
+      setRetailStores([]);
+    }
+  }
+
+  loadRetailStores();
+}, [selectedDistrict]);
+
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    if (!q) return rows;
+    return rows.filter((item: any) => {
+      const matchesSearch =
+        !q ||
+        String(item.storeCode || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(item.storeName || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(item.storeManager || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(item.organizationLevel || "")
+          .toLowerCase()
+          .includes(q);
 
-    return rows.filter((item) => {
+      const rowDistrictCode =
+        item.districtStoreCode ||
+        item.district_code ||
+        item.parentStoreCode ||
+        item.parent_store_code ||
+        "";
+
+      const matchesDistrict =
+        !selectedDistrict ||
+        String(rowDistrictCode).toUpperCase() ===
+        selectedDistrict.toUpperCase();
+
+      const matchesRetail =
+        !selectedRetailStore ||
+        String(item.storeCode || "").toUpperCase() ===
+        selectedRetailStore.toUpperCase();
+      console.log("FIRST LEDGER ROW", rows[0]);
+      console.log("ALL ROWS", rows);
+      console.log("RETAIL STORES", retailStores);
+
       return (
-        String(item.storeCode || "").toLowerCase().includes(q) ||
-        String(item.storeName || "").toLowerCase().includes(q) ||
-        String(item.storeManager || "").toLowerCase().includes(q) ||
-        String(item.organizationLevel || "").toLowerCase().includes(q)
+        matchesSearch &&
+        matchesDistrict &&
+        matchesRetail
       );
     });
-  }, [rows, search]);
+  }, [
+    rows,
+    search,
+    selectedDistrict,
+    selectedRetailStore,
+  ]);
 
   async function handleExport() {
     try {
@@ -165,14 +252,67 @@ export default function HeadOfficeLedgerPage() {
         </div>
 
         <div className="mt-6 rounded-[28px] border border-[#E5E7EB] bg-white px-4 py-3 shadow-[0px_2px_8px_rgba(15,23,42,0.04)] sm:rounded-[34px] sm:px-5 sm:py-4 xl:mt-[28px]">
-          <div className="flex h-[48px] w-full max-w-full items-center gap-3 rounded-full bg-[#F7F7F8] px-4 sm:h-[54px] sm:max-w-[840px] sm:px-5">
-            <Search className="h-5 w-5 shrink-0 text-[#98A2B3]" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by name, store code..."
-              className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-normal tracking-[-0.02em] text-[#111827] outline-none placeholder:text-[#667085] sm:text-[16px]"
-            />
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            {/* Search */}
+            <div className="flex h-[48px] flex-1 items-center gap-3 rounded-full bg-[#F7F7F8] px-4 sm:h-[54px] sm:px-5">
+              <Search className="h-5 w-5 shrink-0 text-[#98A2B3]" />
+
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by name, store code..."
+                className="h-full min-w-0 flex-1 bg-transparent text-[14px] font-normal tracking-[-0.02em] text-[#111827] outline-none placeholder:text-[#667085] sm:text-[16px]"
+              />
+            </div>
+
+            {/* District Filter */}
+            <select
+              value={selectedDistrict}
+              onChange={(e) => {
+                setSelectedDistrict(e.target.value);
+                setSelectedRetailStore("");
+              }}
+              className="h-[48px] min-w-[220px] rounded-full border border-[#E5E7EB] bg-white px-4 text-sm outline-none sm:h-[54px]"
+            >
+              <option value="">All District Stores</option>
+
+              {districts.map((district) => {
+                const code = district.store_code || district.code || "";
+                const name = district.store_name || district.name || code;
+
+                return (
+                  <option
+                    key={code}
+                    value={code}
+                  >
+                    {name} ({code})
+                  </option>
+                );
+              })}
+            </select>
+
+            {/* Retail Filter */}
+            <select
+              value={selectedRetailStore}
+              onChange={(e) => setSelectedRetailStore(e.target.value)}
+              className="h-[48px] min-w-[220px] rounded-full border border-[#E5E7EB] bg-white px-4 text-sm outline-none sm:h-[54px]"
+            >
+              <option value="">All Retail Stores</option>
+
+              {retailStores.map((store) => {
+                const code = store.store_code || store.code || "";
+                const name = store.store_name || store.name || code;
+
+                return (
+                  <option
+                    key={code}
+                    value={code}
+                  >
+                    {name} ({code})
+                  </option>
+                );
+              })}
+            </select>
           </div>
         </div>
 

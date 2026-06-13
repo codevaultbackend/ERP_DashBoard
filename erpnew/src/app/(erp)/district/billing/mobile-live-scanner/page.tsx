@@ -11,9 +11,6 @@ import {
   Square,
   Wifi,
 } from "lucide-react";
-import {
-  sendScannedItemToDesktop,
-} from "@/features/retail/billing/billing-realtime";
 
 import { useSearchParams } from "next/navigation";
 
@@ -363,21 +360,6 @@ function MobileScannerInner() {
           organizationId,
           item,
         }
-      );
-
-      /**
-       * SEND TO DESKTOP
-       */
-      await sendScannedItemToDesktop({
-        session_id: sessionId,
-        store_code: storeCode,
-        organization_id: organizationId,
-        item,
-      });
-
-      console.log(
-        "ITEM SENT TO DESKTOP",
-        item
       );
 
       sentCodesRef.current.add(

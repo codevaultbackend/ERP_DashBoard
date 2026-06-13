@@ -159,17 +159,6 @@ export default function BillingSearchBar({
             </span>
           </button>
 
-          <button
-            type="button"
-            className="flex h-[42px] items-center gap-2 rounded-[14px] bg-[#050816] px-5 text-[13px] font-semibold text-white shadow-[0px_8px_20px_rgba(2,6,23,0.12)] transition-all hover:opacity-95"
-          >
-            <Receipt className="h-4 w-4" />
-
-            <span className="hidden sm:block">
-              Create Bill
-            </span>
-          </button>
-
           {/* =========================================
               DYNAMIC ROUTE BUTTON
           ========================================= */}

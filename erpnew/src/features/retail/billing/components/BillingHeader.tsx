@@ -1,5 +1,3 @@
-// BillingHeader.tsx
-
 "use client";
 
 import {
