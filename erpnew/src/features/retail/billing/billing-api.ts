@@ -46,8 +46,8 @@ async function parseApiResponse(
   ) {
     throw new Error(
       json?.message ||
-        json?.error ||
-        "Something went wrong"
+      json?.error ||
+      "Something went wrong"
     );
   }
 
@@ -58,7 +58,7 @@ async function parseApiResponse(
    SCAN ITEM
 ========================================================= */
 
-  export async function scanBillingItemByCode(
+export async function scanBillingItemByCode(
   code: string,
   sessionId?: string
 ) {
@@ -66,21 +66,17 @@ async function parseApiResponse(
     localStorage.getItem("token");
 
   console.log(
-    "========== SCAN DEBUG =========="
-  );
-
-  console.log(
-    "TOKEN:",
+    "TOKEN VALUE:",
     token
   );
 
   console.log(
-    "SESSION ID:",
-    sessionId
+    "API_BASE_URL:",
+    API_BASE_URL
   );
 
   console.log(
-    "API URL:",
+    "REQUEST URL:",
     `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`
   );
 
@@ -112,6 +108,11 @@ async function parseApiResponse(
     );
 
     console.error(
+      "MESSAGE:",
+      error?.message
+    );
+
+    console.error(
       "STATUS:",
       error?.response?.status
     );
@@ -124,6 +125,25 @@ async function parseApiResponse(
     console.error(
       "HEADERS:",
       error?.response?.headers
+    );
+
+    console.error(
+      "TOKEN EXISTS:",
+      !!token
+    );
+
+    alert(
+      JSON.stringify(
+        {
+          message: error?.message,
+          status: error?.response?.status,
+          data: error?.response?.data,
+          tokenExists: !!token,
+          apiUrl: `${API_BASE_URL}/billing/scan/${encodeURIComponent(code)}`,
+        },
+        null,
+        2
+      )
     );
 
     throw error;
@@ -141,8 +161,8 @@ export type CreateBillCustomerPayload =
     phone?: string | null;
 
     pan_card_number?:
-      | string
-      | null;
+    | string
+    | null;
 
     pincode?: string | null;
 
@@ -152,16 +172,16 @@ export type CreateBillCustomerPayload =
 export type CreateBillItemPayload =
   {
     item_id:
-      | number
-      | string;
+    | number
+    | string;
 
     product_code?:
-      | string
-      | null;
+    | string
+    | null;
 
     description?:
-      | string
-      | null;
+    | string
+    | null;
 
     qty: number;
 
@@ -177,12 +197,12 @@ export type CreateBillItemPayload =
 export type CreateBillPayload =
   {
     store_code?:
-      | string
-      | null;
+    | string
+    | null;
 
     customer?:
-      | CreateBillCustomerPayload
-      | null;
+    | CreateBillCustomerPayload
+    | null;
 
     items: CreateBillItemPayload[];
 
