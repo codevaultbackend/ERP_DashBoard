@@ -32,112 +32,100 @@ function MobileScannerInner() {
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanLockRef = useRef(false);
-  const sentCodesRef = useRef(new Set<string>());
+  const sentCodesRef = useRef<Set<string>>(new Set());
 
-  function addLog(message: string) {
-    const log = `${new Date().toLocaleTimeString()} - ${message}`;
+  const addLog = (msg: string) => {
+    const log = `${new Date().toLocaleTimeString()} - ${msg}`;
     console.log(log);
-
     setDebugLogs((prev) => [log, ...prev.slice(0, 30)]);
-  }
+  };
 
-  /**
-   * SOCKET HANDLERS
-   */
+  /* =========================================================
+     SOCKET SETUP (BACKEND ALIGNED)
+  ========================================================= */
   useEffect(() => {
-    addLog("🔌 Initializing Socket");
+    addLog("🔌 Connecting socket...");
 
     if (!socket.connected) socket.connect();
 
     const onConnect = () => {
       setSocketConnected(true);
-      addLog(`✅ Socket Connected (${socket.id})`);
+      addLog(`✅ Socket connected: ${socket.id}`);
 
+      /**
+       * IMPORTANT: backend expects OBJECT payload
+       */
       if (sessionId) {
-        const room = `billing_session_${sessionId}`;
-        socket.emit("join-billing-session", room);
-        addLog(`🚪 Joining Session Room: ${room}`);
+        socket.emit("join-billing-session", {
+          session_id: sessionId,
+          store_code: storeCode,
+          organization_id: organizationId,
+        });
+
+        addLog(`🚪 Joined session: ${sessionId}`);
       }
 
       if (storeCode) {
-        socket.emit("join-billing-store", storeCode);
-        addLog(`🚪 Joining Store Room: ${storeCode}`);
+        socket.emit("join-billing-store", {
+          store_code: storeCode,
+        });
       }
 
       if (organizationId) {
-        socket.emit("join-billing-org", organizationId);
-        addLog(`🚪 Joining Org Room: ${organizationId}`);
+        socket.emit("join-billing-org", {
+          organization_id: organizationId,
+        });
       }
     };
 
     const onDisconnect = (reason: string) => {
       setSocketConnected(false);
-      addLog(`❌ Socket Disconnected (${reason})`);
-    };
-
-    const onSessionJoined = (data: any) => {
-      addLog(`✅ Joined Session Room: ${data.room}`);
-    };
-
-    const onStoreJoined = (data: any) => {
-      addLog(`✅ Joined Store Room: ${data.room}`);
-    };
-
-    const onOrgJoined = (data: any) => {
-      addLog(`✅ Joined Org Room: ${data.room}`);
+      addLog(`❌ Socket disconnected: ${reason}`);
     };
 
     const onBillingItemScanned = (payload: any) => {
-      addLog(`📡 billing-item-scanned received`);
-      addLog(
-        `📦 Item: ${
-          payload?.item?.item_name ||
-          payload?.item?.product_code ||
-          "Unknown"
-        }`
-      );
-    };
+      addLog("📡 Live item received via socket");
 
-    const onError = (err: any) => {
-      addLog(`❌ Socket Error: ${err?.message || "Unknown"}`);
+      const itemName =
+        payload?.item?.item_name ||
+        payload?.item?.product_code ||
+        "Unknown";
+
+      setSuccess(`Added: ${itemName}`);
+      navigator.vibrate?.(120);
     };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
-    socket.on("connect_error", onError);
 
-    socket.on("billing-session-joined", onSessionJoined);
-    socket.on("billing-store-joined", onStoreJoined);
-    socket.on("billing-org-joined", onOrgJoined);
+    /**
+     * MUST MATCH BACKEND EMIT EVENT
+     */
     socket.on("billing-item-scanned", onBillingItemScanned);
 
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
-      socket.off("connect_error", onError);
-      socket.off("billing-session-joined", onSessionJoined);
-      socket.off("billing-store-joined", onStoreJoined);
-      socket.off("billing-org-joined", onOrgJoined);
       socket.off("billing-item-scanned", onBillingItemScanned);
     };
   }, [sessionId, storeCode, organizationId]);
 
-  /**
-   * AUTO START SCANNER ON SOCKET READY
-   */
+  /* =========================================================
+     AUTO START CAMERA
+  ========================================================= */
   useEffect(() => {
-    if (sessionId && socketConnected) {
+    if (socketConnected && sessionId) {
       startScanner();
     }
-  }, [sessionId, socketConnected]);
+  }, [socketConnected, sessionId]);
 
-  /**
-   * START SCANNER
-   */
-  async function startScanner() {
+  /* =========================================================
+     START CAMERA
+  ========================================================= */
+  const startScanner = async () => {
     try {
-      addLog("📷 Starting Camera");
       setError("");
+      addLog("📷 Starting camera...");
 
       if (!sessionId) throw new Error("Missing session_id");
 
@@ -153,22 +141,21 @@ function MobileScannerInner() {
       await scanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => onScanSuccess(decodedText),
-        () => {}
+        onScanSuccess
       );
 
       setCameraStarted(true);
-      addLog("✅ Camera Started");
+      addLog("✅ Camera started");
     } catch (err: any) {
-      addLog(`❌ Camera Failed: ${err?.message}`);
-      setError(err?.message || "Camera start failed");
+      setError(err.message || "Camera failed");
+      addLog(`❌ Camera error: ${err.message}`);
     }
-  }
+  };
 
-  /**
-   * STOP SCANNER
-   */
-  async function stopScanner() {
+  /* =========================================================
+     STOP CAMERA
+  ========================================================= */
+  const stopScanner = async () => {
     try {
       if (!scannerRef.current) return;
 
@@ -177,98 +164,111 @@ function MobileScannerInner() {
 
       scannerRef.current = null;
       setCameraStarted(false);
+
+      addLog("⛔ Camera stopped");
     } catch (err) {
       console.error(err);
     }
-  }
+  };
 
-  /**
-   * SCAN HANDLER
-   */
-  async function onScanSuccess(qrCode: string) {
+  /* =========================================================
+     SCAN HANDLER (FIXED + SAFE)
+  ========================================================= */
+  const onScanSuccess = async (qrCode: string) => {
     if (scanLockRef.current) return;
-
-    if (sentCodesRef.current.has(qrCode)) {
-      setSuccess("Already scanned");
-      navigator.vibrate?.(100);
-      return;
-    }
 
     try {
       scanLockRef.current = true;
       setLoading(true);
-      setError("");
-      setSuccess("");
 
-      let scanCode = qrCode;
+      let code = qrCode;
 
+      /**
+       * Safe JSON parsing
+       */
       try {
         const parsed = JSON.parse(qrCode);
-        scanCode =
+        code =
           parsed?.payload?.code ||
           parsed?.code ||
-          parsed?.product_code ||
+          parsed?.sku_code ||
+          parsed?.article_code ||
           qrCode;
-      } catch {}
+      } catch {
+        // raw QR
+      }
 
-      addLog(`🔍 Parsed Code: ${scanCode}`);
+      /**
+       * FIXED: use parsed code for dedup
+       */
+      if (sentCodesRef.current.has(code)) {
+        setSuccess("Already scanned");
+        return;
+      }
 
-      const item = await scanBillingItemByCode(scanCode, sessionId);
+      addLog(`🔍 Scanned code: ${code}`);
 
-      addLog(`📦 Item: ${item?.item_name || item?.product_code || "Unknown"}`);
+      await scanBillingItemByCode(code, sessionId);
 
-      sentCodesRef.current.add(qrCode);
+      sentCodesRef.current.add(code);
 
-      setSuccess("Scan successful");
-      navigator.vibrate?.(120);
+      setSuccess("Item scanned successfully");
+      navigator.vibrate?.(100);
     } catch (err: any) {
-      const message =
-        err?.response?.data?.message || err?.message || "Scan failed";
-
-      addLog(`❌ ${message}`);
-      setError(message);
+      const msg = err?.message || "Scan failed";
+      setError(msg);
+      addLog(`❌ ${msg}`);
     } finally {
       setLoading(false);
       scanLockRef.current = false;
     }
-  }
+  };
 
+  /* =========================================================
+     UI
+  ========================================================= */
   return (
     <main className="min-h-screen bg-[#F4F6FA] pb-20">
       <div className="mx-auto max-w-[480px]">
+
         {/* HEADER */}
-        <header className="sticky top-0 z-40 bg-white px-4 py-4 border-b flex justify-between items-center">
+        <header className="sticky top-0 bg-white p-4 flex justify-between items-center">
           <button onClick={() => history.back()}>
             <ArrowLeft />
           </button>
 
           <div className="text-center">
-            <h1 className="font-bold">Mobile Scanner</h1>
-            <p className="text-xs text-gray-500">Live billing scan</p>
+            <h1 className="font-semibold">Live Scanner</h1>
+            <p className="text-xs text-gray-500">Billing session</p>
           </div>
 
-          <div
-            className={`p-2 rounded-full ${
-              socketConnected ? "bg-green-200" : "bg-red-200"
-            }`}
-          >
+          <div className={socketConnected ? "text-green-500" : "text-red-500"}>
             <Wifi />
           </div>
         </header>
 
+        {/* STATUS */}
         <div className="p-4">
-          {error && <div className="bg-red-100 p-3 rounded mb-3">{error}</div>}
+
+          {error && (
+            <div className="bg-red-100 p-2 mb-2 rounded">
+              {error}
+            </div>
+          )}
+
           {success && (
-            <div className="bg-green-100 p-3 rounded mb-3">{success}</div>
+            <div className="bg-green-100 p-2 mb-2 rounded">
+              {success}
+            </div>
           )}
 
           {/* CAMERA */}
-          <div className="bg-black rounded-xl overflow-hidden">
-            <div id="reader" className="w-full h-[400px]" />
+          <div className="bg-black rounded-lg overflow-hidden">
+            <div id="reader" className="h-[400px]" />
           </div>
 
           {/* CONTROLS */}
-          <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="flex gap-2 mt-4">
             <button onClick={startScanner} disabled={cameraStarted}>
               <Play /> Start
             </button>
@@ -278,10 +278,11 @@ function MobileScannerInner() {
             </button>
           </div>
 
+          {/* LOADER */}
           {loading && (
-            <div className="mt-4 flex justify-center items-center gap-2">
+            <div className="flex items-center gap-2 mt-3">
               <Loader2 className="animate-spin" />
-              Fetching item...
+              Processing...
             </div>
           )}
         </div>

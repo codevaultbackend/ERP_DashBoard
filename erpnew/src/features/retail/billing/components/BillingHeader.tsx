@@ -5,36 +5,33 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 export default function BillingHeader() {
-  const [billingSessionId, setBillingSessionId] =
-    useState("");
+  const [billingSessionId, setBillingSessionId] = useState<string>("");
+  const [storeCode, setStoreCode] = useState<string>("");
+  const [organizationId, setOrganizationId] = useState<string>("");
 
-  const [storeCode, setStoreCode] =
-    useState("");
-
-  const [organizationId, setOrganizationId] =
-    useState("");
-
+  /**
+   * SAFE INIT (runs once)
+   */
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     try {
-      let sessionId =
-        localStorage.getItem(
-          "billing_session_id"
-        );
+      /**
+       * SESSION (single source of truth)
+       */
+      let sessionId = localStorage.getItem("billing_session_id");
 
       if (!sessionId) {
-        sessionId =
-          window.crypto.randomUUID();
-
-        localStorage.setItem(
-          "billing_session_id",
-          sessionId
-        );
+        sessionId = crypto.randomUUID();
+        localStorage.setItem("billing_session_id", sessionId);
       }
 
       setBillingSessionId(sessionId);
 
-      const userRaw =
-        localStorage.getItem("user");
+      /**
+       * USER DATA
+       */
+      const userRaw = localStorage.getItem("user");
 
       if (!userRaw) return;
 
@@ -46,77 +43,57 @@ export default function BillingHeader() {
         user?.store?.store_code ||
         "";
 
-      const resolvedOrganizationId =
-        String(
-          user?.organization_id ||
-            user?.organizationId ||
-            user?.organization?.id ||
-            user?.store?.organization_id ||
-            ""
-        );
+      const resolvedOrgId = String(
+        user?.organization_id ||
+          user?.organizationId ||
+          user?.organization?.id ||
+          user?.store?.organization_id ||
+          ""
+      );
 
       setStoreCode(resolvedStoreCode);
+      setOrganizationId(resolvedOrgId);
 
-      setOrganizationId(
-        resolvedOrganizationId
-      );
-
-      console.log(
-        "[BILLING HEADER]"
-      );
-
-      console.log(
-        "SESSION:",
-        sessionId
-      );
-
-      console.log(
-        "STORE:",
-        resolvedStoreCode
-      );
-
-      console.log(
-        "ORG:",
-        resolvedOrganizationId
-      );
-    } catch (error) {
-      console.error(
-        "Failed to initialize billing session",
-        error
-      );
+      console.log("[BILLING HEADER INIT]", {
+        sessionId,
+        storeCode: resolvedStoreCode,
+        organizationId: resolvedOrgId,
+      });
+    } catch (err) {
+      console.error("Billing header init failed:", err);
     }
   }, []);
 
+  /**
+   * SCANNER URL (stable + safe)
+   */
   const scannerUrl = useMemo(() => {
-    if (!billingSessionId) {
-      return "#";
+    if (!billingSessionId) return "#";
+
+    const params = new URLSearchParams();
+
+    params.set("session_id", billingSessionId);
+
+    if (storeCode) {
+      params.set("store_code", storeCode);
     }
 
-    const params =
-      new URLSearchParams({
-        session_id:
-          billingSessionId,
-        store_code:
-          storeCode || "",
-        organization_id:
-          organizationId || "",
-      });
+    if (organizationId) {
+      params.set("organization_id", organizationId);
+    }
 
     return `/retail/billing/mobile-live-scanner?${params.toString()}`;
-  }, [
-    billingSessionId,
-    storeCode,
-    organizationId,
-  ]);
+  }, [billingSessionId, storeCode, organizationId]);
 
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* LEFT */}
       <div className="min-w-0">
-        <h1 className="text-[28px] font-bold leading-tight text-[#111827] sm:text-[32px]">
+        <h1 className="text-[28px] font-bold text-[#111827] sm:text-[32px]">
           Active Billing
         </h1>
 
-        <p className="mt-2 text-[14px] text-[#6B7280] sm:text-[15px]">
+        <p className="mt-2 text-[14px] text-[#6B7280]">
           Scan items instantly from mobile scanner
         </p>
 
@@ -127,11 +104,12 @@ export default function BillingHeader() {
         )}
       </div>
 
+      {/* RIGHT */}
       <div className="flex flex-wrap items-center gap-3">
         <Link
           href={scannerUrl}
           target="_blank"
-          className={`flex h-[44px] items-center gap-2 rounded-full px-4 text-white shadow-[0px_8px_20px_rgba(2,6,23,0.12)] transition-all ${
+          className={`flex h-[44px] items-center gap-2 rounded-full px-4 text-white shadow transition ${
             billingSessionId
               ? "bg-[#111827] hover:opacity-95"
               : "pointer-events-none bg-gray-400"

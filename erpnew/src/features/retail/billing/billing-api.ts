@@ -61,93 +61,27 @@ async function parseApiResponse(
 export async function scanBillingItemByCode(
   code: string,
   sessionId?: string
-) {
-  const token =
-    localStorage.getItem("token");
+): Promise<LiveScannedBillingItem> {
+  const token = getAuthToken();
 
-  console.log(
-    "TOKEN VALUE:",
-    token
-  );
-
-  console.log(
-    "API_BASE_URL:",
-    API_BASE_URL
-  );
-
-  console.log(
-    "REQUEST URL:",
-    `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`
-  );
-
-  try {
-    const response =
-      await axios.get(
-        `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "x-billing-session-id":
-              sessionId || "",
-          },
-        }
-      );
-
-    console.log(
-      "SCAN SUCCESS:",
-      response.data
-    );
-
-    return response.data.data;
-
-  } catch (error: any) {
-
-    console.error(
-      "SCAN FAILED:",
-      error
-    );
-
-    console.error(
-      "MESSAGE:",
-      error?.message
-    );
-
-    console.error(
-      "STATUS:",
-      error?.response?.status
-    );
-
-    console.error(
-      "DATA:",
-      error?.response?.data
-    );
-
-    console.error(
-      "HEADERS:",
-      error?.response?.headers
-    );
-
-    console.error(
-      "TOKEN EXISTS:",
-      !!token
-    );
-
-    alert(
-      JSON.stringify(
-        {
-          message: error?.message,
-          status: error?.response?.status,
-          data: error?.response?.data,
-          tokenExists: !!token,
-          apiUrl: `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`,
-        },
-        null,
-        2
-      )
-    );
-
-    throw error;
+  if (!token) {
+    throw new Error("Auth token missing");
   }
+
+  const url = `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`;
+
+  const response = await axios.get(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "x-billing-session-id": sessionId || "",
+    },
+  });
+
+  if (!response.data?.success) {
+    throw new Error(response.data?.message || "Scan failed");
+  }
+
+  return response.data.data;
 }
 
 /* =========================================================
