@@ -58,11 +58,21 @@ function MobileScannerInner() {
 
       addLog(`SOCKET CONNECTED: ${socket.id}`);
 
-      socket.emit("join-billing-session", {
-        session_id: sessionId,
-        store_code: storeCode,
-        organization_id: organizationId,
-      });
+      socket.emit(
+        "join-billing-session",
+        `billing_session_${sessionId}`
+      );
+
+      addLog(
+        `JOINING ROOM: billing_session_${sessionId}`
+      );
+    };
+    const onSessionJoined = (
+      data: any
+    ) => {
+      addLog(
+        `JOINED ROOM: ${data.room}`
+      );
     };
 
     const onDisconnect = () => {
@@ -76,15 +86,35 @@ function MobileScannerInner() {
     };
 
     socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
+
+    socket.on(
+      "billing-session-joined",
+      onSessionJoined
+    );
+
+    socket.on(
+      "disconnect",
+      onDisconnect
+    );
 
     // IMPORTANT: backend event name must match EXACTLY
-    socket.on("billing:item_scanned", onItem);
+    socket.on(
+      "billing-item-scanned",
+      onItem
+    );
 
     return () => {
       socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("billing:item_scanned", onItem);
+
+      socket.off(
+        "billing-session-joined",
+        onSessionJoined
+      );
+
+      socket.off(
+        "disconnect",
+        onDisconnect
+      );
     };
   }, [sessionId, storeCode, organizationId]);
 
@@ -98,8 +128,8 @@ function MobileScannerInner() {
       if (!sessionId) throw new Error("Missing session_id");
 
       if (scannerRef.current) {
-        await scannerRef.current.stop().catch(() => {});
-        await scannerRef.current.clear().catch(() => {});
+        await scannerRef.current.stop().catch(() => { });
+        await scannerRef.current.clear().catch(() => { });
         scannerRef.current = null;
       }
 
@@ -124,13 +154,13 @@ function MobileScannerInner() {
     try {
       if (!scannerRef.current) return;
 
-      await scannerRef.current.stop().catch(() => {});
-      await scannerRef.current.clear().catch(() => {});
+      await scannerRef.current.stop().catch(() => { });
+      await scannerRef.current.clear().catch(() => { });
       scannerRef.current = null;
 
       setCameraStarted(false);
       addLog("CAMERA STOPPED");
-    } catch {}
+    } catch { }
   };
 
   /* =========================================================
@@ -155,7 +185,7 @@ function MobileScannerInner() {
           parsed?.sku_code ||
           parsed?.article_code ||
           qrCode;
-      } catch {}
+      } catch { }
 
       code = String(code).trim();
 

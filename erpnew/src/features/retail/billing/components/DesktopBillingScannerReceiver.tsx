@@ -13,6 +13,7 @@ export default function DesktopBillingScannerReceiver({
   onPreview,
 }: Props) {
   const sessionRef = useRef<string>("");
+  const handledRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     console.log("========================================");
@@ -30,94 +31,6 @@ export default function DesktopBillingScannerReceiver({
     sessionRef.current = billingSessionId;
 
     const room = `billing_session_${billingSessionId}`;
-
-    console.log("📌 SESSION:", billingSessionId);
-    console.log("📌 ROOM:", room);
-
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    const joinRoom = () => {
-      console.log("📡 JOINING ROOM:", room);
-
-      socket.emit("join-billing-session", {
-        session_id: billingSessionId,
-        room,
-      });
-    };
-
-    const handleConnect = () => {
-      console.log("🟢 SOCKET CONNECTED:", socket.id);
-      joinRoom();
-    };
-
-    socket.on("connect", handleConnect);
-
-    if (socket.connected) {
-      handleConnect();
-    }
-
-    /**
-     * 🔥 UNIVERSAL PAYLOAD HANDLER
-     * (works even if backend event names change)
-     */
-    const handleIncoming = (payload: any) => {
-      console.log("📥 RAW PAYLOAD:", payload);
-
-      const sessionId =
-        payload?.session_id ||
-        payload?.sessionId ||
-        payload?.data?.session_id;
-
-      // ⚠️ Only block if BOTH exist (safe check)
-      if (
-        sessionId &&
-        sessionRef.current &&
-        sessionId !== sessionRef.current
-      ) {
-        console.warn("⚠️ SESSION MISMATCH - IGNORED");
-        return;
-      }
-
-      const item =
-        payload?.item ||
-        payload?.data?.item ||
-        payload?.data ||
-        payload;
-
-      if (!item) {
-        console.error("❌ No item in payload");
-        return;
-      }
-
-      const normalized = normalize(item);
-
-      // preview vs final detection
-      const isPreview = payload?.type === "preview";
-
-      if (isPreview) {
-        console.log("👁 PREVIEW ITEM");
-        onPreview?.(normalized);
-      } else {
-        console.log("✅ FINAL ITEM");
-        onItemReceived(normalized);
-      }
-    };
-
-    /**
-     * 🔥 MULTI-EVENT SUPPORT (IMPORTANT FIX)
-     * backend may emit ANY of these
-     */
-    socket.on("billing:item_scanned", handleIncoming);
-    socket.on("billing:item_preview", handleIncoming);
-    socket.on("billing-scan", handleIncoming);
-    socket.on("billing-live", handleIncoming);
-    socket.on("billing-session-data", handleIncoming);
-
-    socket.on("billing-session-joined", (data) => {
-      console.log("📡 ROOM JOINED:", data);
-    });
 
     const normalize = (rawItem: any) => {
       if (!rawItem) return null;
@@ -142,9 +55,7 @@ export default function DesktopBillingScannerReceiver({
         metal_type: rawItem.metal_type,
 
         qty: Number(rawItem.qty || 1),
-
         rate: Number(rawItem.rate || 0),
-        sale_rate: Number(rawItem.sale_rate || 0),
 
         net_weight: Number(rawItem.net_weight || 0),
         gross_weight: Number(rawItem.gross_weight || 0),
@@ -152,13 +63,8 @@ export default function DesktopBillingScannerReceiver({
         stone_weight: Number(rawItem.stone_weight || 0),
         stone_amount: Number(rawItem.stone_amount || 0),
 
-        making_charge_percent: Number(
-          rawItem.making_charge_percent || 0
-        ),
-
-        making_charge_value: Number(
-          rawItem.making_charge_value || 0
-        ),
+        making_charge_percent: Number(rawItem.making_charge_percent || 0),
+        making_charge_value: Number(rawItem.making_charge_value || 0),
 
         total_amount: Number(rawItem.total_amount || 0),
 
@@ -171,19 +77,99 @@ export default function DesktopBillingScannerReceiver({
         qr_type: rawItem.qr_type,
         qr_code_url: rawItem.qr_code_url,
 
-        scanned_at:
-          rawItem.scanned_at || new Date().toISOString(),
+        scanned_at: rawItem.scanned_at || new Date().toISOString(),
       };
     };
+
+    const extractItem = (payload: any) => {
+      return payload?.item || payload?.data?.item || payload?.data || payload;
+    };
+
+    const extractSession = (payload: any) => {
+      return payload?.session_id || payload?.sessionId || payload?.data?.session_id;
+    };
+
+    const handleIncoming = (payload: any) => {
+      console.log("📥 RAW PAYLOAD:", payload);
+
+      const sessionId = extractSession(payload);
+
+      if (
+        sessionId &&
+        sessionRef.current &&
+        sessionId !== sessionRef.current
+      ) {
+        console.warn("⚠️ SESSION MISMATCH IGNORED");
+        return;
+      }
+
+      const item = extractItem(payload);
+      const normalized = normalize(item);
+
+      if (!normalized) {
+        console.error("❌ Invalid item payload");
+        return;
+      }
+
+      // prevent duplicates
+      if (normalized.id && handledRef.current.has(String(normalized.id))) {
+        console.warn("🔁 DUPLICATE IGNORED:", normalized.id);
+        return;
+      }
+
+      if (normalized.id) {
+        handledRef.current.add(String(normalized.id));
+      }
+
+      const isPreview = payload?.type === "preview";
+
+      if (isPreview) {
+        console.log("👁 PREVIEW ITEM");
+        onPreview?.(normalized);
+      } else {
+        console.log("✅ FINAL ITEM");
+        onItemReceived(normalized);
+      }
+    };
+
+    const handleConnect = () => {
+      console.log("🟢 SOCKET CONNECTED:", socket.id);
+
+      socket.emit("join-billing-session", {
+        session_id: billingSessionId,
+        room,
+      });
+    };
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    socket.on("connect", handleConnect);
+
+    // 🔥 IMPORTANT: unified events (covers backend inconsistency)
+    const events = [
+      "billing:item_scanned",
+      "billing:item_preview",
+      "billing-scan",
+      "billing-live",
+      "billing-session-data",
+    ];
+
+    events.forEach((event) => {
+      socket.on(event, handleIncoming);
+    });
+
+    socket.on("billing-session-joined", (data) => {
+      console.log("📡 ROOM JOINED:", data);
+    });
 
     return () => {
       socket.off("connect", handleConnect);
 
-      socket.off("billing:item_scanned", handleIncoming);
-      socket.off("billing:item_preview", handleIncoming);
-      socket.off("billing-scan", handleIncoming);
-      socket.off("billing-live", handleIncoming);
-      socket.off("billing-session-data", handleIncoming);
+      events.forEach((event) => {
+        socket.off(event, handleIncoming);
+      });
     };
   }, [onItemReceived, onPreview]);
 
