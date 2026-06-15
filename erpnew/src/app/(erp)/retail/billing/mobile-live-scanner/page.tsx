@@ -37,288 +37,69 @@ function MobileScannerInner() {
   const addLog = (msg: string) => {
     const log = `${new Date().toLocaleTimeString()} - ${msg}`;
     console.log(log);
-    setDebugLogs((prev) => [log, ...prev.slice(0, 30)]);
+    setDebugLogs((prev) => [log, ...prev.slice(0, 40)]);
   };
 
   /* =========================================================
-   SOCKET DEBUG MODE
-========================================================= */
+     SOCKET INIT (CLEAN + SAFE)
+  ========================================================= */
   useEffect(() => {
-    addLog("====================================");
-    addLog("MOBILE SCANNER INITIALIZING");
-    addLog("====================================");
+    addLog("MOBILE SCANNER INIT");
 
-    addLog(`SESSION_ID = ${sessionId}`);
-    addLog(`STORE_CODE = ${storeCode}`);
-    addLog(`ORG_ID = ${organizationId}`);
-
-    if (!socket.connected) {
-      addLog("Calling socket.connect()");
-      socket.connect();
+    if (!sessionId) {
+      setError("Missing session_id");
+      return;
     }
+
+    if (!socket.connected) socket.connect();
 
     const onConnect = () => {
       setSocketConnected(true);
 
-      addLog("====================================");
-      addLog("SOCKET CONNECTED");
-      addLog(`SOCKET ID: ${socket.id}`);
-      addLog(`TRANSPORT: ${socket.io.engine.transport.name}`);
-      addLog("====================================");
+      addLog(`SOCKET CONNECTED: ${socket.id}`);
 
-      if (sessionId) {
-        const payload = {
-          session_id: sessionId,
-          store_code: storeCode,
-          organization_id: organizationId,
-        };
-
-        addLog(
-          `EMIT join-billing-session => ${JSON.stringify(
-            payload,
-            null,
-            2
-          )}`
-        );
-
-        socket.emit(
-          "join-billing-session",
-          payload
-        );
-      }
-
-      if (storeCode) {
-        addLog(
-          `EMIT join-billing-store => ${storeCode}`
-        );
-
-        socket.emit(
-          "join-billing-store",
-          {
-            store_code: storeCode,
-          }
-        );
-      }
-
-      if (organizationId) {
-        addLog(
-          `EMIT join-billing-org => ${organizationId}`
-        );
-
-        socket.emit(
-          "join-billing-org",
-          {
-            organization_id:
-              organizationId,
-          }
-        );
-      }
+      socket.emit("join-billing-session", {
+        session_id: sessionId,
+        store_code: storeCode,
+        organization_id: organizationId,
+      });
     };
 
-    const onDisconnect = (
-      reason: string
-    ) => {
-      addLog(
-        `SOCKET DISCONNECTED => ${reason}`
-      );
-
+    const onDisconnect = () => {
       setSocketConnected(false);
+      addLog("SOCKET DISCONNECTED");
     };
 
-    const onConnectError = (
-      err: any
-    ) => {
-      addLog(
-        `CONNECT ERROR => ${err?.message || "unknown"
-        }`
-      );
-
-      console.error(
-        "CONNECT ERROR",
-        err
-      );
+    const onItem = (payload: any) => {
+      addLog("SOCKET ITEM RECEIVED");
+      setSuccess(payload?.item?.item_name || "Item received");
     };
 
-    const onSessionJoined = (
-      data: any
-    ) => {
-      addLog(
-        `SESSION JOIN ACK => ${JSON.stringify(
-          data,
-          null,
-          2
-        )}`
-      );
-    };
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
 
-    const onStoreJoined = (
-      data: any
-    ) => {
-      addLog(
-        `STORE JOIN ACK => ${JSON.stringify(
-          data,
-          null,
-          2
-        )}`
-      );
-    };
-
-    const onOrgJoined = (
-      data: any
-    ) => {
-      addLog(
-        `ORG JOIN ACK => ${JSON.stringify(
-          data,
-          null,
-          2
-        )}`
-      );
-    };
-
-    const onBillingItemScanned = (
-      payload: any
-    ) => {
-      addLog(
-        "===================================="
-      );
-      addLog(
-        "EVENT RECEIVED: billing-item-scanned"
-      );
-      addLog(
-        JSON.stringify(
-          payload,
-          null,
-          2
-        )
-      );
-      addLog(
-        "===================================="
-      );
-
-      setSuccess(
-        `Received ${payload?.item?.item_name ||
-        payload?.item?.product_code ||
-        "item"
-        }`
-      );
-    };
-
-    socket.on(
-      "connect",
-      onConnect
-    );
-
-    socket.on(
-      "disconnect",
-      onDisconnect
-    );
-
-    socket.on(
-      "connect_error",
-      onConnectError
-    );
-
-    socket.on(
-      "billing-session-joined",
-      onSessionJoined
-    );
-
-    socket.on(
-      "billing-store-joined",
-      onStoreJoined
-    );
-
-    socket.on(
-      "billing-org-joined",
-      onOrgJoined
-    );
-
-    socket.on(
-      "billing-item-scanned",
-      onBillingItemScanned
-    );
-
-    socket.onAny(
-      (
-        event,
-        ...args
-      ) => {
-        addLog(
-          `[SOCKET EVENT] ${event}`
-        );
-
-        console.log(
-          "[SOCKET EVENT]",
-          event,
-          args
-        );
-      }
-    );
+    // IMPORTANT: backend event name must match EXACTLY
+    socket.on("billing:item_scanned", onItem);
 
     return () => {
-      socket.off(
-        "connect",
-        onConnect
-      );
-
-      socket.off(
-        "disconnect",
-        onDisconnect
-      );
-
-      socket.off(
-        "connect_error",
-        onConnectError
-      );
-
-      socket.off(
-        "billing-session-joined",
-        onSessionJoined
-      );
-
-      socket.off(
-        "billing-store-joined",
-        onStoreJoined
-      );
-
-      socket.off(
-        "billing-org-joined",
-        onOrgJoined
-      );
-
-      socket.off(
-        "billing-item-scanned",
-        onBillingItemScanned
-      );
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("billing:item_scanned", onItem);
     };
-  }, [
-    sessionId,
-    storeCode,
-    organizationId,
-  ]);
+  }, [sessionId, storeCode, organizationId]);
 
   /* =========================================================
-     AUTO START CAMERA
-  ========================================================= */
-  useEffect(() => {
-    if (socketConnected && sessionId) {
-      startScanner();
-    }
-  }, [socketConnected, sessionId]);
-
-  /* =========================================================
-     START CAMERA
+     CAMERA START
   ========================================================= */
   const startScanner = async () => {
     try {
       setError("");
-      addLog("📷 Starting camera...");
 
       if (!sessionId) throw new Error("Missing session_id");
 
       if (scannerRef.current) {
-        await scannerRef.current.stop().catch(() => { });
-        await scannerRef.current.clear().catch(() => { });
+        await scannerRef.current.stop().catch(() => {});
+        await scannerRef.current.clear().catch(() => {});
         scannerRef.current = null;
       }
 
@@ -327,164 +108,88 @@ function MobileScannerInner() {
 
       await scanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        { fps: 10, qrbox: 250 },
         onScanSuccess
       );
 
       setCameraStarted(true);
-      addLog("✅ Camera started");
+      addLog("CAMERA STARTED");
     } catch (err: any) {
-      setError(err.message || "Camera failed");
-      addLog(`❌ Camera error: ${err.message}`);
+      setError(err.message);
+      addLog(`CAMERA ERROR: ${err.message}`);
     }
   };
 
-  /* =========================================================
-     STOP CAMERA
-  ========================================================= */
   const stopScanner = async () => {
     try {
       if (!scannerRef.current) return;
 
-      await scannerRef.current.stop().catch(() => { });
-      await scannerRef.current.clear().catch(() => { });
-
+      await scannerRef.current.stop().catch(() => {});
+      await scannerRef.current.clear().catch(() => {});
       scannerRef.current = null;
-      setCameraStarted(false);
 
-      addLog("⛔ Camera stopped");
-    } catch (err) {
-      console.error(err);
-    }
+      setCameraStarted(false);
+      addLog("CAMERA STOPPED");
+    } catch {}
   };
 
   /* =========================================================
-     SCAN HANDLER (FIXED + SAFE)
+     SCAN HANDLER (FIXED CORE LOGIC)
   ========================================================= */
-  const onScanSuccess = async (
-    qrCode: string
-  ) => {
-    if (scanLockRef.current) {
-      addLog(
-        "SCAN BLOCKED: LOCK ACTIVE"
-      );
-      return;
-    }
+  const onScanSuccess = async (qrCode: string) => {
+    if (scanLockRef.current) return;
+
+    scanLockRef.current = true;
+    setLoading(true);
 
     try {
-      scanLockRef.current = true;
-      setLoading(true);
-
-      addLog(
-        "===================================="
-      );
-      addLog(
-        `RAW QR => ${qrCode}`
-      );
+      addLog(`QR RAW: ${qrCode}`);
 
       let code = qrCode;
 
       try {
-        const parsed =
-          JSON.parse(qrCode);
-
-        addLog(
-          `PARSED QR => ${JSON.stringify(
-            parsed,
-            null,
-            2
-          )}`
-        );
-
+        const parsed = JSON.parse(qrCode);
         code =
           parsed?.payload?.code ||
           parsed?.code ||
           parsed?.sku_code ||
           parsed?.article_code ||
           qrCode;
-      } catch {
-        addLog(
-          "QR IS PLAIN STRING"
-        );
-      }
+      } catch {}
 
-      addLog(
-        `FINAL CODE => ${code}`
-      );
+      code = String(code).trim();
 
-      if (
-        sentCodesRef.current.has(code)
-      ) {
-        addLog(
-          `DUPLICATE CODE => ${code}`
-        );
+      if (!code) throw new Error("Invalid QR code");
 
+      // prevent duplicates (VERY IMPORTANT FIX)
+      if (sentCodesRef.current.has(code)) {
+        addLog("DUPLICATE BLOCKED");
         return;
       }
 
-      addLog(
-        `API REQUEST START => ${code}`
-      );
-
-      const item =
-        await scanBillingItemByCode(
-          code,
-          sessionId
-        );
-
-      addLog(
-        "API RESPONSE SUCCESS"
-      );
-
-      addLog(
-        JSON.stringify(
-          item,
-          null,
-          2
-        )
-      );
-
       sentCodesRef.current.add(code);
 
-      setSuccess(
-        "Item scanned successfully"
-      );
+      addLog(`FINAL CODE: ${code}`);
+
+      // CALL API ONLY ONCE
+      const item = await scanBillingItemByCode(code, sessionId);
+
+      addLog("SCAN SUCCESS API OK");
+
+      setSuccess(item?.item_name || "Item scanned");
+
+      /**
+       * IMPORTANT:
+       * Backend already emits socket in scanBillingItem
+       * So NO need to emit again from frontend
+       */
+
     } catch (err: any) {
-      addLog(
-        "API REQUEST FAILED"
-      );
-
-      addLog(
-        JSON.stringify(
-          {
-            message:
-              err?.message,
-            status:
-              err?.response?.status,
-            data:
-              err?.response?.data,
-          },
-          null,
-          2
-        )
-      );
-
-      setError(
-        err?.message ||
-        "Scan failed"
-      );
+      addLog(`SCAN ERROR: ${err.message}`);
+      setError(err.message || "Scan failed");
     } finally {
-      scanLockRef.current =
-        false;
-
+      scanLockRef.current = false;
       setLoading(false);
-
-      addLog(
-        "SCAN FLOW COMPLETE"
-      );
-      addLog(
-        "===================================="
-      );
     }
   };
 
@@ -495,76 +200,36 @@ function MobileScannerInner() {
     <main className="min-h-screen bg-[#F4F6FA] pb-20">
       <div className="mx-auto max-w-[480px]">
 
-        {/* HEADER */}
-        <header className="sticky top-0 bg-white p-4 flex justify-between items-center">
-          <button onClick={() => history.back()}>
-            <ArrowLeft />
-          </button>
-
-          <div className="text-center">
-            <h1 className="font-semibold">Live Scanner</h1>
-            <p className="text-xs text-gray-500">Billing session</p>
+        <header className="p-4 flex justify-between">
+          <ArrowLeft onClick={() => history.back()} />
+          <div>
+            <h1>Live Scanner</h1>
+            <p>{sessionId}</p>
           </div>
-
-          <div className={socketConnected ? "text-green-500" : "text-red-500"}>
-            <Wifi />
-          </div>
+          <Wifi color={socketConnected ? "green" : "red"} />
         </header>
 
-        {/* STATUS */}
-        <div className="p-4">
+        {error && <div className="bg-red-200 p-2">{error}</div>}
+        {success && <div className="bg-green-200 p-2">{success}</div>}
 
-          {error && (
-            <div className="bg-red-100 p-2 mb-2 rounded">
-              {error}
-            </div>
-          )}
+        <div id="reader" className="h-[400px] bg-black" />
 
-          {success && (
-            <div className="bg-green-100 p-2 mb-2 rounded">
-              {success}
-            </div>
-          )}
-          <div className="mt-6">
-            <h3 className="font-bold mb-2">
-              Debug Logs
-            </h3>
+        <div className="flex gap-2 mt-4">
+          <button onClick={startScanner} disabled={cameraStarted}>
+            <Play /> Start
+          </button>
 
-            <div className="bg-black text-green-400 p-3 rounded text-xs h-80 overflow-auto">
-              {debugLogs.map(
-                (log, index) => (
-                  <div key={index}>
-                    {log}
-                  </div>
-                )
-              )}
-            </div>
-          </div>
-
-          {/* CAMERA */}
-          <div className="bg-black rounded-lg overflow-hidden">
-            <div id="reader" className="h-[400px]" />
-          </div>
-
-          {/* CONTROLS */}
-          <div className="flex gap-2 mt-4">
-            <button onClick={startScanner} disabled={cameraStarted}>
-              <Play /> Start
-            </button>
-
-            <button onClick={stopScanner} disabled={!cameraStarted}>
-              <Square /> Stop
-            </button>
-          </div>
-
-          {/* LOADER */}
-          {loading && (
-            <div className="flex items-center gap-2 mt-3">
-              <Loader2 className="animate-spin" />
-              Processing...
-            </div>
-          )}
+          <button onClick={stopScanner} disabled={!cameraStarted}>
+            <Square /> Stop
+          </button>
         </div>
+
+        {loading && (
+          <div className="flex items-center gap-2 mt-2">
+            <Loader2 className="animate-spin" />
+            Processing...
+          </div>
+        )}
       </div>
     </main>
   );

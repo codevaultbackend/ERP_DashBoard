@@ -56,32 +56,78 @@ async function parseApiResponse(
 
 /* =========================================================
    SCAN ITEM
-========================================================= */
+=======================================================
 
+/**
+ * Get or create stable billing session
+ * (VERY IMPORTANT for realtime sync)
+ */
+function getBillingSessionId() {
+  if (typeof window === "undefined") return "";
+
+  let sessionId = localStorage.getItem("billing_session_id");
+
+  if (!sessionId) {
+    sessionId = crypto.randomUUID();
+    localStorage.setItem("billing_session_id", sessionId);
+  }
+
+  return sessionId;
+}
+
+/**
+ * SCAN BILLING ITEM (REALTIME SAFE VERSION)
+ */
 export async function scanBillingItemByCode(
   code: string,
   sessionId?: string
 ): Promise<LiveScannedBillingItem> {
-  const token = getAuthToken();
+  try {
+    const token = getAuthToken();
 
-  if (!token) {
-    throw new Error("Auth token missing");
+    if (!token) {
+      throw new Error("Auth token missing");
+    }
+
+    // 🔥 ALWAYS ensure session exists
+    const finalSessionId = sessionId || getBillingSessionId();
+
+    const url = `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(
+      code
+    )}`;
+
+    console.log("📡 Scanning item:", {
+      url,
+      sessionId: finalSessionId,
+      code,
+    });
+
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "x-billing-session-id": finalSessionId,
+      },
+    });
+
+    console.log("📦 Scan response:", response.data);
+
+    if (!response.data?.success) {
+      throw new Error(response.data?.message || "Scan failed");
+    }
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error("❌ Scan Billing Error:", {
+      message: error?.message,
+      response: error?.response?.data,
+    });
+
+    throw new Error(
+      error?.response?.data?.message ||
+        error?.message ||
+        "Scan failed"
+    );
   }
-
-  const url = `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`;
-
-  const response = await axios.get(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "x-billing-session-id": sessionId || "",
-    },
-  });
-
-  if (!response.data?.success) {
-    throw new Error(response.data?.message || "Scan failed");
-  }
-
-  return response.data.data;
 }
 
 /* =========================================================
