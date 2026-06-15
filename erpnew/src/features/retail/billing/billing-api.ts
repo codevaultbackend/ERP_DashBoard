@@ -77,13 +77,13 @@ export async function scanBillingItemByCode(
 
   console.log(
     "REQUEST URL:",
-    `${API_BASE_URL}/billing/scan-item/${encodeURIComponent(code)}`
+    `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`
   );
 
   try {
     const response =
       await axios.get(
-        `${API_BASE_URL}/billing/scan-item/${encodeURIComponent(code)}`,
+        `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -139,7 +139,7 @@ export async function scanBillingItemByCode(
           status: error?.response?.status,
           data: error?.response?.data,
           tokenExists: !!token,
-          apiUrl: `${API_BASE_URL}/billing/scan-item/${encodeURIComponent(code)}`,
+          apiUrl: `${API_BASE_URL}/bill/billing/scan-item/${encodeURIComponent(code)}`,
         },
         null,
         2

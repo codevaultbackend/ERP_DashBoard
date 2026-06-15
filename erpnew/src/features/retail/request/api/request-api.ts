@@ -535,7 +535,7 @@ export async function approveDispatchRequest(payload: ApproveDispatchPayload) {
       }
     );
 
-    logGroup("✅ APPROVE DISPATCH RESPONSE", () => {
+    logGroup("APPROVE DISPATCH RESPONSE", () => {
       console.log("Full response:", res.data);
     });
 
