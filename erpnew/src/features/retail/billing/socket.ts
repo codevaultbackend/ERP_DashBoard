@@ -10,14 +10,14 @@ export const socket = io(
   {
     autoConnect: false,
 
-    transports: ["websocket"],
+    transports: [
+      "polling",
+      "websocket",
+    ],
 
     reconnection: true,
-
     reconnectionAttempts: 20,
-
     reconnectionDelay: 1000,
-
     timeout: 20000,
   }
 );

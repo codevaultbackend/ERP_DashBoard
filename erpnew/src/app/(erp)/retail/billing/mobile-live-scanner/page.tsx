@@ -29,6 +29,7 @@ function MobileScannerInner() {
   const sessionId = searchParams.get("session_id") || "";
   const storeCode = searchParams.get("store_code") || "";
   const organizationId = searchParams.get("organization_id") || "";
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanLockRef = useRef(false);
@@ -39,6 +40,17 @@ function MobileScannerInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  function addLog(message: string) {
+    const log = `${new Date().toLocaleTimeString()} - ${message}`;
+
+    console.log(log);
+
+    setDebugLogs((prev) => [
+      log,
+      ...prev.slice(0, 30),
+    ]);
+  }
 
   /**
    * SOCKET STATUS ONLY
@@ -51,17 +63,54 @@ function MobileScannerInner() {
   }, [sessionId]);
 
   useEffect(() => {
-    if (!socket.connected) socket.connect();
+    addLog("🔌 Initializing Socket");
 
-    const onConnect = () => setSocketConnected(true);
-    const onDisconnect = () => setSocketConnected(false);
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const onConnect = () => {
+      setSocketConnected(true);
+
+      addLog(
+        `✅ Socket Connected (${socket.id})`
+      );
+    };
+
+    const onDisconnect = (
+      reason: string
+    ) => {
+      setSocketConnected(false);
+
+      addLog(
+        `❌ Socket Disconnected (${reason})`
+      );
+    };
+
+    const onError = (err: any) => {
+      addLog(
+        `❌ Socket Error: ${err?.message || "Unknown"
+        }`
+      );
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
+    socket.on(
+      "connect_error",
+      onError
+    );
 
     return () => {
       socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
+      socket.off(
+        "disconnect",
+        onDisconnect
+      );
+      socket.off(
+        "connect_error",
+        onError
+      );
     };
   }, []);
 
@@ -79,13 +128,14 @@ function MobileScannerInner() {
    */
   async function startScanner() {
     try {
+      addLog("📷 Starting Camera");
+
       setError("");
 
       if (!sessionId) {
         throw new Error("Missing session_id in URL");
       }
 
-      // IMPORTANT: stop previous instance if exists
       if (scannerRef.current) {
         await scannerRef.current.stop().catch(() => { });
         await scannerRef.current.clear().catch(() => { });
@@ -104,14 +154,21 @@ function MobileScannerInner() {
         (decodedText) => {
           onScanSuccess(decodedText);
         },
-        (errorMessage) => {
-          // ignore scan noise
-        }
+        () => { }
       );
 
       setCameraStarted(true);
+
+      addLog("✅ Camera Started");
+      addLog(`🆔 Session: ${sessionId}`);
+      addLog(`🏪 Store: ${storeCode}`);
+      addLog(`🏢 Organization: ${organizationId}`);
     } catch (err: any) {
-      console.error("Scanner start error:", err);
+      addLog(
+        `❌ Camera Failed: ${err?.message || "Unknown"
+        }`
+      );
+
       setError(err?.message || "Camera start failed");
     }
   }
@@ -141,7 +198,11 @@ function MobileScannerInner() {
   async function onScanSuccess(qrCode: string) {
     if (scanLockRef.current) return;
 
+    addLog("📦 QR Detected");
+
     if (sentCodesRef.current.has(qrCode)) {
+      addLog("⚠ Duplicate Scan Blocked");
+
       setSuccess("Already scanned");
       navigator.vibrate?.(100);
       return;
@@ -149,15 +210,16 @@ function MobileScannerInner() {
 
     try {
       scanLockRef.current = true;
+
       setLoading(true);
       setError("");
       setSuccess("");
 
       let scanCode = qrCode;
 
-      // QR parsing safety
       try {
         const parsed = JSON.parse(qrCode);
+
         scanCode =
           parsed?.payload?.code ||
           parsed?.code ||
@@ -165,30 +227,54 @@ function MobileScannerInner() {
           qrCode;
       } catch { }
 
-      console.log("Scanning code:", scanCode);
+      addLog(`🔍 Parsed Code: ${scanCode}`);
 
-      /**
-       * CALL BACKEND (ONLY SOURCE OF TRUTH)
-       */
-      const item = await scanBillingItemByCode(
-        scanCode,
-        sessionId
+      addLog(
+        `📡 Sending API Request`
       );
 
-      console.log("[SCAN RESPONSE]", {
-        item,
-        sessionId,
-      });
+      const item =
+        await scanBillingItemByCode(
+          scanCode,
+          sessionId
+        );
+
+      addLog(
+        "✅ Backend Returned Item"
+      );
+
+      addLog(
+        `📦 Item: ${item?.item_name ||
+        item?.product_code ||
+        item?.name ||
+        "Unknown"
+        }`
+      );
+
+      addLog(
+        `🆔 Session Used: ${sessionId}`
+      );
 
       sentCodesRef.current.add(qrCode);
 
-      setSuccess("Item sent successfully");
-      navigator.vibrate?.(120);
+      setSuccess(
+        "Backend received scan successfully"
+      );
 
-      console.log("SCANNED ITEM RESPONSE:", item);
+      addLog(
+        "⏳ Waiting For Desktop To Receive Event"
+      );
+
+      navigator.vibrate?.(120);
     } catch (err: any) {
-      console.error("SCAN ERROR:", err);
-      setError(err?.response?.data?.message || err?.message || "Scan failed");
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Scan failed";
+
+      addLog(`❌ ${message}`);
+
+      setError(message);
     } finally {
       setLoading(false);
       scanLockRef.current = false;
@@ -236,6 +322,35 @@ function MobileScannerInner() {
               {success}
             </div>
           )}
+          <div className="mb-4 rounded-xl border bg-white p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-semibold">
+                Debug Logs
+              </h3>
+
+              <button
+                className="text-xs text-red-500"
+                onClick={() =>
+                  setDebugLogs([])
+                }
+              >
+                Clear
+              </button>
+            </div>
+
+            <div className="max-h-64 overflow-auto space-y-1 text-xs">
+              {debugLogs.map(
+                (log, index) => (
+                  <div
+                    key={index}
+                    className="break-all"
+                  >
+                    {log}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
 
           {/* CAMERA */}
           <div className="bg-black rounded-xl overflow-hidden">

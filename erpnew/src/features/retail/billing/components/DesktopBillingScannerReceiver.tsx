@@ -31,13 +31,72 @@ export default function DesktopBillingScannerReceiver({
 
     const roomName = `billing_session_${billingSessionId}`;
 
-    if (!socket.connected) {
-      socket.connect();
+    const joinRoom = () => {
+      console.log(
+        "[ROOM JOIN REQUEST]",
+        {
+          room: roomName,
+          session: billingSessionId,
+        }
+      );
+
+      socket.emit(
+        "join-billing-session",
+        roomName
+      );
+
+      console.log(
+        "[ROOM JOIN SENT]"
+      );
+    };
+
+    if (socket.connected) {
+      joinRoom();
     }
 
+    socket.on("connect", () => {
+      console.log(
+        "[SOCKET CONNECTED]",
+        socket.id
+      );
+
+      joinRoom();
+    });
+
+    socket.on("connect", () => {
+      console.log(
+        "[SOCKET CONNECTED]",
+        socket.id
+      );
+    });
+
+    socket.on(
+      "connect_error",
+      (err) => {
+        console.error(
+          "[SOCKET ERROR]",
+          err
+        );
+      }
+    );
+
+    socket.on(
+      "disconnect",
+      (reason) => {
+        console.warn(
+          "[SOCKET DISCONNECTED]",
+          reason
+        );
+      }
+    );
+
     console.log(
-      "[BILLING] Joining Room:",
-      roomName
+      "[ROOM JOIN REQUEST]",
+      {
+        room: roomName,
+        session:
+          billingSessionId,
+      }
     );
 
     /**
@@ -162,6 +221,15 @@ export default function DesktopBillingScannerReceiver({
           "[SOCKET RECEIVED]",
           payload
         );
+        console.log(
+          "[SCAN PAYLOAD]",
+          payload
+        );
+
+        console.log(
+          "[CURRENT SESSION]",
+          sessionRef.current
+        );
 
         if (!payload) return;
 
@@ -174,16 +242,21 @@ export default function DesktopBillingScannerReceiver({
           sessionId &&
           sessionId !== sessionRef.current
         ) {
-          console.log(
-            "[BILLING] Ignored different session:",
-            sessionId
+          console.error(
+            "[SESSION MISMATCH]",
+            {
+              received: sessionId,
+              current:
+                sessionRef.current,
+            }
           );
           return;
         }
 
         if (!item) {
-          console.log(
-            "[BILLING] No item in payload"
+          console.error(
+            "[INVALID PAYLOAD]",
+            payload
           );
           return;
         }
@@ -197,11 +270,16 @@ export default function DesktopBillingScannerReceiver({
         );
 
         onItemReceived(normalized);
+        console.log(
+          "[ADDING ITEM TO CART]",
+          normalized
+        );
       } catch (error) {
         console.error(
           "handleBillingScan error",
           error
         );
+
       }
     };
 
@@ -245,6 +323,15 @@ export default function DesktopBillingScannerReceiver({
         console.log(
           "[ROOM JOINED]",
           data
+        );
+      }
+    );
+    socket.onAny(
+      (event, ...args) => {
+        console.log(
+          "[SOCKET EVENT]",
+          event,
+          args
         );
       }
     );
