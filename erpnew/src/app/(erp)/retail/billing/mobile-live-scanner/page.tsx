@@ -37,24 +37,17 @@ function MobileScannerInner() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [cameraStarted, setCameraStarted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   /**
-   * SOCKET (ONLY FOR STATUS)
+   * SOCKET STATUS ONLY
    */
   useEffect(() => {
     if (!socket.connected) socket.connect();
 
-    const onConnect = () => {
-      setSocketConnected(true);
-      console.log("Mobile connected:", socket.id);
-    };
-
-    const onDisconnect = () => {
-      setSocketConnected(false);
-    };
+    const onConnect = () => setSocketConnected(true);
+    const onDisconnect = () => setSocketConnected(false);
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -66,61 +59,83 @@ function MobileScannerInner() {
   }, []);
 
   /**
-   * CLEANUP
+   * CLEANUP ON UNMOUNT
    */
   useEffect(() => {
-    return () => stopScanner();
+    return () => {
+      stopScanner();
+    };
   }, []);
 
   /**
-   * START SCANNER
+   * START SCANNER (FIXED SAFE VERSION)
    */
   async function startScanner() {
     try {
       setError("");
 
-      if (!sessionId) throw new Error("Missing billing session");
+      if (!sessionId) {
+        throw new Error("Missing session_id in URL");
+      }
+
+      // IMPORTANT: stop previous instance if exists
+      if (scannerRef.current) {
+        await scannerRef.current.stop().catch(() => {});
+        await scannerRef.current.clear().catch(() => {});
+        scannerRef.current = null;
+      }
 
       const scanner = new Html5Qrcode("reader");
       scannerRef.current = scanner;
 
       await scanner.start(
         { facingMode: "environment" },
-        { fps: 15, qrbox: 250 },
-        (decodedText) => onScanSuccess(decodedText)
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        (decodedText) => {
+          onScanSuccess(decodedText);
+        },
+        (errorMessage) => {
+          // ignore scan noise
+        }
       );
 
       setCameraStarted(true);
     } catch (err: any) {
-      setError(err?.message || "Camera failed");
+      console.error("Scanner start error:", err);
+      setError(err?.message || "Camera start failed");
     }
   }
 
   /**
-   * STOP SCANNER
+   * STOP SCANNER (FIXED)
    */
   async function stopScanner() {
     try {
       const scanner = scannerRef.current;
       if (!scanner) return;
 
-      await scanner.stop();
-      await scanner.clear();
-      scannerRef.current = null;
+      await scanner.stop().catch(() => {});
+      await scanner.clear().catch(() => {});
 
+      scannerRef.current = null;
       setCameraStarted(false);
-    } catch {}
+    } catch (err) {
+      console.error("Stop scanner error:", err);
+    }
   }
 
   /**
-   * SCAN HANDLER (BACKEND FLOW ONLY)
+   * SCAN HANDLER (ROBUST + SAFE)
    */
   async function onScanSuccess(qrCode: string) {
     if (scanLockRef.current) return;
 
     if (sentCodesRef.current.has(qrCode)) {
       setSuccess("Already scanned");
-      navigator.vibrate?.(120);
+      navigator.vibrate?.(100);
       return;
     }
 
@@ -132,6 +147,7 @@ function MobileScannerInner() {
 
       let scanCode = qrCode;
 
+      // QR parsing safety
       try {
         const parsed = JSON.parse(qrCode);
         scanCode =
@@ -141,25 +157,28 @@ function MobileScannerInner() {
           qrCode;
       } catch {}
 
+      console.log("Scanning code:", scanCode);
+
       /**
-       * CALL BACKEND ONLY (IMPORTANT)
+       * CALL BACKEND (ONLY SOURCE OF TRUTH)
        */
       const item = await scanBillingItemByCode(scanCode, sessionId);
 
-      if (!item) throw new Error("Item not found");
+      if (!item) {
+        throw new Error("Item not found from backend");
+      }
 
       sentCodesRef.current.add(qrCode);
 
-      setSuccess("Item sent to desktop (via server)");
+      setSuccess("Item sent successfully");
       navigator.vibrate?.(120);
 
-      console.log("SCANNED ITEM:", item);
+      console.log("SCANNED ITEM RESPONSE:", item);
     } catch (err: any) {
-      console.error(err);
-      setError(err?.message || "Scan failed");
+      console.error("SCAN ERROR:", err);
+      setError(err?.response?.data?.message || err?.message || "Scan failed");
     } finally {
       setLoading(false);
-      setSending(false);
       scanLockRef.current = false;
     }
   }
@@ -227,8 +246,8 @@ function MobileScannerInner() {
 
           {/* LOADING */}
           {loading && (
-            <div className="mt-4 text-center">
-              <Loader2 className="animate-spin inline" />
+            <div className="mt-4 text-center flex items-center justify-center gap-2">
+              <Loader2 className="animate-spin" />
               Fetching item...
             </div>
           )}
