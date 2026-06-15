@@ -15,11 +15,16 @@ export default function DesktopBillingScannerReceiver({
   const sessionRef = useRef<string>("");
 
   useEffect(() => {
-    let billingSessionId = localStorage.getItem("billing_session_id");
+    let billingSessionId =
+      localStorage.getItem("billing_session_id");
 
     if (!billingSessionId) {
       billingSessionId = crypto.randomUUID();
-      localStorage.setItem("billing_session_id", billingSessionId);
+
+      localStorage.setItem(
+        "billing_session_id",
+        billingSessionId
+      );
     }
 
     sessionRef.current = billingSessionId;
@@ -30,91 +35,234 @@ export default function DesktopBillingScannerReceiver({
       socket.connect();
     }
 
-    // IMPORTANT: join room (backend must support this)
-    socket.emit("join-billing-session", {
-      session_id: billingSessionId,
-      room: roomName,
-    });
+    console.log(
+      "[BILLING] Joining Room:",
+      roomName
+    );
 
     /**
-     * Backend emits:
-     * emitBillingScan({ session_id, item })
+     * BACKEND EXPECTS STRING
      */
-    const handleBillingScan = (payload: any) => {
-      if (!payload) return;
-
-      // strict backend contract
-      const item = payload?.item;
-      const session_id = payload?.session_id;
-
-      // ignore wrong session (VERY IMPORTANT)
-      if (session_id && session_id !== sessionRef.current) return;
-
-      if (!item) return;
-
-      const normalized = normalize(item);
-
-      console.log("[BILLING SCAN RECEIVED]", normalized);
-
-      onItemReceived(normalized);
-    };
-
-    /**
-     * OPTIONAL: if backend later adds preview support
-     */
-    const handleBillingPreview = (payload: any) => {
-      const item = payload?.item || payload;
-
-      if (!item) return;
-
-      const normalized = normalize(item);
-
-      console.log("[BILLING PREVIEW RECEIVED]", normalized);
-
-      onPreview?.(normalized);
-    };
+    socket.emit(
+      "join-billing-session",
+      roomName
+    );
 
     const normalize = (rawItem: any) => ({
       id: rawItem?.id,
       item_id: rawItem?.item_id || rawItem?.id,
 
+      sku_code: rawItem?.sku_code,
+      article_code: rawItem?.article_code,
+
+      product_code:
+        rawItem?.product_code ||
+        rawItem?.article_code ||
+        rawItem?.sku_code,
+
       code:
         rawItem?.product_code ||
-        rawItem?.sku_code ||
         rawItem?.article_code ||
-        rawItem?.code ||
-        "",
+        rawItem?.sku_code,
+
+      item_name:
+        rawItem?.item_name ||
+        rawItem?.name,
 
       name:
         rawItem?.item_name ||
-        rawItem?.product_name ||
-        rawItem?.name ||
-        "Unknown Product",
+        rawItem?.name,
 
-      qty: Number(rawItem?.qty || 1),
+      description:
+        rawItem?.description,
 
-      rate: Number(rawItem?.rate || 0),
-      total_amount: Number(rawItem?.total_amount || 0),
+      category:
+        rawItem?.category,
 
-      net_weight: Number(rawItem?.net_weight || 0),
+      purity:
+        rawItem?.purity,
 
-      scanned_at: rawItem?.scanned_at || new Date().toISOString(),
+      metal_type:
+        rawItem?.metal_type,
+
+      qty: Number(
+        rawItem?.qty || 1
+      ),
+
+      rate: Number(
+        rawItem?.rate || 0
+      ),
+
+      sale_rate: Number(
+        rawItem?.sale_rate || 0
+      ),
+
+      purchase_rate: Number(
+        rawItem?.purchase_rate || 0
+      ),
+
+      net_weight: Number(
+        rawItem?.net_weight || 0
+      ),
+
+      gross_weight: Number(
+        rawItem?.gross_weight || 0
+      ),
+
+      stone_weight: Number(
+        rawItem?.stone_weight || 0
+      ),
+
+      stone_amount: Number(
+        rawItem?.stone_amount || 0
+      ),
+
+      making_charge_percent: Number(
+        rawItem?.making_charge_percent || 0
+      ),
+
+      making_charge_value: Number(
+        rawItem?.making_charge_value || 0
+      ),
+
+      total_amount: Number(
+        rawItem?.total_amount || 0
+      ),
+
+      available_qty: Number(
+        rawItem?.available_qty || 0
+      ),
+
+      available_weight: Number(
+        rawItem?.available_weight || 0
+      ),
+
+      unit:
+        rawItem?.unit || "gm",
+
+      current_status:
+        rawItem?.current_status,
+
+      qr_type:
+        rawItem?.qr_type,
+
+      qr_code_url:
+        rawItem?.qr_code_url,
+
+      scanned_at:
+        rawItem?.scanned_at ||
+        new Date().toISOString(),
     });
 
+    const handleBillingScan = (
+      payload: any
+    ) => {
+      try {
+        console.log(
+          "[SOCKET RECEIVED]",
+          payload
+        );
+
+        if (!payload) return;
+
+        const item = payload?.item;
+
+        const sessionId =
+          payload?.session_id;
+
+        if (
+          sessionId &&
+          sessionId !== sessionRef.current
+        ) {
+          console.log(
+            "[BILLING] Ignored different session:",
+            sessionId
+          );
+          return;
+        }
+
+        if (!item) {
+          console.log(
+            "[BILLING] No item in payload"
+          );
+          return;
+        }
+
+        const normalized =
+          normalize(item);
+
+        console.log(
+          "[BILLING ITEM RECEIVED]",
+          normalized
+        );
+
+        onItemReceived(normalized);
+      } catch (error) {
+        console.error(
+          "handleBillingScan error",
+          error
+        );
+      }
+    };
+
+    const handleBillingPreview = (
+      payload: any
+    ) => {
+      try {
+        const item =
+          payload?.item || payload;
+
+        if (!item) return;
+
+        const normalized =
+          normalize(item);
+
+        onPreview?.(normalized);
+      } catch (error) {
+        console.error(
+          "handleBillingPreview error",
+          error
+        );
+      }
+    };
+
     /**
-     * ⚠️ IMPORTANT:
-     * These MUST match backend emitBillingScan OR socket gateway mapping
+     * MUST MATCH BACKEND
      */
-    socket.on("billing:item_scanned", handleBillingScan);
-    socket.on("billing:item_preview", handleBillingPreview);
+    socket.on(
+      "billing-item-scanned",
+      handleBillingScan
+    );
+
+    socket.on(
+      "billing-item-preview",
+      handleBillingPreview
+    );
+
+    socket.on(
+      "billing-session-joined",
+      (data) => {
+        console.log(
+          "[ROOM JOINED]",
+          data
+        );
+      }
+    );
 
     return () => {
-      socket.off("billing:item_scanned", handleBillingScan);
-      socket.off("billing:item_preview", handleBillingPreview);
+      socket.off(
+        "billing-item-scanned",
+        handleBillingScan
+      );
 
-      socket.emit("leave-billing-session", {
-        session_id: billingSessionId,
-      });
+      socket.off(
+        "billing-item-preview",
+        handleBillingPreview
+      );
+
+      socket.off(
+        "billing-session-joined"
+      );
     };
   }, [onItemReceived, onPreview]);
 

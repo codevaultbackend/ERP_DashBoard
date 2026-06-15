@@ -43,6 +43,13 @@ function MobileScannerInner() {
   /**
    * SOCKET STATUS ONLY
    */
+
+  useEffect(() => {
+    if (sessionId) {
+      startScanner();
+    }
+  }, [sessionId]);
+
   useEffect(() => {
     if (!socket.connected) socket.connect();
 
@@ -80,8 +87,8 @@ function MobileScannerInner() {
 
       // IMPORTANT: stop previous instance if exists
       if (scannerRef.current) {
-        await scannerRef.current.stop().catch(() => {});
-        await scannerRef.current.clear().catch(() => {});
+        await scannerRef.current.stop().catch(() => { });
+        await scannerRef.current.clear().catch(() => { });
         scannerRef.current = null;
       }
 
@@ -117,8 +124,8 @@ function MobileScannerInner() {
       const scanner = scannerRef.current;
       if (!scanner) return;
 
-      await scanner.stop().catch(() => {});
-      await scanner.clear().catch(() => {});
+      await scanner.stop().catch(() => { });
+      await scanner.clear().catch(() => { });
 
       scannerRef.current = null;
       setCameraStarted(false);
@@ -130,6 +137,7 @@ function MobileScannerInner() {
   /**
    * SCAN HANDLER (ROBUST + SAFE)
    */
+
   async function onScanSuccess(qrCode: string) {
     if (scanLockRef.current) return;
 
@@ -155,18 +163,22 @@ function MobileScannerInner() {
           parsed?.code ||
           parsed?.product_code ||
           qrCode;
-      } catch {}
+      } catch { }
 
       console.log("Scanning code:", scanCode);
 
       /**
        * CALL BACKEND (ONLY SOURCE OF TRUTH)
        */
-      const item = await scanBillingItemByCode(scanCode, sessionId);
+      const item = await scanBillingItemByCode(
+        scanCode,
+        sessionId
+      );
 
-      if (!item) {
-        throw new Error("Item not found from backend");
-      }
+      console.log("[SCAN RESPONSE]", {
+        item,
+        sessionId,
+      });
 
       sentCodesRef.current.add(qrCode);
 
@@ -201,9 +213,8 @@ function MobileScannerInner() {
             </div>
 
             <div
-              className={`p-2 rounded-full ${
-                socketConnected ? "bg-green-200" : "bg-red-200"
-              }`}
+              className={`p-2 rounded-full ${socketConnected ? "bg-green-200" : "bg-red-200"
+                }`}
             >
               <Wifi />
             </div>

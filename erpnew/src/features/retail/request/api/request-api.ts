@@ -475,7 +475,7 @@ export async function approveDispatchRequest(payload: ApproveDispatchPayload) {
     formData.append("e_way_bill", payload.e_way_bill);
   }
 
-  logGroup("🚚 APPROVE DISPATCH PAYLOAD", () => {
+  logGroup("APPROVE DISPATCH PAYLOAD", () => {
     console.log("Endpoint:", `/request/requests/${payload.requestId}/approve-dispatch`);
     console.log("Raw payload:", payload);
     console.log("Clean items:", cleanItems);
@@ -510,7 +510,7 @@ export async function approveDispatchRequest(payload: ApproveDispatchPayload) {
     });
   });
 
-  logGroup("📦 APPROVE DISPATCH FORMDATA", () => {
+  logGroup(" APPROVE DISPATCH FORMDATA", () => {
     for (const [key, value] of formData.entries()) {
       if (value instanceof File) {
         console.log(key, {
@@ -541,7 +541,7 @@ export async function approveDispatchRequest(payload: ApproveDispatchPayload) {
 
     return res.data;
   } catch (error) {
-    logAxiosError("❌ APPROVE DISPATCH ERROR", error);
+    logAxiosError(" APPROVE DISPATCH ERROR", error);
     throw error;
   }
 }
