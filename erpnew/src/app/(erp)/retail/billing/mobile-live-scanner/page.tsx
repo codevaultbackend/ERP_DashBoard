@@ -62,6 +62,15 @@ function MobileScannerInner() {
         sessionId
       );
     }
+    socket.onAny(
+      (event, data) => {
+        console.log(
+          "[MOBILE SOCKET]",
+          event,
+          data
+        );
+      }
+    );
   }, [sessionId]);
 
   const storeCode =
@@ -310,7 +319,7 @@ function MobileScannerInner() {
       )
     ) {
       setSuccess(
-        "Item sent to desktop"
+        "Item already sent"
       );
 
       navigator.vibrate?.([120]);
@@ -322,55 +331,53 @@ function MobileScannerInner() {
       scanLockRef.current = true;
 
       setLoading(true);
+      setSending(false);
 
       setError("");
-
       setSuccess("");
-      console.log(
-        "MOBILE SESSION ID:",
-        sessionId
-      );
 
       console.log(
-        "SCANNING QR:",
-        qrCode
+        "SESSION:",
+        sessionId
       );
 
       let scanCode = qrCode;
 
-try {
-  const parsed = JSON.parse(qrCode);
+      /**
+       * JSON QR SUPPORT
+       */
+      try {
+        const parsed =
+          JSON.parse(qrCode);
 
-  console.log(
-    "PARSED QR:",
-    parsed
-  );
+        scanCode =
+          parsed?.payload?.code ||
+          parsed?.code ||
+          parsed?.product_code ||
+          qrCode;
 
-  scanCode =
-    parsed?.payload?.code ||
-    parsed?.code ||
-    parsed?.product_code ||
-    qrCode;
+        console.log(
+          "EXTRACTED CODE:",
+          scanCode
+        );
+      } catch {
+        console.log(
+          "PLAIN QR:",
+          qrCode
+        );
+      }
 
-  console.log(
-    "EXTRACTED CODE:",
-    scanCode
-  );
-} catch {
-  console.log(
-    "PLAIN QR:",
-    qrCode
-  );
-}
-
-const item =
-  await scanBillingItemByCode(
-    scanCode,
-    sessionId
-  );
+      /**
+       * FETCH ITEM
+       */
+      const item =
+        await scanBillingItemByCode(
+          scanCode,
+          sessionId
+        );
 
       console.log(
-        "API RESPONSE =>",
+        "ITEM API RESPONSE:",
         item
       );
 
@@ -380,31 +387,44 @@ const item =
         );
       }
 
+      /**
+       * ENSURE SOCKET CONNECTED
+       */
+      if (!socket.connected) {
+        socket.connect();
+
+        await new Promise<void>(
+          (resolve) => {
+            socket.once(
+              "connect",
+              () => resolve()
+            );
+          }
+        );
+      }
+
       setSending(true);
 
-      console.log(
-        "ITEM FETCHED SUCCESSFULLY",
-        {
+      const payload = {
+        session_id:
           sessionId,
+
+        store_code:
           storeCode,
+
+        organization_id:
           organizationId,
-          item,
-        }
+
+        item,
+      };
+
+      console.log(
+        "EMITTING TO DESKTOP:",
+        payload
       );
 
-      /**
-       * SEND TO DESKTOP
-       */
-      await sendScannedItemToDesktop({
-        session_id: sessionId,
-        store_code: storeCode,
-        organization_id: organizationId,
-        item,
-      });
-
-      console.log(
-        "ITEM SENT TO DESKTOP",
-        item
+      await sendScannedItemToDesktop(
+        payload
       );
 
       sentCodesRef.current.add(
@@ -417,8 +437,14 @@ const item =
 
       navigator.vibrate?.([120]);
 
+      console.log(
+        "SUCCESSFULLY SENT"
+      );
     } catch (error: any) {
-      console.error(error);
+      console.error(
+        "SCAN ERROR:",
+        error
+      );
 
       setError(
         error?.message ||
@@ -426,7 +452,6 @@ const item =
       );
     } finally {
       setLoading(false);
-
       setSending(false);
 
       scanLockRef.current =

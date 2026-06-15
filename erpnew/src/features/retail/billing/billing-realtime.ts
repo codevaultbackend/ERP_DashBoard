@@ -1,178 +1,39 @@
 "use client";
 
-import {
-  createClient,
-  type RealtimeChannel,
-} from "@supabase/supabase-js";
 import { socket } from "./socket";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-const channelMap = new Map<
-  string,
-  RealtimeChannel
->();
-
-const subscribedMap = new Map<
-  string,
-  boolean
->();
 
 function safeWindow() {
   return typeof window !== "undefined";
 }
 
 /**
- * SAFE STORE CODE
+ * BILLING SESSION
  */
-export function getStoreCode() {
+export function getBillingSessionId() {
   if (!safeWindow()) {
     return null;
   }
 
-  const storeCode =
-    localStorage.getItem("store_code") ||
-    localStorage.getItem("storeCode") ||
-    sessionStorage.getItem("store_code") ||
-    sessionStorage.getItem("storeCode") ||
+  const sessionId =
+    localStorage.getItem("billing_session_id") ||
+    sessionStorage.getItem("billing_session_id") ||
     "";
 
-  const clean = String(storeCode).trim();
+  const clean = String(sessionId).trim();
 
-  if (!clean) {
-    return null;
-  }
-
-  return clean;
+  return clean || null;
 }
 
 /**
- * SAFE CHANNEL NAME
- */
-export function getBillingChannelName() {
-  const storeCode = getStoreCode();
-
-  /**
-   * DO NOT THROW
-   */
-  if (!storeCode) {
-    return null;
-  }
-
-  return `billing_store_${storeCode}`;
-}
-
-/**
- * SINGLETON CHANNEL
- */
-export function getBillingChannel() {
-  const channelName =
-    getBillingChannelName();
-
-  /**
-   * store not ready yet
-   */
-  if (!channelName) {
-    return null;
-  }
-
-  const existing =
-    channelMap.get(channelName);
-
-  /**
-   * prevent duplicate joins
-   */
-  if (existing) {
-    return existing;
-  }
-
-  const channel = supabase.channel(
-    channelName,
-    {
-      config: {
-        broadcast: {
-          self: true,
-          ack: true,
-        },
-      },
-    }
-  );
-
-  /**
-   * subscribe ONLY once
-   */
-  if (!subscribedMap.get(channelName)) {
-    subscribedMap.set(channelName, true);
-
-    channel.subscribe((status) => {
-      console.log(
-        "[Billing Realtime]",
-        status
-      );
-    });
-  }
-
-  channelMap.set(
-    channelName,
-    channel
-  );
-
-  return channel;
-}
-
-/**
- * CLEANUP
- */
-export async function destroyBillingChannel() {
-  const channelName =
-    getBillingChannelName();
-
-  if (!channelName) {
-    return;
-  }
-
-  const channel =
-    channelMap.get(channelName);
-
-  if (!channel) {
-    return;
-  }
-
-  try {
-    await supabase.removeChannel(
-      channel
-    );
-  } catch (error) {
-    console.error(
-      "removeChannel failed",
-      error
-    );
-  }
-
-  channelMap.delete(channelName);
-
-  subscribedMap.delete(channelName);
-}
-
-/**
- * SEND ITEM
+ * SEND ITEM TO DESKTOP
  */
 export async function sendScannedItemToDesktop(
   payload: any
 ) {
-
   const billingSessionId =
-    localStorage.getItem(
-      "billing_session_id"
-    );
+    getBillingSessionId();
 
-  if (
-    !billingSessionId
-  ) {
-
+  if (!billingSessionId) {
     throw new Error(
       "Billing session missing"
     );
@@ -182,16 +43,14 @@ export async function sendScannedItemToDesktop(
     `billing_session_${billingSessionId}`;
 
   /**
-   * CONNECT
+   * CONNECT IF NEEDED
    */
-  if (
-    !socket.connected
-  ) {
+  if (!socket.connected) {
     socket.connect();
   }
 
   /**
-   * EMIT TO BACKEND
+   * SEND TO BACKEND
    */
   socket.emit(
     "billing:item_scanned",
@@ -209,13 +68,14 @@ export async function sendScannedItemToDesktop(
   );
 
   console.log(
-    "ITEM SENT:",
+    "[Billing] Item sent:",
     payload
   );
 }
 
 /**
- * SUBSCRIBE ITEMS
+ * OPTIONAL
+ * LISTEN DIRECTLY USING SOCKET
  */
 export function subscribeBillingItems({
   onItem,
@@ -224,30 +84,21 @@ export function subscribeBillingItems({
     payload: any
   ) => void;
 }) {
-  const channel =
-    getBillingChannel();
+  const handler = (
+    payload: any
+  ) => {
+    onItem(payload);
+  };
 
-  /**
-   * store not ready yet
-   */
-  if (!channel) {
-    console.warn(
-      "Billing realtime skipped: store_code missing"
-    );
-
-    return null;
-  }
-
-  channel.on(
-    "broadcast",
-    {
-      event:
-        "billing:item_scanned",
-    },
-    ({ payload }) => {
-      onItem(payload);
-    }
+  socket.on(
+    "billing-item-scanned",
+    handler
   );
 
-  return channel;
+  return () => {
+    socket.off(
+      "billing-item-scanned",
+      handler
+    );
+  };
 }

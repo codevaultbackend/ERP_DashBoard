@@ -1,35 +1,24 @@
 "use client";
 
 import { useEffect } from "react";
-
 import { socket } from "../socket";
 
 type Props = {
-  onItemReceived: (
-    item: any
-  ) => void;
+  onItemReceived: (item: any) => void;
 };
 
 export default function DesktopBillingScannerReceiver({
   onItemReceived,
 }: Props) {
-
   useEffect(() => {
-
     /**
      * SESSION
      */
     let billingSessionId =
-      localStorage.getItem(
-        "billing_session_id"
-      );
+      localStorage.getItem("billing_session_id");
 
-    if (
-      !billingSessionId
-    ) {
-
-      billingSessionId =
-        crypto.randomUUID();
+    if (!billingSessionId) {
+      billingSessionId = crypto.randomUUID();
 
       localStorage.setItem(
         "billing_session_id",
@@ -38,299 +27,227 @@ export default function DesktopBillingScannerReceiver({
     }
 
     /**
-     * ROOM NAME
+     * ROOM
      */
     const roomName =
       `billing_session_${billingSessionId}`;
 
-    console.log(
-      "DESKTOP ROOM:",
-      roomName
-    );
-    console.log(
-      "SESSION ID:",
-      billingSessionId
-    );
-
-    /**
-     * CONNECT SOCKET
-     */
-    if (
-      !socket.connected
-    ) {
-
-      socket.connect();
-    }
-
-    /**
-     * JOIN ROOM
-     */
-    socket.emit(
-      "join-billing-session",
-      roomName
-    );
     const storeCode =
-      localStorage.getItem(
-        "store_code"
-      );
+      localStorage.getItem("store_code");
 
     const organizationId =
-      localStorage.getItem(
-        "organization_id"
-      );
-
-    if (storeCode) {
-      socket.emit(
-        "join-billing-store",
-        storeCode
-      );
-    }
-
-    if (organizationId) {
-      socket.emit(
-        "join-billing-org",
-        organizationId
-      );
-    }
-
-    console.log(
-      "Joined billing room:",
-      roomName
-    );
+      localStorage.getItem("organization_id");
 
     /**
      * CONNECT
      */
-    const handleConnect =
-      () => {
+    if (!socket.connected) {
+      socket.connect();
+    }
 
-        console.log(
-          "Socket connected:",
-          socket.id
-        );
+    /**
+     * JOIN ALL ROOMS
+     */
+    const joinRooms = () => {
+      socket.emit(
+        "join-billing-session",
+        roomName
+      );
 
-        /**
-         * REJOIN
-         */
+      if (storeCode) {
         socket.emit(
-          "join-billing-session",
-          roomName
+          "join-billing-store",
+          storeCode
         );
-        if (storeCode) {
-          socket.emit(
-            "join-billing-store",
-            storeCode
-          );
-        }
+      }
 
-        if (organizationId) {
-          socket.emit(
-            "join-billing-org",
-            organizationId
-          );
-        }
-      };
+      if (organizationId) {
+        socket.emit(
+          "join-billing-org",
+          organizationId
+        );
+      }
+
+      console.log(
+        "[Desktop] Joined:",
+        roomName
+      );
+    };
+
+    joinRooms();
 
     /**
-     * DISCONNECT
+     * CONNECTED
      */
-    const handleDisconnect =
-      (
-        reason: string
-      ) => {
+    const handleConnect = () => {
+      console.log(
+        "[Desktop] Connected:",
+        socket.id
+      );
 
-        console.log(
-          "Socket disconnected:",
-          reason
-        );
-      };
+      joinRooms();
+    };
 
     /**
-     * RECEIVE ITEM
+     * DISCONNECTED
      */
-    const handleScannedItem =
-      (
-        payload: any
-      ) => {
-
-        console.log(
-          "Realtime payload:",
-          payload
-        );
-
-        /**
-         * BACKEND RETURNS:
-         * {
-         *   success,
-         *   item
-         * }
-         */
-        const rawItem =
-          payload?.item ||
-          payload?.data ||
-          payload;
-
-        if (
-          !rawItem
-        ) {
-
-          console.error(
-            "No item received"
-          );
-
-          return;
-        }
-
-        /**
-         * NORMALIZE
-         */
-        const normalizedItem = {
-          id:
-            rawItem?.id,
-
-          item_id:
-            rawItem?.item_id ||
-            rawItem?.id,
-
-          code:
-            rawItem?.product_code ||
-            rawItem?.item_code ||
-            rawItem?.code ||
-            rawItem?.qr_code ||
-            "",
-
-          name:
-            rawItem?.product_name ||
-            rawItem?.item_name ||
-            rawItem?.name ||
-            "Unknown Product",
-
-          qty:
-            Number(
-              rawItem?.qty || 1
-            ),
-
-          purity:
-            rawItem?.purity ||
-            "",
-
-          gross_weight:
-            Number(
-              rawItem?.gross_weight ||
-              rawItem?.grossWeight ||
-              0
-            ),
-
-          net_weight:
-            Number(
-              rawItem?.net_weight ||
-              rawItem?.netWeight ||
-              0
-            ),
-
-          weight:
-            Number(
-              rawItem?.weight ||
-              rawItem?.net_weight ||
-              0
-            ),
-
-          rate:
-            Number(
-              rawItem?.rate ||
-              0
-            ),
-
-          making_charge_percent:
-            Number(
-              rawItem?.making_charge_percent ||
-              rawItem?.makingChargePercent ||
-              0
-            ),
-
-          makingCharges:
-            Number(
-              rawItem?.makingCharges ||
-              rawItem?.making_charges ||
-              0
-            ),
-
-          metalValue:
-            Number(
-              rawItem?.metalValue ||
-              rawItem?.metal_value ||
-              0
-            ),
-
-          category:
-            rawItem?.category ||
-            "",
-
-          unit:
-            rawItem?.unit ||
-            "g",
-
-          scanned_at:
-            new Date().toISOString(),
-        };
-
-        console.log(
-          "NORMALIZED ITEM:",
-          normalizedItem
-        );
-
-        /**
-         * INVALID
-         */
-        if (
-          !normalizedItem.code
-        ) {
-
-          console.error(
-            "Invalid item code"
-          );
-
-          return;
-        }
-
-        /**
-         * SEND TO PARENT
-         */
-        onItemReceived(
-          normalizedItem
-        );
-      };
+    const handleDisconnect = (
+      reason: string
+    ) => {
+      console.log(
+        "[Desktop] Disconnected:",
+        reason
+      );
+    };
 
     /**
-     * ROOM JOINED
+     * ITEM RECEIVED
      */
-    const handleRoomJoined =
-      (
-        data: any
-      ) => {
+    const handleScannedItem = (
+      payload: any
+    ) => {
+      console.log(
+        "[Desktop] billing-item-scanned",
+        payload
+      );
 
-        console.log(
-          "Billing room joined:",
-          data
+      /**
+       * Mobile sends:
+       * {
+       *   session_id,
+       *   store_code,
+       *   organization_id,
+       *   item
+       * }
+       */
+
+      const rawItem =
+        payload?.item ||
+        payload?.data?.item ||
+        payload?.data ||
+        payload;
+
+      if (!rawItem) {
+        console.error(
+          "[Desktop] No item received"
         );
+        return;
+      }
+
+      const normalizedItem = {
+        id: rawItem?.id,
+
+        item_id:
+          rawItem?.item_id ||
+          rawItem?.id,
+
+        code:
+          rawItem?.product_code ||
+          rawItem?.item_code ||
+          rawItem?.code ||
+          rawItem?.qr_code ||
+          "",
+
+        name:
+          rawItem?.product_name ||
+          rawItem?.item_name ||
+          rawItem?.name ||
+          "Unknown Product",
+
+        qty: Number(
+          rawItem?.qty || 1
+        ),
+
+        purity:
+          rawItem?.purity || "",
+
+        gross_weight: Number(
+          rawItem?.gross_weight ||
+            rawItem?.grossWeight ||
+            0
+        ),
+
+        net_weight: Number(
+          rawItem?.net_weight ||
+            rawItem?.netWeight ||
+            0
+        ),
+
+        weight: Number(
+          rawItem?.weight ||
+            rawItem?.net_weight ||
+            0
+        ),
+
+        rate: Number(
+          rawItem?.rate || 0
+        ),
+
+        making_charge_percent: Number(
+          rawItem?.making_charge_percent ||
+            rawItem?.makingChargePercent ||
+            0
+        ),
+
+        makingCharges: Number(
+          rawItem?.makingCharges ||
+            rawItem?.making_charges ||
+            0
+        ),
+
+        metalValue: Number(
+          rawItem?.metalValue ||
+            rawItem?.metal_value ||
+            0
+        ),
+
+        category:
+          rawItem?.category || "",
+
+        unit:
+          rawItem?.unit || "g",
+
+        scanned_at:
+          new Date().toISOString(),
       };
+
+      if (!normalizedItem.code) {
+        console.error(
+          "[Desktop] Invalid item"
+        );
+        return;
+      }
+
+      console.log(
+        "[Desktop] Item received",
+        normalizedItem
+      );
+
+      onItemReceived(
+        normalizedItem
+      );
+    };
+
+    /**
+     * ROOM JOIN CONFIRMATION
+     */
+    const handleRoomJoined = (
+      data: any
+    ) => {
+      console.log(
+        "[Desktop] Room joined",
+        data
+      );
+    };
 
     /**
      * DEBUG
      */
     socket.onAny(
-      (
-        event,
-        data
-      ) => {
-
+      (event, data) => {
         console.log(
-          "SOCKET EVENT:",
-          event
-        );
-
-        console.log(
-          "SOCKET DATA:",
+          "[SOCKET]",
+          event,
           data
         );
       }
@@ -349,10 +266,6 @@ export default function DesktopBillingScannerReceiver({
       handleDisconnect
     );
 
-    /**
-     * IMPORTANT
-     * BACKEND EVENT NAME
-     */
     socket.on(
       "billing-item-scanned",
       handleScannedItem
@@ -364,7 +277,6 @@ export default function DesktopBillingScannerReceiver({
     );
 
     return () => {
-
       socket.off(
         "connect",
         handleConnect
@@ -387,7 +299,6 @@ export default function DesktopBillingScannerReceiver({
 
       socket.offAny();
     };
-
   }, [onItemReceived]);
 
   return null;
