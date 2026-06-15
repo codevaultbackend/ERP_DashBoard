@@ -2,103 +2,112 @@
 
 import { QrCode, Wifi } from "lucide-react";
 import Link from "next/link";
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function BillingHeader() {
-  const [
-    billingSessionId,
-    setBillingSessionId,
-  ] = useState("");
+  const [billingSessionId, setBillingSessionId] =
+    useState("");
 
   const [storeCode, setStoreCode] =
     useState("");
 
-  const [
-    organizationId,
-    setOrganizationId,
-  ] = useState("");
+  const [organizationId, setOrganizationId] =
+    useState("");
 
   useEffect(() => {
-    /**
-     * Billing Session
-     */
-    let sessionId =
-      localStorage.getItem(
-        "billing_session_id"
-      );
-
-    if (!sessionId) {
-      sessionId = crypto.randomUUID();
-
-      localStorage.setItem(
-        "billing_session_id",
-        sessionId
-      );
-    }
-
-    setBillingSessionId(sessionId);
-
-    /**
-     * User Data
-     */
     try {
+      let sessionId =
+        localStorage.getItem(
+          "billing_session_id"
+        );
+
+      if (!sessionId) {
+        sessionId =
+          window.crypto.randomUUID();
+
+        localStorage.setItem(
+          "billing_session_id",
+          sessionId
+        );
+      }
+
+      setBillingSessionId(sessionId);
+
       const userRaw =
         localStorage.getItem("user");
 
-      if (userRaw) {
-        const user =
-          JSON.parse(userRaw);
+      if (!userRaw) return;
 
-        setStoreCode(
-          user?.store_code ||
-            user?.storeCode ||
-            user?.store?.store_code ||
+      const user = JSON.parse(userRaw);
+
+      const resolvedStoreCode =
+        user?.store_code ||
+        user?.storeCode ||
+        user?.store?.store_code ||
+        "";
+
+      const resolvedOrganizationId =
+        String(
+          user?.organization_id ||
+            user?.organizationId ||
+            user?.organization?.id ||
+            user?.store?.organization_id ||
             ""
         );
 
-        setOrganizationId(
-          String(
-            user?.organization_id ||
-              user?.organizationId ||
-              user?.store?.id ||
-              ""
-          )
-        );
-      }
+      setStoreCode(resolvedStoreCode);
+
+      setOrganizationId(
+        resolvedOrganizationId
+      );
+
+      console.log(
+        "[BILLING HEADER]"
+      );
+
+      console.log(
+        "SESSION:",
+        sessionId
+      );
+
+      console.log(
+        "STORE:",
+        resolvedStoreCode
+      );
+
+      console.log(
+        "ORG:",
+        resolvedOrganizationId
+      );
     } catch (error) {
       console.error(
-        "Failed to read user data",
+        "Failed to initialize billing session",
         error
       );
     }
   }, []);
 
-  const scannerUrl =
-    useMemo(() => {
-      if (!billingSessionId) {
-        return "#";
-      }
+  const scannerUrl = useMemo(() => {
+    if (!billingSessionId) {
+      return "#";
+    }
 
-      const params =
-        new URLSearchParams({
-          session_id:
-            billingSessionId,
-          store_code:
-            storeCode || "",
-          organization_id:
-            organizationId || "",
-        });
+    const params =
+      new URLSearchParams({
+        session_id:
+          billingSessionId,
+        store_code:
+          storeCode || "",
+        organization_id:
+          organizationId || "",
+      });
 
-      return `/retail/billing/mobile-live-scanner?${params.toString()}`;
-    }, [
-      billingSessionId,
-      storeCode,
-      organizationId,
-    ]);
+    return `/retail/billing/mobile-live-scanner?${params.toString()}`;
+  }, [
+    billingSessionId,
+    storeCode,
+    organizationId,
+  ]);
 
   return (
     <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -119,19 +128,21 @@ export default function BillingHeader() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {billingSessionId ? (
-          <Link
-            href={scannerUrl}
-            target="_blank"
-            className="flex h-[44px] items-center gap-2 rounded-full bg-[#111827] px-4 text-white shadow-[0px_8px_20px_rgba(2,6,23,0.12)] transition-all hover:opacity-95"
-          >
-            <QrCode className="h-4 w-4" />
+        <Link
+          href={scannerUrl}
+          target="_blank"
+          className={`flex h-[44px] items-center gap-2 rounded-full px-4 text-white shadow-[0px_8px_20px_rgba(2,6,23,0.12)] transition-all ${
+            billingSessionId
+              ? "bg-[#111827] hover:opacity-95"
+              : "pointer-events-none bg-gray-400"
+          }`}
+        >
+          <QrCode className="h-4 w-4" />
 
-            <span className="text-[13px] font-semibold">
-              Open Scanner
-            </span>
-          </Link>
-        ) : null}
+          <span className="text-[13px] font-semibold">
+            Open Scanner
+          </span>
+        </Link>
 
         <div className="flex h-[44px] items-center gap-2 rounded-full border border-green-200 bg-green-50 px-4">
           <Wifi className="h-4 w-4 text-green-600" />
