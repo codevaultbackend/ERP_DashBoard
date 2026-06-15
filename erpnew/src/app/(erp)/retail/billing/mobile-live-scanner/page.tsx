@@ -41,74 +41,261 @@ function MobileScannerInner() {
   };
 
   /* =========================================================
-     SOCKET SETUP (BACKEND ALIGNED)
-  ========================================================= */
+   SOCKET DEBUG MODE
+========================================================= */
   useEffect(() => {
-    addLog("🔌 Connecting socket...");
+    addLog("====================================");
+    addLog("MOBILE SCANNER INITIALIZING");
+    addLog("====================================");
 
-    if (!socket.connected) socket.connect();
+    addLog(`SESSION_ID = ${sessionId}`);
+    addLog(`STORE_CODE = ${storeCode}`);
+    addLog(`ORG_ID = ${organizationId}`);
+
+    if (!socket.connected) {
+      addLog("Calling socket.connect()");
+      socket.connect();
+    }
 
     const onConnect = () => {
       setSocketConnected(true);
-      addLog(`✅ Socket connected: ${socket.id}`);
 
-      /**
-       * IMPORTANT: backend expects OBJECT payload
-       */
+      addLog("====================================");
+      addLog("SOCKET CONNECTED");
+      addLog(`SOCKET ID: ${socket.id}`);
+      addLog(`TRANSPORT: ${socket.io.engine.transport.name}`);
+      addLog("====================================");
+
       if (sessionId) {
-        socket.emit("join-billing-session", {
+        const payload = {
           session_id: sessionId,
           store_code: storeCode,
           organization_id: organizationId,
-        });
+        };
 
-        addLog(`🚪 Joined session: ${sessionId}`);
+        addLog(
+          `EMIT join-billing-session => ${JSON.stringify(
+            payload,
+            null,
+            2
+          )}`
+        );
+
+        socket.emit(
+          "join-billing-session",
+          payload
+        );
       }
 
       if (storeCode) {
-        socket.emit("join-billing-store", {
-          store_code: storeCode,
-        });
+        addLog(
+          `EMIT join-billing-store => ${storeCode}`
+        );
+
+        socket.emit(
+          "join-billing-store",
+          {
+            store_code: storeCode,
+          }
+        );
       }
 
       if (organizationId) {
-        socket.emit("join-billing-org", {
-          organization_id: organizationId,
-        });
+        addLog(
+          `EMIT join-billing-org => ${organizationId}`
+        );
+
+        socket.emit(
+          "join-billing-org",
+          {
+            organization_id:
+              organizationId,
+          }
+        );
       }
     };
 
-    const onDisconnect = (reason: string) => {
+    const onDisconnect = (
+      reason: string
+    ) => {
+      addLog(
+        `SOCKET DISCONNECTED => ${reason}`
+      );
+
       setSocketConnected(false);
-      addLog(`❌ Socket disconnected: ${reason}`);
     };
 
-    const onBillingItemScanned = (payload: any) => {
-      addLog("📡 Live item received via socket");
+    const onConnectError = (
+      err: any
+    ) => {
+      addLog(
+        `CONNECT ERROR => ${err?.message || "unknown"
+        }`
+      );
 
-      const itemName =
-        payload?.item?.item_name ||
+      console.error(
+        "CONNECT ERROR",
+        err
+      );
+    };
+
+    const onSessionJoined = (
+      data: any
+    ) => {
+      addLog(
+        `SESSION JOIN ACK => ${JSON.stringify(
+          data,
+          null,
+          2
+        )}`
+      );
+    };
+
+    const onStoreJoined = (
+      data: any
+    ) => {
+      addLog(
+        `STORE JOIN ACK => ${JSON.stringify(
+          data,
+          null,
+          2
+        )}`
+      );
+    };
+
+    const onOrgJoined = (
+      data: any
+    ) => {
+      addLog(
+        `ORG JOIN ACK => ${JSON.stringify(
+          data,
+          null,
+          2
+        )}`
+      );
+    };
+
+    const onBillingItemScanned = (
+      payload: any
+    ) => {
+      addLog(
+        "===================================="
+      );
+      addLog(
+        "EVENT RECEIVED: billing-item-scanned"
+      );
+      addLog(
+        JSON.stringify(
+          payload,
+          null,
+          2
+        )
+      );
+      addLog(
+        "===================================="
+      );
+
+      setSuccess(
+        `Received ${payload?.item?.item_name ||
         payload?.item?.product_code ||
-        "Unknown";
-
-      setSuccess(`Added: ${itemName}`);
-      navigator.vibrate?.(120);
+        "item"
+        }`
+      );
     };
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
+    socket.on(
+      "connect",
+      onConnect
+    );
 
-    /**
-     * MUST MATCH BACKEND EMIT EVENT
-     */
-    socket.on("billing-item-scanned", onBillingItemScanned);
+    socket.on(
+      "disconnect",
+      onDisconnect
+    );
+
+    socket.on(
+      "connect_error",
+      onConnectError
+    );
+
+    socket.on(
+      "billing-session-joined",
+      onSessionJoined
+    );
+
+    socket.on(
+      "billing-store-joined",
+      onStoreJoined
+    );
+
+    socket.on(
+      "billing-org-joined",
+      onOrgJoined
+    );
+
+    socket.on(
+      "billing-item-scanned",
+      onBillingItemScanned
+    );
+
+    socket.onAny(
+      (
+        event,
+        ...args
+      ) => {
+        addLog(
+          `[SOCKET EVENT] ${event}`
+        );
+
+        console.log(
+          "[SOCKET EVENT]",
+          event,
+          args
+        );
+      }
+    );
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("billing-item-scanned", onBillingItemScanned);
+      socket.off(
+        "connect",
+        onConnect
+      );
+
+      socket.off(
+        "disconnect",
+        onDisconnect
+      );
+
+      socket.off(
+        "connect_error",
+        onConnectError
+      );
+
+      socket.off(
+        "billing-session-joined",
+        onSessionJoined
+      );
+
+      socket.off(
+        "billing-store-joined",
+        onStoreJoined
+      );
+
+      socket.off(
+        "billing-org-joined",
+        onOrgJoined
+      );
+
+      socket.off(
+        "billing-item-scanned",
+        onBillingItemScanned
+      );
     };
-  }, [sessionId, storeCode, organizationId]);
+  }, [
+    sessionId,
+    storeCode,
+    organizationId,
+  ]);
 
   /* =========================================================
      AUTO START CAMERA
@@ -130,8 +317,8 @@ function MobileScannerInner() {
       if (!sessionId) throw new Error("Missing session_id");
 
       if (scannerRef.current) {
-        await scannerRef.current.stop().catch(() => {});
-        await scannerRef.current.clear().catch(() => {});
+        await scannerRef.current.stop().catch(() => { });
+        await scannerRef.current.clear().catch(() => { });
         scannerRef.current = null;
       }
 
@@ -159,8 +346,8 @@ function MobileScannerInner() {
     try {
       if (!scannerRef.current) return;
 
-      await scannerRef.current.stop().catch(() => {});
-      await scannerRef.current.clear().catch(() => {});
+      await scannerRef.current.stop().catch(() => { });
+      await scannerRef.current.clear().catch(() => { });
 
       scannerRef.current = null;
       setCameraStarted(false);
@@ -174,20 +361,41 @@ function MobileScannerInner() {
   /* =========================================================
      SCAN HANDLER (FIXED + SAFE)
   ========================================================= */
-  const onScanSuccess = async (qrCode: string) => {
-    if (scanLockRef.current) return;
+  const onScanSuccess = async (
+    qrCode: string
+  ) => {
+    if (scanLockRef.current) {
+      addLog(
+        "SCAN BLOCKED: LOCK ACTIVE"
+      );
+      return;
+    }
 
     try {
       scanLockRef.current = true;
       setLoading(true);
 
+      addLog(
+        "===================================="
+      );
+      addLog(
+        `RAW QR => ${qrCode}`
+      );
+
       let code = qrCode;
 
-      /**
-       * Safe JSON parsing
-       */
       try {
-        const parsed = JSON.parse(qrCode);
+        const parsed =
+          JSON.parse(qrCode);
+
+        addLog(
+          `PARSED QR => ${JSON.stringify(
+            parsed,
+            null,
+            2
+          )}`
+        );
+
         code =
           parsed?.payload?.code ||
           parsed?.code ||
@@ -195,32 +403,88 @@ function MobileScannerInner() {
           parsed?.article_code ||
           qrCode;
       } catch {
-        // raw QR
+        addLog(
+          "QR IS PLAIN STRING"
+        );
       }
 
-      /**
-       * FIXED: use parsed code for dedup
-       */
-      if (sentCodesRef.current.has(code)) {
-        setSuccess("Already scanned");
+      addLog(
+        `FINAL CODE => ${code}`
+      );
+
+      if (
+        sentCodesRef.current.has(code)
+      ) {
+        addLog(
+          `DUPLICATE CODE => ${code}`
+        );
+
         return;
       }
 
-      addLog(`🔍 Scanned code: ${code}`);
+      addLog(
+        `API REQUEST START => ${code}`
+      );
 
-      await scanBillingItemByCode(code, sessionId);
+      const item =
+        await scanBillingItemByCode(
+          code,
+          sessionId
+        );
+
+      addLog(
+        "API RESPONSE SUCCESS"
+      );
+
+      addLog(
+        JSON.stringify(
+          item,
+          null,
+          2
+        )
+      );
 
       sentCodesRef.current.add(code);
 
-      setSuccess("Item scanned successfully");
-      navigator.vibrate?.(100);
+      setSuccess(
+        "Item scanned successfully"
+      );
     } catch (err: any) {
-      const msg = err?.message || "Scan failed";
-      setError(msg);
-      addLog(`❌ ${msg}`);
+      addLog(
+        "API REQUEST FAILED"
+      );
+
+      addLog(
+        JSON.stringify(
+          {
+            message:
+              err?.message,
+            status:
+              err?.response?.status,
+            data:
+              err?.response?.data,
+          },
+          null,
+          2
+        )
+      );
+
+      setError(
+        err?.message ||
+        "Scan failed"
+      );
     } finally {
+      scanLockRef.current =
+        false;
+
       setLoading(false);
-      scanLockRef.current = false;
+
+      addLog(
+        "SCAN FLOW COMPLETE"
+      );
+      addLog(
+        "===================================="
+      );
     }
   };
 
@@ -261,6 +525,21 @@ function MobileScannerInner() {
               {success}
             </div>
           )}
+          <div className="mt-6">
+            <h3 className="font-bold mb-2">
+              Debug Logs
+            </h3>
+
+            <div className="bg-black text-green-400 p-3 rounded text-xs h-80 overflow-auto">
+              {debugLogs.map(
+                (log, index) => (
+                  <div key={index}>
+                    {log}
+                  </div>
+                )
+              )}
+            </div>
+          </div>
 
           {/* CAMERA */}
           <div className="bg-black rounded-lg overflow-hidden">

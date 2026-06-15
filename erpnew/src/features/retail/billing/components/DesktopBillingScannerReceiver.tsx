@@ -15,67 +15,206 @@ export default function DesktopBillingScannerReceiver({
   const sessionRef = useRef<string>("");
 
   useEffect(() => {
+    console.log(
+      "=================================================="
+    );
+    console.log(
+      "[DESKTOP RECEIVER INITIALIZING]"
+    );
+    console.log(
+      "=================================================="
+    );
+
     let billingSessionId =
-      localStorage.getItem("billing_session_id");
+      localStorage.getItem(
+        "billing_session_id"
+      );
+
+    console.log(
+      "[LOCAL STORAGE SESSION]",
+      billingSessionId
+    );
 
     if (!billingSessionId) {
-      billingSessionId = crypto.randomUUID();
-      localStorage.setItem("billing_session_id", billingSessionId);
+      billingSessionId =
+        crypto.randomUUID();
+
+      localStorage.setItem(
+        "billing_session_id",
+        billingSessionId
+      );
+
+      console.log(
+        "[NEW SESSION CREATED]",
+        billingSessionId
+      );
     }
 
-    sessionRef.current = billingSessionId;
+    sessionRef.current =
+      billingSessionId;
 
-    const roomName = `billing_session_${billingSessionId}`;
+    const roomName =
+      `billing_session_${billingSessionId}`;
+
+    console.log(
+      "[CURRENT SESSION]",
+      sessionRef.current
+    );
+
+    console.log(
+      "[EXPECTED ROOM]",
+      roomName
+    );
+
+    if (!socket.connected) {
+      console.log(
+        "[SOCKET NOT CONNECTED] Calling connect()"
+      );
+
+      socket.connect();
+    }
 
     const joinRoom = () => {
-      /**
-       * FIXED: support both backend patterns
-       * (some backends expect string, some object)
-       */
-      socket.emit("join-billing-session", {
+      const payload = {
+        session_id:
+          billingSessionId,
         room: roomName,
-        session_id: billingSessionId,
-      });
+      };
 
-      console.log("[ROOM JOIN SENT]", {
-        room: roomName,
-        session_id: billingSessionId,
-      });
+      console.log(
+        "=================================================="
+      );
+      console.log(
+        "[JOIN ROOM REQUEST]"
+      );
+      console.log(payload);
+      console.log(
+        "Socket ID:",
+        socket.id
+      );
+      console.log(
+        "Connected:",
+        socket.connected
+      );
+      console.log(
+        "=================================================="
+      );
+
+      socket.emit(
+        "join-billing-session",
+        payload
+      );
+
+      console.log(
+        "[JOIN EVENT SENT]"
+      );
     };
 
     const handleConnect = () => {
-      console.log("[SOCKET CONNECTED]", socket.id);
+      console.log(
+        "=================================================="
+      );
+      console.log(
+        "[SOCKET CONNECTED]"
+      );
+      console.log(
+        "Socket ID:",
+        socket.id
+      );
+      console.log(
+        "Connected:",
+        socket.connected
+      );
+      console.log(
+        "=================================================="
+      );
+
       joinRoom();
     };
 
-    const handleConnectError = (err: any) => {
-      console.error("[SOCKET ERROR]", err);
+    const handleConnectError = (
+      err: any
+    ) => {
+      console.error(
+        "=================================================="
+      );
+
+      console.error(
+        "[SOCKET CONNECT ERROR]"
+      );
+
+      console.error(err);
+
+      console.error(
+        "=================================================="
+      );
     };
 
-    const handleDisconnect = (reason: string) => {
-      console.warn("[SOCKET DISCONNECTED]", reason);
+    const handleDisconnect = (
+      reason: string
+    ) => {
+      console.warn(
+        "=================================================="
+      );
+
+      console.warn(
+        "[SOCKET DISCONNECTED]"
+      );
+
+      console.warn(reason);
+
+      console.warn(
+        "=================================================="
+      );
     };
 
     if (socket.connected) {
       handleConnect();
     }
 
-    socket.on("connect", handleConnect);
-    socket.on("connect_error", handleConnectError);
-    socket.on("disconnect", handleDisconnect);
+    socket.on(
+      "connect",
+      handleConnect
+    );
 
-    /**
-     * SAFE NORMALIZER
-     */
-    const normalize = (rawItem: any) => {
-      if (!rawItem) return null;
+    socket.on(
+      "connect_error",
+      handleConnectError
+    );
 
-      return {
+    socket.on(
+      "disconnect",
+      handleDisconnect
+    );
+
+    const normalize = (
+      rawItem: any
+    ) => {
+      console.log(
+        "[NORMALIZE RAW ITEM]",
+        rawItem
+      );
+
+      if (!rawItem) {
+        console.error(
+          "[NORMALIZE FAILED] Empty item"
+        );
+
+        return null;
+      }
+
+      const normalized = {
         id: rawItem?.id,
-        item_id: rawItem?.item_id || rawItem?.id,
 
-        sku_code: rawItem?.sku_code,
-        article_code: rawItem?.article_code,
+        item_id:
+          rawItem?.item_id ||
+          rawItem?.id,
+
+        sku_code:
+          rawItem?.sku_code,
+
+        article_code:
+          rawItem?.article_code,
 
         product_code:
           rawItem?.product_code ||
@@ -87,116 +226,351 @@ export default function DesktopBillingScannerReceiver({
           rawItem?.article_code ||
           rawItem?.sku_code,
 
-        item_name: rawItem?.item_name || rawItem?.name,
-        name: rawItem?.item_name || rawItem?.name,
+        item_name:
+          rawItem?.item_name ||
+          rawItem?.name,
 
-        description: rawItem?.description,
-        category: rawItem?.category,
-        purity: rawItem?.purity,
-        metal_type: rawItem?.metal_type,
+        name:
+          rawItem?.item_name ||
+          rawItem?.name,
 
-        qty: Number(rawItem?.qty || 1),
-        rate: Number(rawItem?.rate || 0),
-        sale_rate: Number(rawItem?.sale_rate || 0),
-        purchase_rate: Number(rawItem?.purchase_rate || 0),
+        description:
+          rawItem?.description,
 
-        net_weight: Number(rawItem?.net_weight || 0),
-        gross_weight: Number(rawItem?.gross_weight || 0),
-        stone_weight: Number(rawItem?.stone_weight || 0),
-        stone_amount: Number(rawItem?.stone_amount || 0),
+        category:
+          rawItem?.category,
 
-        making_charge_percent: Number(rawItem?.making_charge_percent || 0),
-        making_charge_value: Number(rawItem?.making_charge_value || 0),
+        purity:
+          rawItem?.purity,
 
-        total_amount: Number(rawItem?.total_amount || 0),
+        metal_type:
+          rawItem?.metal_type,
 
-        available_qty: Number(rawItem?.available_qty || 0),
-        available_weight: Number(rawItem?.available_weight || 0),
+        qty: Number(
+          rawItem?.qty || 1
+        ),
 
-        unit: rawItem?.unit || "gm",
-        current_status: rawItem?.current_status,
-        qr_type: rawItem?.qr_type,
-        qr_code_url: rawItem?.qr_code_url,
+        rate: Number(
+          rawItem?.rate || 0
+        ),
+
+        sale_rate: Number(
+          rawItem?.sale_rate || 0
+        ),
+
+        purchase_rate: Number(
+          rawItem?.purchase_rate ||
+            0
+        ),
+
+        net_weight: Number(
+          rawItem?.net_weight ||
+            0
+        ),
+
+        gross_weight: Number(
+          rawItem?.gross_weight ||
+            0
+        ),
+
+        stone_weight: Number(
+          rawItem?.stone_weight ||
+            0
+        ),
+
+        stone_amount: Number(
+          rawItem?.stone_amount ||
+            0
+        ),
+
+        making_charge_percent:
+          Number(
+            rawItem?.making_charge_percent ||
+              0
+          ),
+
+        making_charge_value:
+          Number(
+            rawItem?.making_charge_value ||
+              0
+          ),
+
+        total_amount: Number(
+          rawItem?.total_amount ||
+            0
+        ),
+
+        available_qty: Number(
+          rawItem?.available_qty ||
+            0
+        ),
+
+        available_weight:
+          Number(
+            rawItem?.available_weight ||
+              0
+          ),
+
+        unit:
+          rawItem?.unit || "gm",
+
+        current_status:
+          rawItem?.current_status,
+
+        qr_type:
+          rawItem?.qr_type,
+
+        qr_code_url:
+          rawItem?.qr_code_url,
 
         scanned_at:
-          rawItem?.scanned_at || new Date().toISOString(),
+          rawItem?.scanned_at ||
+          new Date().toISOString(),
       };
+
+      console.log(
+        "[NORMALIZED ITEM]",
+        normalized
+      );
+
+      return normalized;
     };
 
-    /**
-     * MAIN SOCKET EVENT
-     */
-    const handleBillingScan = (payload: any) => {
+    const handleBillingScan = (
+      payload: any
+    ) => {
       try {
-        console.log("[SOCKET RECEIVED]", payload);
+        console.log(
+          "=================================================="
+        );
 
-        if (!payload) return;
+        console.log(
+          "[billing-item-scanned RECEIVED]"
+        );
 
-        const item = payload?.item || payload;
+        console.log(
+          "Payload:",
+          payload
+        );
 
-        const sessionId =
-          payload?.session_id || payload?.sessionId;
+        console.log(
+          "Current Session:",
+          sessionRef.current
+        );
 
-        /**
-         * FIX: only block mismatch IF session exists
-         */
-        if (
-          sessionId &&
-          sessionRef.current &&
-          sessionId !== sessionRef.current
-        ) {
-          console.warn("[SESSION MISMATCH]", {
-            received: sessionId,
-            current: sessionRef.current,
-          });
+        console.log(
+          "=================================================="
+        );
+
+        if (!payload) {
+          console.error(
+            "[EMPTY PAYLOAD]"
+          );
+
           return;
         }
 
-        const normalized = normalize(item);
+        const sessionId =
+          payload?.session_id ||
+          payload?.sessionId;
 
-        if (!normalized) return;
+        console.log(
+          "[PAYLOAD SESSION]",
+          sessionId
+        );
 
-        console.log("[BILLING ITEM RECEIVED]", normalized);
+        if (
+          sessionId &&
+          sessionRef.current &&
+          sessionId !==
+            sessionRef.current
+        ) {
+          console.error(
+            "[SESSION MISMATCH]"
+          );
 
-        onItemReceived(normalized);
+          console.error(
+            "Received:",
+            sessionId
+          );
+
+          console.error(
+            "Current:",
+            sessionRef.current
+          );
+
+          return;
+        }
+
+        const item =
+          payload?.item ||
+          payload;
+
+        console.log(
+          "[RAW ITEM]",
+          item
+        );
+
+        const normalized =
+          normalize(item);
+
+        if (!normalized) {
+          console.error(
+            "[NORMALIZATION FAILED]"
+          );
+
+          return;
+        }
+
+        console.log(
+          "[CALLING onItemReceived]"
+        );
+
+        onItemReceived(
+          normalized
+        );
+
+        console.log(
+          "[onItemReceived SUCCESS]"
+        );
       } catch (error) {
-        console.error("handleBillingScan error", error);
+        console.error(
+          "[handleBillingScan ERROR]"
+        );
+
+        console.error(error);
       }
     };
 
-    const handleBillingPreview = (payload: any) => {
+    const handleBillingPreview = (
+      payload: any
+    ) => {
       try {
-        const item = payload?.item || payload;
-        const normalized = normalize(item);
+        console.log(
+          "[billing-item-preview RECEIVED]",
+          payload
+        );
 
-        if (!normalized) return;
+        const item =
+          payload?.item ||
+          payload;
 
-        onPreview?.(normalized);
+        const normalized =
+          normalize(item);
+
+        if (!normalized) {
+          return;
+        }
+
+        console.log(
+          "[CALLING onPreview]"
+        );
+
+        onPreview?.(
+          normalized
+        );
       } catch (error) {
-        console.error("handleBillingPreview error", error);
+        console.error(
+          "[handleBillingPreview ERROR]"
+        );
+
+        console.error(error);
       }
     };
 
-    const handleRoomJoined = (data: any) => {
-      console.log("[ROOM JOINED]", data);
+    const handleRoomJoined = (
+      data: any
+    ) => {
+      console.log(
+        "=================================================="
+      );
+
+      console.log(
+        "[ROOM JOINED SUCCESS]"
+      );
+
+      console.log(data);
+
+      console.log(
+        "=================================================="
+      );
     };
 
-    socket.on("billing-item-scanned", handleBillingScan);
-    socket.on("billing-item-preview", handleBillingPreview);
-    socket.on("billing-session-joined", handleRoomJoined);
+    socket.on(
+      "billing-item-scanned",
+      handleBillingScan
+    );
 
-    socket.onAny((event, ...args) => {
-      console.log("[SOCKET EVENT]", event, args);
-    });
+    socket.on(
+      "billing-item-preview",
+      handleBillingPreview
+    );
+
+    socket.on(
+      "billing-session-joined",
+      handleRoomJoined
+    );
+
+    socket.onAny(
+      (event, ...args) => {
+        console.log(
+          "=================================================="
+        );
+
+        console.log(
+          "[SOCKET EVENT]"
+        );
+
+        console.log(
+          "Event:",
+          event
+        );
+
+        console.log(
+          "Args:",
+          args
+        );
+
+        console.log(
+          "=================================================="
+        );
+      }
+    );
 
     return () => {
-      socket.off("connect", handleConnect);
-      socket.off("connect_error", handleConnectError);
-      socket.off("disconnect", handleDisconnect);
+      console.log(
+        "[DESKTOP RECEIVER CLEANUP]"
+      );
 
-      socket.off("billing-item-scanned", handleBillingScan);
-      socket.off("billing-item-preview", handleBillingPreview);
-      socket.off("billing-session-joined", handleRoomJoined);
+      socket.off(
+        "connect",
+        handleConnect
+      );
+
+      socket.off(
+        "connect_error",
+        handleConnectError
+      );
+
+      socket.off(
+        "disconnect",
+        handleDisconnect
+      );
+
+      socket.off(
+        "billing-item-scanned",
+        handleBillingScan
+      );
+
+      socket.off(
+        "billing-item-preview",
+        handleBillingPreview
+      );
+
+      socket.off(
+        "billing-session-joined",
+        handleRoomJoined
+      );
     };
   }, [onItemReceived, onPreview]);
 
