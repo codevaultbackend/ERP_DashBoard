@@ -122,6 +122,7 @@ export type RequestItemApi = {
   id?: number;
   item_id: number;
   request_qty: number;
+  parent_batch_id?: number | null;
   approved_qty?: number;
   approved_weight?: number;
   status?: string;
@@ -342,60 +343,61 @@ export async function getReceivedStockRequests() {
   }
 }
 
-export async function createStockRequest(payload:any){
+export async function createStockRequest(payload: any) {
 
-const cleanPayload={
+  const cleanPayload = {
+    store_id: Number(payload.store_id),
 
-store_id:Number(payload.store_id),
+    priority: ["low", "medium", "high"].includes(payload.priority)
+      ? payload.priority
+      : "medium",
 
-priority:
-["low","medium","high"]
-.includes(payload.priority)
-?payload.priority
-:"medium",
+    category: payload.category || undefined,
 
-category:
-payload.category || undefined,
+    notes: payload.notes?.trim() || undefined,
 
-notes:
-payload.notes?.trim() || undefined,
+    items: (payload.items || [])
+      .map((item: any) => ({
+        item_id: Number(item.item_id),
+        request_qty: Number(item.request_qty),
+        parent_batch_id: item.parent_batch_id
+          ? Number(item.parent_batch_id)
+          : null,
+      }))
+      .filter(
+        (item) =>
+          item.item_id &&
+          item.request_qty > 0
+      ),
+  }; // <-- missing in your code
 
-items:
-(payload.items||[])
-.map((item:any)=>({
+  console.group("REQUEST PAYLOAD");
 
-item_id:Number(item.item_id),
+  console.log(cleanPayload);
 
-request_qty:Number(item.request_qty)
+  console.table(cleanPayload.items);
 
-}))
-.filter(
-item=>
-item.item_id &&
-item.request_qty>0
-)
+  console.groupEnd();
 
-};
+  console.group(
+    "REQUEST PAYLOAD"
+  );
 
-console.group(
-"REQUEST PAYLOAD"
-);
+  console.log(cleanPayload);
 
-console.log(cleanPayload);
+  console.table(
+    cleanPayload.items
+  );
 
-console.table(
-cleanPayload.items
-);
+  console.groupEnd();
 
-console.groupEnd();
+  const res =
+    await requestApi.post(
+      "/request/requests",
+      cleanPayload
+    );
 
-const res=
-await requestApi.post(
-"/request/requests",
-cleanPayload
-);
-
-return res.data;
+  return res.data;
 }
 
 export type ApproveDispatchItemPayload = {
@@ -483,10 +485,10 @@ export async function approveDispatchRequest(payload: ApproveDispatchPayload) {
     console.log("Files:", {
       driver_photo: payload.driver_photo
         ? {
-            name: payload.driver_photo.name,
-            type: payload.driver_photo.type,
-            size: payload.driver_photo.size,
-          }
+          name: payload.driver_photo.name,
+          type: payload.driver_photo.type,
+          size: payload.driver_photo.size,
+        }
         : null,
       dispatch_images: (payload.dispatch_images || []).map((file) => ({
         name: file.name,
@@ -495,17 +497,17 @@ export async function approveDispatchRequest(payload: ApproveDispatchPayload) {
       })),
       dispatch_video: payload.dispatch_video
         ? {
-            name: payload.dispatch_video.name,
-            type: payload.dispatch_video.type,
-            size: payload.dispatch_video.size,
-          }
+          name: payload.dispatch_video.name,
+          type: payload.dispatch_video.type,
+          size: payload.dispatch_video.size,
+        }
         : null,
       e_way_bill: payload.e_way_bill
         ? {
-            name: payload.e_way_bill.name,
-            type: payload.e_way_bill.type,
-            size: payload.e_way_bill.size,
-          }
+          name: payload.e_way_bill.name,
+          type: payload.e_way_bill.type,
+          size: payload.e_way_bill.size,
+        }
         : null,
     });
   });
@@ -550,10 +552,10 @@ export function getRequestApiErrorMessage(error: unknown) {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as
       | {
-          message?: string;
-          error?: string;
-          errors?: unknown;
-        }
+        message?: string;
+        error?: string;
+        errors?: unknown;
+      }
       | undefined;
 
     if (data?.message) return data.message;

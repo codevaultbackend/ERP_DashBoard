@@ -7,7 +7,7 @@ import {
 
 import type {
   RetailAudit,
-} from "../types/retail-audit.types";
+} from "@/features/head-office/district-audit/types/retail-audit.types";
 
 type Props = {
   audit: RetailAudit;

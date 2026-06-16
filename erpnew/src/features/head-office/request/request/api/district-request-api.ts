@@ -111,22 +111,27 @@ export type CategoryItemApi = {
   sku_code?: string;
   quantity?: number;
   available_qty?: number;
+
+  parent_batch_id?: number | string | null;
+  root_batch_id?: number | string | null;
+  batch_id?: number | string | null;
+  batch_no?: string | null;
 };
 
 export type DistrictStockRequestPayload = {
-  target_type: "head" | "retail",
-  to_store_id?: number,
-  to_store_code: string,
-  priority: string,
-  category?: string,
-  notes?: string,
-  items: [
-    {
-      item_id: number,
-      request_qty: number
-    }
-  ]
-}
+  target_type: "head" | "retail";
+  to_store_id?: number;
+  to_store_code: string;
+  priority: string;
+  category?: string;
+  notes?: string;
+
+  items: {
+    item_id: number;
+    parent_batch_id?: number | null;
+    request_qty: number;
+  }[];
+};
 
 
 export const getDistrictStores =

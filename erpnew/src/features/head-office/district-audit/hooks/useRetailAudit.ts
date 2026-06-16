@@ -17,7 +17,7 @@ import type {
 
 type Filters = {
   search: string;
-  retailStoreId: string | null;
+  retailStoreId: number | null;
   date: string;
 };
 
@@ -214,21 +214,15 @@ const fetchDistrictAudits =
       []
     );
 
-  const updateStore =
-    useCallback(
-      (
-        value:
-          | string
-          | null
-      ) => {
-        setFilters((prev) => ({
-          ...prev,
-          retailStoreId:
-            value,
-        }));
-      },
-      []
-    );
+ const updateStore = useCallback(
+  (value: number | null) => {
+    setFilters((prev) => ({
+      ...prev,
+      retailStoreId: value,
+    }));
+  },
+  []
+);
 
   const filteredAudits =
     useMemo(() => {

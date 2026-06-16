@@ -54,11 +54,14 @@ export default function BillSummaryCard({
   onCreateBill,
   onClearAll,
 }: Props) {
-  // ✅ SAFE HANDLER
+
   const handleCreateBill = () => {
-    if (typeof onCreateBill === "function") {
-      onCreateBill();
+    if (!items.length) {
+      console.warn("No items added");
+      return;
     }
+
+    onCreateBill?.();
   };
 
   return (
@@ -102,9 +105,7 @@ export default function BillSummaryCard({
         <button
           type="button"
           onClick={handleCreateBill}
-          disabled={
-            items.length === 0
-          }
+          disabled={items.length === 0}
           className={cn(
             "mt-[34px] inline-flex h-[60px] w-full items-center justify-center gap-[14px] rounded-full text-[19px] font-semibold text-white shadow-[0px_12px_26px_rgba(17,24,39,0.18)] transition",
             items.length === 0
@@ -181,7 +182,7 @@ export default function BillSummaryCard({
                     {formatCurrency(
                       (item.metalValue +
                         item.makingCharges) *
-                        item.qty
+                      item.qty
                     )}
                   </p>
                 </div>

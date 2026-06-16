@@ -66,9 +66,6 @@ export default function MobileNav({ items, pathname }: MobileNavProps) {
               pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
-
-              <>
-
                 <Link
                   key={item.href}
                   href={item.href}
@@ -97,8 +94,6 @@ export default function MobileNav({ items, pathname }: MobileNavProps) {
                     {item.label}
                   </span>
                 </Link>
-
-              </>
             );
           })}
           <div className="ml-auto shrink-0">

@@ -22,6 +22,32 @@ export default function DistrictAuditPage() {
   const [stores, setStores] = useState<RetailAuditStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [selectedStore, setSelectedStore] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState("");
+
+  const clearFilters = () => {
+    setSearch("");
+    setSelectedStore(null);
+    setSelectedDate("");
+  };
+
+  const filteredStores = stores.filter((store) => {
+    const matchesSearch =
+      !search ||
+      store.store_name
+        ?.toLowerCase()
+        .includes(search.toLowerCase()) ||
+      store.store_code
+        ?.toLowerCase()
+        .includes(search.toLowerCase());
+
+    const matchesStore =
+      !selectedStore ||
+      Number(store.id) === Number(selectedStore);
+
+    return matchesSearch && matchesStore;
+  });
 
   useEffect(() => {
     const fetchStores = async () => {
@@ -47,7 +73,16 @@ export default function DistrictAuditPage() {
   return (
     <div className="min-h-screen ">
       <RetailAuditHeader />
-      <RetailAuditFilters />
+      <RetailAuditFilters
+        search={search}
+        selectedStore={selectedStore}
+        selectedDate={selectedDate}
+        stores={stores}
+        onSearchChange={setSearch}
+        onStoreChange={setSelectedStore}
+        onDateChange={setSelectedDate}
+        onClearFilters={clearFilters}
+      />
 
       <div className="mx-auto w-full max-w-[1600px] ">
         {loading ? (

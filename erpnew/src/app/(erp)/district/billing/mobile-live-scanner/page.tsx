@@ -1,32 +1,14 @@
 "use client";
 
 import { Html5Qrcode } from "html5-qrcode";
-
-import {
-  ArrowLeft,
-  Loader2,
-  Play,
-  QrCode,
-  Send,
-  Square,
-  Wifi,
-} from "lucide-react";
-
+import { ArrowLeft, Loader2, Play, Square, Wifi } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-
-import {
-  Suspense,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 import { scanBillingItemByCode } from "@/features/retail/billing/billing-api";
-
 import { socket } from "../../../../../features/retail/billing/socket";
 
 export default function MobileLiveScannerPage() {
-
   return (
     <Suspense fallback={null}>
       <MobileScannerInner />
@@ -35,127 +17,92 @@ export default function MobileLiveScannerPage() {
 }
 
 function MobileScannerInner() {
+  const searchParams = useSearchParams();
 
-  const searchParams =
-    useSearchParams();
+  const sessionId = searchParams.get("session_id") || "";
+  const storeCode = searchParams.get("store_code") || "";
+  const organizationId = searchParams.get("organization_id") || "";
 
-  /**
-   * URL PARAMS
-   */
-  const sessionId =
-    searchParams.get(
-      "session_id"
-    ) || "";
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [cameraStarted, setCameraStarted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scanLockRef = useRef(false);
+  const sentCodesRef = useRef<Set<string>>(new Set());
+
+  const addLog = (msg: string) => {
+    const log = `${new Date().toLocaleTimeString()} - ${msg}`;
+    console.log(log);
+    setDebugLogs((prev) => [log, ...prev.slice(0, 40)]);
+  };
+
+  /* =========================================================
+     SOCKET INIT (CLEAN + SAFE)
+  ========================================================= */
   useEffect(() => {
-    if (sessionId) {
-      localStorage.setItem(
-        "billing_session_id",
-        sessionId
-      );
+    addLog("MOBILE SCANNER INIT");
 
-      console.log(
-        "MOBILE SESSION:",
-        sessionId
-      );
+    if (!sessionId) {
+      setError("Missing session_id");
+      return;
     }
-  }, [sessionId]);
 
-  const storeCode =
-    searchParams.get(
-      "store_code"
-    ) || "";
-
-  const organizationId =
-    searchParams.get(
-      "organization_id"
-    ) || "";
-
-  /**
-   * refs
-   */
-  const scannerRef =
-    useRef<Html5Qrcode | null>(
-      null
-    );
-
-  const scanLockRef =
-    useRef(false);
-
-  const sentCodesRef =
-    useRef(new Set<string>());
-
-  /**
-   * states
-   */
-  const [
-    socketConnected,
-    setSocketConnected,
-  ] = useState(false);
-
-  const [
-    cameraStarted,
-    setCameraStarted,
-  ] = useState(false);
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    sending,
-    setSending,
-  ] = useState(false);
-
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const [
-    success,
-    setSuccess,
-  ] = useState("");
-
-  /**
-   * socket setup
-   */
-  useEffect(() => {
-
-    if (
-      !socket.connected
-    ) {
+    if (!socket.connected) {
       socket.connect();
+    } else {
+      setSocketConnected(true);
+
+      socket.emit(
+        "join-billing-session",
+        `billing_session_${sessionId}`
+      );
+
+      addLog(
+        `JOINING ROOM: billing_session_${sessionId}`
+      );
     }
 
-    const onConnect =
-      () => {
+    const onConnect = () => {
+      setSocketConnected(true);
 
-        console.log(
-          "Mobile socket connected"
-        );
+      addLog(`SOCKET CONNECTED: ${socket.id}`);
 
-        setSocketConnected(
-          true
-        );
-      };
+      socket.emit(
+        "join-billing-session",
+        `billing_session_${sessionId}`
+      );
 
-    const onDisconnect =
-      () => {
+      addLog(
+        `JOINING ROOM: billing_session_${sessionId}`
+      );
+    };
+    const onSessionJoined = (
+      data: any
+    ) => {
+      addLog(
+        `JOINED ROOM: ${data.room}`
+      );
+    };
 
-        console.log(
-          "Mobile socket disconnected"
-        );
+    const onDisconnect = () => {
+      setSocketConnected(false);
+      addLog("SOCKET DISCONNECTED");
+    };
 
-        setSocketConnected(
-          false
-        );
-      };
+    const onItem = (payload: any) => {
+      addLog("SOCKET ITEM RECEIVED");
+      setSuccess(payload?.item?.item_name || "Item received");
+    };
+
+    socket.on("connect", onConnect);
 
     socket.on(
-      "connect",
-      onConnect
+      "billing-session-joined",
+      onSessionJoined
     );
 
     socket.on(
@@ -163,15 +110,22 @@ function MobileScannerInner() {
       onDisconnect
     );
 
-    setSocketConnected(
-      socket.connected
+    // IMPORTANT: backend event name must match EXACTLY
+    socket.on(
+      "billing-item-scanned",
+      onItem
     );
 
     return () => {
+      socket.off("connect", onConnect);
+      socket.off(
+        "billing-item-scanned",
+        onItem
+      );
 
       socket.off(
-        "connect",
-        onConnect
+        "billing-session-joined",
+        onSessionJoined
       );
 
       socket.off(
@@ -179,362 +133,150 @@ function MobileScannerInner() {
         onDisconnect
       );
     };
+  }, [sessionId, storeCode, organizationId]);
 
-  }, []);
-
-  /**
-   * cleanup
-   */
-  useEffect(() => {
-
-    return () => {
-      stopScanner();
-    };
-
-  }, []);
-
-  /**
-   * start scanner
-   */
-  async function startScanner() {
-
+  /* =========================================================
+     CAMERA START
+  ========================================================= */
+  const startScanner = async () => {
     try {
-
       setError("");
 
-      if (
-        !sessionId
-      ) {
+      if (!sessionId) throw new Error("Missing session_id");
 
-        throw new Error(
-          "Missing billing session"
-        );
+      if (scannerRef.current) {
+        await scannerRef.current.stop().catch(() => { });
+        await scannerRef.current.clear().catch(() => { });
+        scannerRef.current = null;
       }
 
-      const scanner =
-        new Html5Qrcode(
-          "reader"
-        );
-
-      scannerRef.current =
-        scanner;
+      const scanner = new Html5Qrcode("reader");
+      scannerRef.current = scanner;
 
       await scanner.start(
-        {
-          facingMode:
-            "environment",
-        },
-        {
-          fps: 15,
-          qrbox: 250,
-        },
-
-        async (
-          decodedText
-        ) => {
-
-          await onScanSuccess(
-            decodedText
-          );
-        }
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        onScanSuccess
       );
 
-      setCameraStarted(
-        true
-      );
-
-    } catch (error: any) {
-
-      console.error(
-        error
-      );
-
-      setError(
-        error?.message ||
-        "Camera failed"
-      );
+      setCameraStarted(true);
+      addLog("CAMERA STARTED");
+    } catch (err: any) {
+      setError(err.message);
+      addLog(`CAMERA ERROR: ${err.message}`);
     }
-  }
+  };
 
-  /**
-   * stop scanner
-   */
-  async function stopScanner() {
+  const stopScanner = async () => {
+    try {
+      if (!scannerRef.current) return;
+
+      await scannerRef.current.stop().catch(() => { });
+      await scannerRef.current.clear().catch(() => { });
+      scannerRef.current = null;
+
+      setCameraStarted(false);
+      addLog("CAMERA STOPPED");
+    } catch { }
+  };
+
+  /* =========================================================
+     SCAN HANDLER (FIXED CORE LOGIC)
+  ========================================================= */
+  const onScanSuccess = async (qrCode: string) => {
+    if (scanLockRef.current) return;
+
+    scanLockRef.current = true;
+    setLoading(true);
 
     try {
+      addLog(`QR RAW: ${qrCode}`);
 
-      const scanner =
-        scannerRef.current;
+      let code = qrCode;
 
-      if (
-        !scanner
-      ) {
+      try {
+        const parsed = JSON.parse(qrCode);
+        code =
+          parsed?.payload?.code ||
+          parsed?.code ||
+          parsed?.sku_code ||
+          parsed?.article_code ||
+          qrCode;
+      } catch { }
+
+      code = String(code).trim();
+
+      if (!code) throw new Error("Invalid QR code");
+
+      // prevent duplicates (VERY IMPORTANT FIX)
+      if (sentCodesRef.current.has(code)) {
+        addLog("DUPLICATE BLOCKED");
         return;
       }
 
-      await scanner.stop();
+      sentCodesRef.current.add(code);
 
-      await scanner.clear();
+      addLog(`FINAL CODE: ${code}`);
 
-      scannerRef.current =
-        null;
+      // CALL API ONLY ONCE
+      const item = await scanBillingItemByCode(code, sessionId);
 
-      setCameraStarted(
-        false
-      );
+      addLog("SCAN SUCCESS API OK");
 
-    } catch { }
-  }
+      setSuccess(item?.item_name || "Item scanned");
 
-  /**
-   * scan success
-   */
-  async function onScanSuccess(
-    qrCode: string
-  ) {
-    console.log(
-      "QR DETECTED =>",
-      qrCode
-    );
+      /**
+       * IMPORTANT:
+       * Backend already emits socket in scanBillingItem
+       * So NO need to emit again from frontend
+       */
 
-    if (scanLockRef.current) {
-      return;
-    }
-
-    if (
-      sentCodesRef.current.has(
-        qrCode
-      )
-    ) {
-      setSuccess(
-        "Item sent to desktop"
-      );
-
-      navigator.vibrate?.([120]);
-
-      return;
-    }
-
-    try {
-      scanLockRef.current = true;
-
-      setLoading(true);
-
-      setError("");
-
-      setSuccess("");
-      console.log(
-        "MOBILE SESSION ID:",
-        sessionId
-      );
-
-      console.log(
-        "SCANNING QR:",
-        qrCode
-      );
-
-      const item =
-        await scanBillingItemByCode(
-          qrCode,
-          sessionId
-        );
-
-      console.log(
-        "API RESPONSE =>",
-        item
-      );
-
-      if (!item) {
-        throw new Error(
-          "Item not found"
-        );
-      }
-
-      setSending(true);
-
-      console.log(
-        "ITEM FETCHED SUCCESSFULLY",
-        {
-          sessionId,
-          storeCode,
-          organizationId,
-          item,
-        }
-      );
-
-      sentCodesRef.current.add(
-        qrCode
-      );
-
-      setSuccess(
-        "Item sent to desktop"
-      );
-
-      navigator.vibrate?.([120]);
-
-    } catch (error: any) {
-      console.error(error);
-
-      setError(
-        error?.message ||
-        "Scan failed"
-      );
+    } catch (err: any) {
+      addLog(`SCAN ERROR: ${err.message}`);
+      setError(err.message || "Scan failed");
     } finally {
+      scanLockRef.current = false;
       setLoading(false);
-
-      setSending(false);
-
-      scanLockRef.current =
-        false;
     }
-  }
+  };
 
+  /* =========================================================
+     UI
+  ========================================================= */
   return (
     <main className="min-h-screen bg-[#F4F6FA] pb-20">
-
       <div className="mx-auto max-w-[480px]">
 
-        <header className="sticky top-0 z-40 border-b border-[#E5E7EB] bg-white/95 px-4 py-4 backdrop-blur-xl">
-
-          <div className="flex items-center justify-between gap-3">
-
-            <button
-              type="button"
-              onClick={() =>
-                window.history.back()
-              }
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F3F4F6]"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-
-            <div className="text-center">
-
-              <h1 className="text-[18px] font-bold">
-                Mobile Scanner
-              </h1>
-
-              <p className="text-[12px] text-[#667085]">
-                Live billing scan
-              </p>
-            </div>
-
-            <div
-              className={`flex h-10 w-10 items-center justify-center rounded-full ${socketConnected
-                ? "bg-green-100 text-green-600"
-                : "bg-red-100 text-red-600"
-                }`}
-            >
-              <Wifi className="h-5 w-5" />
-            </div>
+        <header className="p-4 flex justify-between">
+          <ArrowLeft onClick={() => history.back()} />
+          <div>
+            <h1>Live Scanner</h1>
+            <p>{sessionId}</p>
           </div>
+          <Wifi color={socketConnected ? "green" : "red"} />
         </header>
 
-        <div className="p-4">
+        {error && <div className="bg-red-200 p-2">{error}</div>}
+        {success && <div className="bg-green-200 p-2">{success}</div>}
 
-          {error ? (
-            <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
-              {error}
-            </div>
-          ) : null}
+        <div id="reader" className="h-[400px] bg-black" />
 
-          {success ? (
-            <div className="mb-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-700">
-              {success}
-            </div>
-          ) : null}
+        <div className="flex gap-2 mt-4">
+          <button onClick={startScanner} disabled={cameraStarted}>
+            <Play /> Start
+          </button>
 
-          <div className="overflow-hidden rounded-[30px] border border-[#111827] bg-[#050816]">
-
-            <div className="flex items-center justify-between px-4 py-4">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
-
-                  <QrCode className="h-5 w-5" />
-                </div>
-
-                <div>
-
-                  <p className="text-sm font-bold text-white">
-                    Product Scanner
-                  </p>
-
-                  <p className="text-xs text-white/60">
-                    Scan QR
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white">
-
-                {loading
-                  ? "Scanning..."
-                  : "Ready"}
-              </div>
-            </div>
-
-            <div className="aspect-[9/13] bg-black">
-
-              <div
-                id="reader"
-                className="h-full w-full"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 p-4">
-
-              <button
-                type="button"
-                onClick={
-                  startScanner
-                }
-                disabled={
-                  cameraStarted
-                }
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-white font-bold text-[#111827]"
-              >
-
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-
-                Start
-              </button>
-
-              <button
-                type="button"
-                onClick={
-                  stopScanner
-                }
-                disabled={
-                  !cameraStarted
-                }
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-white/10 font-bold text-white"
-              >
-
-                <Square className="h-4 w-4" />
-
-                Stop
-              </button>
-            </div>
-          </div>
-
-          {(loading ||
-            sending) && (
-              <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-white p-4 text-sm font-semibold">
-
-                <Loader2 className="h-4 w-4 animate-spin" />
-
-                {sending
-                  ? "Sending to desktop..."
-                  : "Fetching item..."}
-              </div>
-            )}
+          <button onClick={stopScanner} disabled={!cameraStarted}>
+            <Square /> Stop
+          </button>
         </div>
+
+        {loading && (
+          <div className="flex items-center gap-2 mt-2">
+            <Loader2 className="animate-spin" />
+            Processing...
+          </div>
+        )}
       </div>
     </main>
   );

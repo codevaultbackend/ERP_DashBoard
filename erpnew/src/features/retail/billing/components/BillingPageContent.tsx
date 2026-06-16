@@ -73,13 +73,13 @@ function getScannedCode(
 ) {
   return String(
     item.product_code ||
-      item.article_code ||
-      item.sku_code ||
-      item.code ||
-      item.barcode ||
-      item.raw_qr_value ||
-      item.item_id ||
-      ""
+    item.article_code ||
+    item.sku_code ||
+    item.code ||
+    item.barcode ||
+    item.raw_qr_value ||
+    item.item_id ||
+    ""
   ).trim();
 }
 
@@ -133,8 +133,8 @@ type StoredBillingSession = {
   customerPhone: string;
 
   lastScannedItem:
-    | LiveScannedBillingItem
-    | null;
+  | LiveScannedBillingItem
+  | null;
 
   updatedAt: string;
 };
@@ -172,7 +172,7 @@ function mapScannedItemToCartItem(
   const netWeight =
     toNumber(
       item.net_weight ??
-        item.weight,
+      item.weight,
       0
     );
 
@@ -184,34 +184,34 @@ function mapScannedItemToCartItem(
 
   const rate = toNumber(
     item.rate ??
-      item.sale_rate,
+    item.sale_rate,
     0
   );
 
   const metalValue =
     item.metal_value !== undefined
       ? toNumber(
-          item.metal_value
-        )
+        item.metal_value
+      )
       : rate * netWeight;
 
   const makingCharges =
     item.making_charge_value !==
-    undefined
+      undefined
       ? toNumber(
-          item.making_charge_value
-        )
+        item.making_charge_value
+      )
       : (metalValue *
-          toNumber(
-            item.making_charge_percent,
-            0
-          )) /
-        100;
+        toNumber(
+          item.making_charge_percent,
+          0
+        )) /
+      100;
 
   return {
     id: toNumber(
       item.item_id ||
-        item.id,
+      item.id,
       Date.now()
     ),
 
@@ -402,6 +402,18 @@ export default function BillingPageContent() {
 
   const [scanError, setScanError] =
     useState("");
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  
+
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [invoiceForm, setInvoiceForm] =
+    useState<InvoiceCustomerForm>({
+      name: "",
+      phone: "",
+      pan_card_number: "",
+      pincode: "",
+      address: "",
+    });
 
   const [
     lastScannedItem,
@@ -429,23 +441,139 @@ export default function BillingPageContent() {
 
       setCustomerName(
         stored.customerName ||
-          ""
+        ""
       );
 
       setCustomerPhone(
         stored.customerPhone ||
-          ""
+        ""
       );
 
       setLastScannedItem(
         stored.lastScannedItem ||
-          null
+        null
       );
     }
 
     hydratedRef.current = true;
 
   }, []);
+  const handleCreateBill = () => {
+    if (!items.length) {
+      setScanError("No items added");
+      return;
+    }
+
+    setShowInvoiceModal(true);
+  };
+
+  const handleInvoiceChange = (
+    field: keyof InvoiceCustomerForm,
+    value: string
+  ) => {
+    setInvoiceForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+  const handleInvoiceSubmit = async (
+  customerForm: InvoiceCustomerForm
+) => {
+  try {
+    setCreatingInvoice(true);
+
+    const payload = {
+      customer: {
+        name: customerForm.name,
+        phone: customerForm.phone,
+        pan_card_number:
+          customerForm.pan_card_number,
+        pincode:
+          customerForm.pincode,
+        address:
+          customerForm.address,
+      },
+
+      items: items.map(
+        (
+          item
+        ): CreateBillItemPayload => ({
+          item_id:
+            item.item_id ||
+            item.id,
+
+          product_code:
+            item.code,
+
+          description:
+            item.name,
+
+          qty:
+            Number(
+              item.qty || 1
+            ),
+
+          net_weight:
+            Number(
+              item.net_weight ||
+              item.weight ||
+              0
+            ),
+
+          rate:
+            Number(
+              item.rate || 0
+            ),
+
+          making_charge_percent:
+            Number(
+              item.making_charge_percent ||
+              0
+            ),
+
+          unit:
+            item.unit ||
+            "gram",
+        })
+      ),
+    };
+
+    console.log(
+      "CREATE BILL PAYLOAD",
+      payload
+    );
+
+    const response =
+      await createBillingInvoice(
+        payload
+      );
+
+    console.log(
+      "CREATE BILL RESPONSE",
+      response
+    );
+
+    setBillSuccess(
+      response?.message ||
+      "Invoice created successfully"
+    );
+
+    setShowInvoiceModal(false);
+
+    endBillingSession();
+
+  } catch (error: any) {
+
+    setScanError(
+      error?.message ||
+      "Failed to create invoice"
+    );
+
+  } finally {
+
+    setCreatingInvoice(false);
+  }
+};
 
   useEffect(() => {
 
@@ -535,7 +663,7 @@ export default function BillingPageContent() {
         ) =>
           acc +
           item.weight *
-            item.qty,
+          item.qty,
         0
       );
 
@@ -551,7 +679,7 @@ export default function BillingPageContent() {
         ) =>
           acc +
           item.metalValue *
-            item.qty,
+          item.qty,
         0
       );
 
@@ -567,7 +695,7 @@ export default function BillingPageContent() {
         ) =>
           acc +
           item.makingCharges *
-            item.qty,
+          item.qty,
         0
       );
 
@@ -689,14 +817,14 @@ export default function BillingPageContent() {
                 item
               ) =>
                 item.code.toLowerCase() ===
-                  cartItem.code.toLowerCase() ||
+                cartItem.code.toLowerCase() ||
                 (!!cartItem.item_id &&
                   String(
                     item.item_id
                   ) ===
-                    String(
-                      cartItem.item_id
-                    ))
+                  String(
+                    cartItem.item_id
+                  ))
             );
 
           if (
@@ -737,9 +865,9 @@ export default function BillingPageContent() {
         const unique =
           String(
             scannedItem.raw_qr_value ||
-              scannedItem.item_id ||
-              scannedItem.code ||
-              ""
+            scannedItem.item_id ||
+            scannedItem.code ||
+            ""
           );
 
         if (
@@ -796,7 +924,7 @@ export default function BillingPageContent() {
 
       setScanError(
         error?.message ||
-          "Failed to scan item"
+        "Failed to scan item"
       );
 
     } finally {
@@ -992,35 +1120,7 @@ export default function BillingPageContent() {
             {billSuccess}
           </div>
         ) : null}
-
-        {lastScannedItem ? (
-          <ScanSummaryCard
-            item={
-              lastScannedItem
-            }
-            onClose={() =>
-              setLastScannedItem(
-                null
-              )
-            }
-          />
-        ) : null}
-
-        <BillingCustomerFields
-          customerName={
-            customerName
-          }
-          customerPhone={
-            customerPhone
-          }
-          setCustomerName={
-            setCustomerName
-          }
-          setCustomerPhone={
-            setCustomerPhone
-          }
-        />
-
+        
         <div className="grid grid-cols-1 gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_376px]">
 
           <BillingItemsCard
@@ -1058,131 +1158,24 @@ export default function BillingPageContent() {
 
           <BillSummaryCard
             items={items}
-            metalValue={
-              metalValue
-            }
-            makingCharges={
-              makingCharges
-            }
+            metalValue={metalValue}
+            makingCharges={makingCharges}
             gst={gst}
-            grandTotal={
-              grandTotal
-            }
-            totalItems={
-              totalItems
-            }
-            totalWeight={
-              totalWeight
-            }
-            onClearAll={
-              endBillingSession
-            }
+            grandTotal={grandTotal}
+            totalItems={totalItems}
+            totalWeight={totalWeight}
+            onCreateBill={handleCreateBill}
+            onClearAll={endBillingSession}
+          />
+          <CreateInvoiceModal
+            open={showInvoiceModal}
+            loading={creatingInvoice}
+            form={invoiceForm}
+            onClose={() => setShowInvoiceModal(false)}
+            onChange={handleInvoiceChange}
+            onSubmit={handleInvoiceSubmit}
           />
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ScanSummaryCard({
-  item,
-  onClose,
-}: {
-  item: LiveScannedBillingItem;
-
-  onClose: () => void;
-}) {
-
-  const name =
-    item.item_name ||
-    item.description ||
-    item.name ||
-    "Scanned Item";
-
-  const code =
-    item.product_code ||
-    item.article_code ||
-    item.sku_code ||
-    item.code ||
-    "-";
-
-  return (
-    <div className="relative mb-5 overflow-hidden rounded-3xl border border-[#BBF7D0] bg-white p-4 shadow-[0px_8px_24px_rgba(15,23,42,0.05)] sm:p-5">
-
-      <div className="flex flex-col gap-5">
-
-        <div className="flex items-start gap-3 pr-10">
-
-          <div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-2xl bg-[#F5F3FF] text-[#8B5CF6]">
-
-            <ScanLine className="h-6 w-6" />
-          </div>
-
-          <div className="min-w-0 flex-1">
-
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700 sm:text-[12px]">
-
-              <CheckCircle2 className="h-4 w-4" />
-
-              Item Scanned Successfully
-            </div>
-
-            <h3 className="break-words text-[18px] font-semibold tracking-[-0.03em] text-[#111827] sm:text-[20px]">
-              {name}
-            </h3>
-
-            <p className="mt-1 break-all text-[12px] font-medium text-[#667085] sm:text-[13px]">
-              {code}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-
-          <MiniStat
-            label="Purity"
-            value={
-              item.purity ||
-              "-"
-            }
-          />
-
-          <MiniStat
-            label="Net Wt"
-            value={formatWeight(
-              toNumber(
-                item.net_weight
-              )
-            )}
-          />
-
-          <MiniStat
-            label="Rate"
-            value={formatCurrency(
-              toNumber(
-                item.rate ||
-                  item.sale_rate
-              )
-            )}
-          />
-
-          <MiniStat
-            label="Total"
-            value={formatCurrency(
-              toNumber(
-                item.total_amount
-              )
-            )}
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] text-[#667085] transition hover:bg-[#E5E7EB]"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );

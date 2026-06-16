@@ -1,6 +1,12 @@
 "use client";
 
-import { ArrowUpRight, Box, CircleCheck, MoveDownRight, Truck } from "lucide-react";
+import {
+  ArrowUpRight,
+  Box,
+  CircleCheck,
+  MoveDownRight,
+  Truck,
+} from "lucide-react";
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -63,38 +69,59 @@ export default function RequestStatCards({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4  xl:grid-cols-4 lg:grid-cols-4 xl:gap-5">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((item) => {
         const Icon = item.icon;
 
         return (
           <article
             key={item.key}
-            className="min-h-[132px] rounded-erp-xl border border-erp-border bg-erp-card px-4 py-4 shadow-erp-card sm:min-h-[148px] sm:px-5 sm:py-5 xl:min-h-[166px]"
+            className="
+              rounded-[32px]
+              border border-erp-border
+              bg-erp-card
+              shadow-erp-card
+              p-4
+              sm:p-5
+              xl:p-6
+              min-h-[140px]
+              sm:min-h-[160px]
+              transition-all
+            "
           >
             <div
               className={cn(
-                "flex h-[54px] w-[54px] items-center justify-center rounded-erp-md",
+                "flex items-center justify-center rounded-xl",
+                "h-11 w-11 sm:h-12 sm:w-12 xl:h-14 xl:w-14",
                 toneClasses[item.tone]
               )}
             >
-              <Icon className="h-[23px] w-[23px] stroke-[1.9]" />
+              <Icon className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2]" />
             </div>
 
-            <div className="mt-5 sm:mt-6">
-              <p className="text-[15px] font-normal leading-[22px] tracking-[-0.02em] text-[#282828] sm:text-[16px]">
+            <div className="mt-4 sm:mt-5">
+              <p className="text-sm font-medium text-[#282828]">
                 {item.title}
               </p>
 
-              <div className="mt-2 flex items-end justify-between gap-3">
-                <h3 className="text-[31px] font-semibold leading-[36px] tracking-[-0.04em] text-black sm:text-[34px] sm:leading-[40px]">
+              <div className="mt-3 flex items-end justify-between gap-2">
+                <h3
+                  className="
+                    font-semibold
+                    text-[#000]
+                    leading-none
+                    text-2xl
+                    sm:text-3xl
+                    xl:text-[38px]
+                  "
+                >
                   {values[item.key]}
                 </h3>
 
                 {item.change ? (
                   <div
                     className={cn(
-                      "flex shrink-0 items-center gap-1 text-[14px] font-semibold leading-[20px] tracking-[-0.02em]",
+                      "flex items-center gap-1 text-xs sm:text-sm font-semibold",
                       item.changeTone === "red"
                         ? "text-erp-danger"
                         : "text-erp-success"
