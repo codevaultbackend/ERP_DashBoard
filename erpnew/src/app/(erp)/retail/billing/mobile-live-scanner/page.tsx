@@ -51,7 +51,20 @@ function MobileScannerInner() {
       return;
     }
 
-    if (!socket.connected) socket.connect();
+    if (!socket.connected) {
+      socket.connect();
+    } else {
+      setSocketConnected(true);
+
+      socket.emit(
+        "join-billing-session",
+        `billing_session_${sessionId}`
+      );
+
+      addLog(
+        `JOINING ROOM: billing_session_${sessionId}`
+      );
+    }
 
     const onConnect = () => {
       setSocketConnected(true);
@@ -105,6 +118,10 @@ function MobileScannerInner() {
 
     return () => {
       socket.off("connect", onConnect);
+      socket.off(
+        "billing-item-scanned",
+        onItem
+      );
 
       socket.off(
         "billing-session-joined",

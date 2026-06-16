@@ -63,8 +63,12 @@ export default function DesktopBillingScannerReceiver({
         stone_weight: Number(rawItem.stone_weight || 0),
         stone_amount: Number(rawItem.stone_amount || 0),
 
-        making_charge_percent: Number(rawItem.making_charge_percent || 0),
-        making_charge_value: Number(rawItem.making_charge_value || 0),
+        making_charge_percent: Number(
+          rawItem.making_charge_percent || 0
+        ),
+        making_charge_value: Number(
+          rawItem.making_charge_value || 0
+        ),
 
         total_amount: Number(rawItem.total_amount || 0),
 
@@ -77,16 +81,27 @@ export default function DesktopBillingScannerReceiver({
         qr_type: rawItem.qr_type,
         qr_code_url: rawItem.qr_code_url,
 
-        scanned_at: rawItem.scanned_at || new Date().toISOString(),
+        scanned_at:
+          rawItem.scanned_at || new Date().toISOString(),
       };
     };
 
     const extractItem = (payload: any) => {
-      return payload?.item || payload?.data?.item || payload?.data || payload;
+      return (
+        payload?.item ||
+        payload?.data?.item ||
+        payload?.data ||
+        payload
+      );
     };
 
     const extractSession = (payload: any) => {
-      return payload?.session_id || payload?.sessionId || payload?.data?.session_id;
+      return (
+        payload?.session_id ||
+        payload?.sessionId ||
+        payload?.data?.session_id ||
+        payload?.item?.session_id
+      );
     };
 
     const handleIncoming = (payload: any) => {
@@ -97,9 +112,13 @@ export default function DesktopBillingScannerReceiver({
       if (
         sessionId &&
         sessionRef.current &&
-        sessionId !== sessionRef.current
+        String(sessionId) !== String(sessionRef.current)
       ) {
-        console.warn("⚠️ SESSION MISMATCH IGNORED");
+        console.warn(
+          "⚠️ SESSION MISMATCH",
+          sessionId,
+          sessionRef.current
+        );
         return;
       }
 
@@ -111,9 +130,14 @@ export default function DesktopBillingScannerReceiver({
         return;
       }
 
-      // prevent duplicates
-      if (normalized.id && handledRef.current.has(String(normalized.id))) {
-        console.warn("🔁 DUPLICATE IGNORED:", normalized.id);
+      if (
+        normalized.id &&
+        handledRef.current.has(String(normalized.id))
+      ) {
+        console.warn(
+          "🔁 DUPLICATE ITEM IGNORED:",
+          normalized.id
+        );
         return;
       }
 
@@ -121,13 +145,15 @@ export default function DesktopBillingScannerReceiver({
         handledRef.current.add(String(normalized.id));
       }
 
-      const isPreview = payload?.type === "preview";
+      const isPreview =
+        payload?.type === "preview" ||
+        payload?.preview === true;
 
       if (isPreview) {
-        console.log("👁 PREVIEW ITEM");
+        console.log("👁 PREVIEW ITEM:", normalized);
         onPreview?.(normalized);
       } else {
-        console.log("✅ FINAL ITEM");
+        console.log("✅ FINAL ITEM:", normalized);
         onItemReceived(normalized);
       }
     };
@@ -135,20 +161,40 @@ export default function DesktopBillingScannerReceiver({
     const handleConnect = () => {
       console.log("🟢 SOCKET CONNECTED:", socket.id);
 
-      socket.emit("join-billing-session", {
-        session_id: billingSessionId,
-        room,
-      });
+      console.log("📡 JOINING ROOM:", room);
+
+      // Backend expects STRING
+      socket.emit("join-billing-session", room);
+    };
+
+    const handleRoomJoined = (data: any) => {
+      console.log("📡 ROOM JOINED:", data);
+    };
+
+    const handleConnectError = (err: any) => {
+      console.error("❌ SOCKET CONNECT ERROR:", err);
     };
 
     if (!socket.connected) {
       socket.connect();
+    } else {
+      handleConnect();
     }
 
     socket.on("connect", handleConnect);
 
-    // 🔥 IMPORTANT: unified events (covers backend inconsistency)
+    socket.on(
+      "billing-session-joined",
+      handleRoomJoined
+    );
+
+    socket.on(
+      "connect_error",
+      handleConnectError
+    );
+
     const events = [
+      "billing-item-scanned", // backend emits this
       "billing:item_scanned",
       "billing:item_preview",
       "billing-scan",
@@ -160,12 +206,18 @@ export default function DesktopBillingScannerReceiver({
       socket.on(event, handleIncoming);
     });
 
-    socket.on("billing-session-joined", (data) => {
-      console.log("📡 ROOM JOINED:", data);
-    });
-
     return () => {
       socket.off("connect", handleConnect);
+
+      socket.off(
+        "billing-session-joined",
+        handleRoomJoined
+      );
+
+      socket.off(
+        "connect_error",
+        handleConnectError
+      );
 
       events.forEach((event) => {
         socket.off(event, handleIncoming);
