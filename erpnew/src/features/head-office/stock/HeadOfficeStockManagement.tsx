@@ -394,11 +394,11 @@ function StockStatCards({ cards }: { cards: StockCards }) {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 max-[768px]:grid-cols-2 xl:grid-cols-4">
       {stats.map((item) => (
         <div
           key={item.id}
-          className="flex min-h-[153px] flex-col justify-between rounded-erp-2xl border border-erp-border bg-erp-card px-[18px] py-[16px] shadow-erp-card"
+          className="flex max-h-[153px] flex-col justify-between rounded-erp-2xl border border-erp-border bg-erp-card px-[18px] py-[16px] shadow-erp-card"
         >
           <div
             className={cn(

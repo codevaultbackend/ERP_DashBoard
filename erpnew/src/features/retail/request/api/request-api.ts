@@ -404,6 +404,7 @@ export type ApproveDispatchItemPayload = {
   item_id: number;
   qty: number;
   approved_qty?: number;
+  parent_batch_id?: number | null;
   weight?: number;
   rate?: number;
   remarks?: string | null;
@@ -428,7 +429,9 @@ export type ApproveDispatchPayload = {
   e_way_bill?: File | null;
 };
 
-function normalizeApproveDispatchItems(items: ApproveDispatchItemPayload[]) {
+function normalizeApproveDispatchItems(
+  items: ApproveDispatchItemPayload[]
+) {
   return (items || [])
     .map((item) => {
       const qty = Number(item.qty || item.approved_qty || 0);
@@ -437,6 +440,9 @@ function normalizeApproveDispatchItems(items: ApproveDispatchItemPayload[]) {
         item_id: Number(item.item_id),
         qty,
         approved_qty: qty,
+        parent_batch_id: item.parent_batch_id
+          ? Number(item.parent_batch_id)
+          : null,
         weight: Number(item.weight || 0),
         rate: Number(item.rate || 0),
         remarks: item.remarks || null,

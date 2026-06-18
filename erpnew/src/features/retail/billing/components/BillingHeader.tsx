@@ -4,21 +4,24 @@ import { QrCode, Wifi } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  isDistrictUser,
+  isRetailUser,
+} from "@/core/auth/permissions";
+
 export default function BillingHeader() {
   const [billingSessionId, setBillingSessionId] = useState<string>("");
   const [storeCode, setStoreCode] = useState<string>("");
   const [organizationId, setOrganizationId] = useState<string>("");
 
   /**
-   * SAFE INIT (runs once)
+   * INIT (runs once)
    */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     try {
-      /**
-       * SESSION (single source of truth)
-       */
+      // SESSION ID
       let sessionId = localStorage.getItem("billing_session_id");
 
       if (!sessionId) {
@@ -28,11 +31,8 @@ export default function BillingHeader() {
 
       setBillingSessionId(sessionId);
 
-      /**
-       * USER DATA
-       */
+      // USER DATA
       const userRaw = localStorage.getItem("user");
-
       if (!userRaw) return;
 
       const user = JSON.parse(userRaw);
@@ -65,10 +65,10 @@ export default function BillingHeader() {
   }, []);
 
   /**
-   * SCANNER URL (stable + safe)
+   * ROLE-BASED SCANNER URL
    */
   const scannerUrl = useMemo(() => {
-    if (!billingSessionId) return "#";
+    if (!billingSessionId) return "";
 
     const params = new URLSearchParams();
 
@@ -82,7 +82,17 @@ export default function BillingHeader() {
       params.set("organization_id", organizationId);
     }
 
-    return `/retail/billing/mobile-live-scanner?${params.toString()}`;
+    // ROLE ROUTING
+    let basePath = "/retail/billing/mobile-live-scanner";
+
+    if (isDistrictUser()) {
+      basePath =
+        "/district/billing/mobile-live-scanner";
+    } else if (isRetailUser()) {
+      basePath = "/retail/billing/mobile-live-scanner";
+    }
+
+    return `${basePath}?${params.toString()}`;
   }, [billingSessionId, storeCode, organizationId]);
 
   return (
@@ -107,7 +117,7 @@ export default function BillingHeader() {
       {/* RIGHT */}
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href={scannerUrl}
+          href={scannerUrl || "#"}
           target="_blank"
           className={`flex h-[44px] items-center gap-2 rounded-full px-4 text-white shadow transition ${
             billingSessionId

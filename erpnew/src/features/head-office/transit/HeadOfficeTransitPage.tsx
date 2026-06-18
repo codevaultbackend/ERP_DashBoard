@@ -42,6 +42,7 @@ import {
   isDeliveredStatus,
   isInTransitStatus,
 } from "../../retail/transit/utils";
+import FilterDropdown from "./FilterDropdown";
 
 type SummaryState = {
   total: number;
@@ -301,22 +302,31 @@ export default function HeadOfficeTransitPage({
             iconClass="text-erp-primary"
           />
         </section>
-
-        <section className="mt-6 rounded-[24px] border border-erp-border bg-white p-4 shadow-erp-card">
+        <section
+          className="
+    mt-6
+    rounded-[24px]
+    border
+    border-erp-border
+    bg-white
+    p-5
+    lg:p-6
+    shadow-erp-card
+  "
+        >
           <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
-
-            {/* SEARCH */}
-            <div className="relative flex-1">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[280px]">
               <Search
                 className="
-          absolute
-          left-4
-          top-1/2
-          h-5
-          w-5
-          -translate-y-1/2
-          text-erp-muted
-        "
+        absolute
+        left-4
+        top-1/2
+        h-5
+        w-5
+        -translate-y-1/2
+        text-erp-muted
+      "
               />
 
               <input
@@ -326,217 +336,100 @@ export default function HeadOfficeTransitPage({
                 }
                 placeholder="Search Tracking ID, District Store or Retail Store..."
                 className="
-          h-14
-          w-full
-          rounded-full
-          border
-          border-erp-border
-          bg-[#F8FAFC]
-          pl-12
-          pr-4
-          text-sm
-          outline-none
-          transition
-          focus:border-erp-primary
-          focus:ring-2
-          focus:ring-erp-primary/10
-        "
+        h-14
+        w-full
+        rounded-full
+        border
+        border-erp-border
+        bg-[#F8FAFC]
+        pl-12
+        pr-4
+        text-sm
+        outline-none
+        transition
+        focus:border-erp-primary
+        focus:ring-2
+        focus:ring-erp-primary/10
+      "
               />
             </div>
 
-            {/* ALL TRANSITS */}
-            <div className="relative w-full lg:min-w-[180px] lg:max-w-[180px]">
-              <select
+            {/* Transit */}
+            <div className="!w-full lg:w-[180px]">
+              <FilterDropdown
                 value={filters.status}
-                onChange={(e) =>
+                placeholder="All Transits"
+                onChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
-                    status: e.target.value,
+                    status: value,
                   }))
                 }
-                className="
-h-14
-w-full
-appearance-none
-rounded-full
-border
-border-[#E2E8F0]
-bg-white
-px-5
-pr-10
-text-sm
-font-medium
-text-[#0F172A]
-shadow-sm
-outline-none
-cursor-pointer
-transition-all
-duration-200
-hover:border-[#CBD5E1]
-hover:shadow-md
-focus:border-[#6366F1]
-focus:ring-4
-focus:ring-[#6366F1]/10
-"
-              >
-                <option value="all">
-                  All Transits
-                </option>
-
-                <option value="my_transits">
-                  My Transits
-                </option>
-              </select>
-
-              <ChevronDown
-                className="
-          pointer-events-none
-          absolute
-          right-4
-          top-1/2
-          h-4
-          w-4
-          -translate-y-1/2
-          text-erp-muted
-        "
+                options={[
+                  {
+                    label: "All Transits",
+                    value: "all",
+                  },
+                  {
+                    label: "My Transits",
+                    value: "my_transits",
+                  },
+                ]}
               />
             </div>
 
-            <div className="relative w-full lg:min-w-[180px] lg:max-w-[180px]">
-              <select
+            {/* District */}
+            <div className="w-full lg:w-[220px]">
+              <FilterDropdown
                 value={filters.district_store_code}
-                onChange={(e) =>
+                placeholder="District Store"
+                onChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
-                    district_store_code: e.target.value,
+                    district_store_code: value,
                     retail_store_code: "all",
                   }))
                 }
-                className="
-h-14
-w-full
-appearance-none
-rounded-full
-border
-border-[#E2E8F0]
-bg-white
-px-5
-pr-10
-text-sm
-font-medium
-text-[#0F172A]
-shadow-sm
-outline-none
-cursor-pointer
-transition-all
-duration-200
-hover:border-[#CBD5E1]
-hover:shadow-md
-focus:border-[#6366F1]
-focus:ring-4
-focus:ring-[#6366F1]/10
-"
-              >
-                <option value="all">
-                  District Store
-                </option>
-
-                {districtStores.map(
-                  (store: any) => (
-                    <option
-                      key={store.store_code}
-                      value={store.store_code}
-                      title={store.store_name}
-                    >
-                      {store.store_name}
-                    </option>
-                  )
-                )}
-              </select>
-
-              <ChevronDown
-                className="
-          pointer-events-none
-          absolute
-          right-4
-          top-1/2
-          h-4
-          w-4
-          -translate-y-1/2
-          text-erp-muted
-        "
+                options={[
+                  {
+                    label: "District Store",
+                    value: "all",
+                  },
+                  ...districtStores.map((store) => ({
+                    label: store.store_name,
+                    value: store.store_code,
+                  })),
+                ]}
               />
             </div>
 
-            {/* RETAIL */}
-            <div className="relative w-full lg:min-w-[180px] lg:max-w-[180px]">
-              <select
+            {/* Retail */}
+            <div className="w-full lg:w-[220px]">
+              <FilterDropdown
                 value={filters.retail_store_code}
-                onChange={(e) =>
+                placeholder="Retail Store"
+                onChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
                     district_store_code: "all",
-                    retail_store_code: e.target.value,
+                    retail_store_code: value,
                   }))
                 }
-                className="
-h-14
-w-full
-appearance-none
-rounded-full
-border
-border-[#E2E8F0]
-bg-white
-px-5
-pr-10
-text-sm
-font-medium
-text-[#0F172A]
-shadow-sm
-outline-none
-cursor-pointer
-transition-all
-duration-200
-hover:border-[#CBD5E1]
-hover:shadow-md
-focus:border-[#6366F1]
-focus:ring-4
-focus:ring-[#6366F1]/10
-"
-              >
-                <option value="all">
-                  Retail Store
-                </option>
-
-                {retailStores.map(
-                  (store: any) => (
-                    <option
-                      key={store.store_code}
-                      value={store.store_code}
-                      title={store.store_name}
-                    >
-                      {store.store_name}
-                    </option>
-                  )
-                )}
-              </select>
-
-
-              <ChevronDown
-                className="
-    pointer-events-none
-    absolute
-    right-5
-    top-1/2
-    h-5
-    w-5
-    -translate-y-1/2
-    text-slate-500
-  "
+                options={[
+                  {
+                    label: "Retail Store",
+                    value: "all",
+                  },
+                  ...retailStores.map((store) => ({
+                    label: store.store_name,
+                    value: store.store_code,
+                  })),
+                ]}
               />
             </div>
           </div>
         </section>
+
 
         {error ? (
           <div className="mt-[18px] flex items-start justify-between gap-3 rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] font-medium text-red-700">

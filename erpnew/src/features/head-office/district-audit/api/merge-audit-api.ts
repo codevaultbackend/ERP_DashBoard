@@ -188,16 +188,22 @@ export const getStores = async (
 /* -------------------------------------------------------------------------- */
 
 export const getDistrictAudits = async (
-  districtId: string | number
+  districtStoreCode: string
 ): Promise<RetailAudit[]> => {
   try {
     const response =
       await retailAuditApi.get(
-        `/complete-audit/head/district/${districtId}/store-audits`
+        "/complete-audit/head/district-audits",
+        {
+          params: {
+            district_store_code:
+              districtStoreCode,
+          },
+        }
       );
 
     console.log(
-      "DISTRICT STORE AUDITS RESPONSE",
+      "DISTRICT AUDITS RESPONSE",
       response.data
     );
 
@@ -217,7 +223,7 @@ export const getDistrictAudits = async (
     return [];
   } catch (error: any) {
     console.error(
-      "District store audits fetch error",
+      "District audits fetch error",
       error?.response?.data || error
     );
 
@@ -226,9 +232,51 @@ export const getDistrictAudits = async (
 };
 
 
+export const getRetailAudits = async (
+  retailStoreCode: string
+): Promise<RetailAudit[]> => {
+  try {
+    const response =
+      await retailAuditApi.get(
+        "/complete-audit/head/retail-audits",
+        {
+          params: {
+            retail_store_code:
+              retailStoreCode,
+          },
+        }
+      );
 
+    console.log(
+      "RETAIL AUDITS RESPONSE",
+      response.data
+    );
+
+    if (
+      response?.data?.success &&
+      Array.isArray(response?.data?.data)
+    ) {
+      return response.data.data;
+    }
+
+    if (
+      Array.isArray(response?.data?.data)
+    ) {
+      return response.data.data;
+    }
+
+    return [];
+  } catch (error: any) {
+    console.error(
+      "Retail audits fetch error",
+      error?.response?.data || error
+    );
+
+    return [];
+  }
+};
 /* -------------------------------------------------------------------------- */
-/*                           GET AUDIT DETAILS                                */
+/*                           GET AUDIT preview                               */
 /* -------------------------------------------------------------------------- */
 
 export const getRetailAuditById =
@@ -262,12 +310,12 @@ export const getRetailAuditById =
 
 export const downloadRetailAudit =
   async (
-    storeCode: string,
+    districtStoreCode: string,
     auditId: string | number
   ) => {
     try {
       const response = await retailAuditApi.get(
-        `/complete-audit/head/district/${storeCode}/store-audits/${auditId}/download`,
+        `/complete-audit/head/district/${districtStoreCode}/store-audits/${auditId}/download`,
         {
           responseType: "blob",
         }
@@ -320,6 +368,67 @@ export const downloadRetailAudit =
     }
   };
 
+
+  export const downloadDistrictAudit =
+  async (
+    auditId: string | number
+  ) => {
+    try {
+      const response =
+        await retailAuditApi.get(
+          `/complete-audit/head/district-audits/${auditId}/download`,
+          {
+            responseType: "blob",
+          }
+        );
+
+      const blob = new Blob(
+        [response.data],
+        {
+          type:
+            response.headers[
+              "content-type"
+            ] ||
+            "application/pdf",
+        }
+      );
+
+      const url =
+        window.URL.createObjectURL(
+          blob
+        );
+
+      const link =
+        document.createElement("a");
+
+      link.href = url;
+
+      link.download =
+        `district-audit-${auditId}.pdf`;
+
+      document.body.appendChild(
+        link
+      );
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(
+        url
+      );
+
+      return true;
+    } catch (error: any) {
+      console.error(
+        "District audit download error",
+        error?.response?.data ||
+          error
+      );
+
+      throw error;
+    }
+  };
 /* -------------------------------------------------------------------------- */
 /*                                FILTERS                                     */
 /* -------------------------------------------------------------------------- */

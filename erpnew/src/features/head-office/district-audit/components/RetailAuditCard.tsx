@@ -1,237 +1,203 @@
 "use client";
 
+import { useState } from "react";
 import {
-ChevronRight,
-FileText,
+  ChevronRight,
+  FileText,
+  Loader2,
 } from "lucide-react";
 
 import type {
-RetailAudit,
+  RetailAudit,
 } from "../types/retail-audit.types";
 
 type Props = {
-audit?: RetailAudit | null;
-onView?: (
-audit: RetailAudit
-) => Promise<void> | void;
+  audit?: RetailAudit | null;
+  onView?: (
+    audit: RetailAudit
+  ) => Promise<void> | void;
 };
 
 function formatDate(
-value?: string
+  value?: string
 ) {
-if (!value) return "--";
+  if (!value) return "--";
 
-try {
-const date = new Date(value);
+  try {
+    const date = new Date(value);
 
-if (isNaN(date.getTime())) {
-  return "--";
-}
+    if (isNaN(date.getTime())) {
+      return "--";
+    }
 
-return date.toLocaleDateString(
-  "en-GB"
-);
+    const day = String(
+      date.getDate()
+    ).padStart(2, "0");
 
+    const month = String(
+      date.getMonth() + 1
+    ).padStart(2, "0");
 
-} catch {
-return "--";
-}
+    const year =
+      date.getFullYear();
+
+    return `${day}-${month}-${year}`;
+  } catch {
+    return "--";
+  }
 }
 
 export default function RetailAuditCard({
-audit,
-onView,
+  audit,
+  onView,
 }: Props) {
-if (!audit) {
-console.warn(
-"RetailAuditCard received undefined audit"
-);
+  const [loading, setLoading] =
+    useState(false);
 
+  if (!audit) {
+    console.warn(
+      "RetailAuditCard received undefined audit"
+    );
 
-return null;
+    return null;
+  }
 
+  const title =
+    audit.store_name ||
+    audit.audit_name ||
+    audit.audit_title ||
+    audit.audit_no ||
+    `Report ${audit.id}`;
 
-}
+  const handleClick =
+    async () => {
+      if (loading) return;
 
-const title =
-audit.audit_name ||
-audit.audit_title ||
-audit.audit_no ||
-`Report ${audit.id}`;
+      try {
+        setLoading(true);
 
-const auditId =
-audit.audit_no ||
-`AUD-${audit.id}`;
+        if (
+          typeof onView ===
+          "function"
+        ) {
+          await onView(audit);
+        }
+      } catch (error) {
+        console.error(
+          "RetailAuditCard click failed:",
+          error
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
-const handleClick = async () => {
-try {
-if (
-typeof onView === "function"
-) {
-await onView(audit);
-}
-} catch (error) {
-console.error(
-"RetailAuditCard click failed:",
-error
-);
-}
-};
-
-return (
-<button
-type="button"
-onClick={handleClick}
-aria-label={`View audit report ${title}`}
-className="
-group
-relative
-w-full
-overflow-hidden
-rounded-3xl
-border
-border-[#E8EAED]
-bg-white
-p-4
-sm:p-5
-lg:p-6
-text-left
-transition-all
-duration-300
-hover:-translate-y-1
-hover:border-[#2563EB]
-hover:shadow-xl
-active:scale-[0.99]
-"
-> <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"> <div className="flex min-w-0 items-start gap-3 sm:gap-4"> <div
-         className="
-           flex
-           h-[56px]
-           w-[56px]
-           sm:h-[64px]
-           sm:w-[64px]
-           shrink-0
-           items-center
-           justify-center
-           rounded-[18px]
-           border
-           border-[#DBEAFE]
-           bg-[#EEF4FF]
-         "
-       > <FileText
-           className="
-             h-7
-             w-7
-             sm:h-8
-             sm:w-8
-             text-[#2563EB]
-           "
-         /> </div>
-
-      <div className="min-w-0 flex-1">
-        <p
-          className="
-            mb-1
-            text-[11px]
-            sm:text-[12px]
-            font-medium
-            uppercase
-            tracking-wider
-            text-[#94A3B8]
-          "
-        >
-          Audit Report
-        </p>
-
-        <h3
-          className="
-            break-words
-            text-[16px]
-            sm:text-[18px]
-            lg:text-[20px]
-            font-semibold
-            leading-tight
-            text-[#02011A]
-          "
-        >
-          {title}
-        </h3>
-
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span
-            className="
-              text-[12px]
-              sm:text-[13px]
-              font-medium
-              text-[#64748B]
-            "
-          >
-            {formatDate(
-              audit.created_at
-            )}
-          </span>
-
-          <span
-            className="
-              hidden
-              sm:block
-              h-1
-              w-1
-              rounded-full
-              bg-[#CBD5E1]
-            "
-          />
-
-          <span
-            className="
-              text-[12px]
-              sm:text-[13px]
-              font-medium
-              text-[#2563EB]
-            "
-          >
-            View Report
-          </span>
-        </div>
-
-        <p
-          className="
-            mt-2
-            break-all
-            text-[11px]
-            sm:text-[12px]
-            text-[#94A3B8]
-          "
-        >
-          {auditId}
-        </p>
-      </div>
-    </div>
-
-    <div
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      aria-label={`View audit report ${title}`}
       className="
-        flex
-        h-10
-        w-10
-        shrink-0
-        self-end
-        sm:self-center
-        items-center
-        justify-center
-        rounded-xl
-        bg-[#F4F4F5]
+        w-full
+        rounded-[28px]
+        border
+        border-[#E9EDF3]
+        bg-white
+        px-6
+        py-5
+        text-left
+        transition-all
+        duration-200
+        hover:shadow-md
+        disabled:cursor-not-allowed
+        disabled:opacity-70
       "
     >
-      <ChevronRight
-        className="
-          h-[18px]
-          w-[18px]
-          text-[#111827]
-        "
-      />
-    </div>
-  </div>
-</button>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <div
+            className="
+              flex
+              h-14
+              w-14
+              shrink-0
+              items-center
+              justify-center
+              rounded-[16px]
+              bg-[#F5F8FF]
+            "
+          >
+            <FileText
+              className="
+                h-7
+                w-7
+                text-[#2563EB]
+              "
+              strokeWidth={1.8}
+            />
+          </div>
 
-);
+          <div className="min-w-0">
+            <h3
+              className="
+                truncate
+                text-[18px]
+                font-semibold
+                text-[#111827]
+              "
+            >
+              {title}
+            </h3>
+
+            <p
+              className="
+                mt-1
+                text-[14px]
+                font-medium
+                text-[#667085]
+              "
+            >
+              {formatDate(
+                audit.created_at
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div
+          className="
+            flex
+            h-8
+            w-8
+            shrink-0
+            items-center
+            justify-center
+            rounded-lg
+            bg-[#F5F5F5]
+          "
+        >
+          {loading ? (
+            <Loader2
+              className="
+                h-4
+                w-4
+                animate-spin
+                text-[#2563EB]
+              "
+            />
+          ) : (
+            <ChevronRight
+              className="
+                h-4
+                w-4
+                text-[#111827]
+              "
+            />
+          )}
+        </div>
+      </div>
+    </button>
+  );
 }
+

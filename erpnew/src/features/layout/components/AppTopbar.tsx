@@ -5,9 +5,9 @@ import { Search, SunMedium, PanelLeft, X } from "lucide-react";
 import { useGlobalSearch } from "@/features/global-search/GlobalSearchProvider";
 import { useProfile } from "@/shared/hooks/useProfile";
 import { AppRole, ROLE_PROFILE } from "@/shared/lib/erp-auth";
+import Image from "next/image";
 
 type AppTopbarProps = {
-  title: string;
   isSidebarCollapsed: boolean;
   onToggleSidebar: () => void;
   role?: AppRole;
@@ -28,7 +28,6 @@ function getInitial(name?: string) {
 }
 
 export default function AppTopbar({
-  title,
   isSidebarCollapsed,
   onToggleSidebar,
   role,
@@ -75,7 +74,7 @@ export default function AppTopbar({
           <div className="flex min-w-0 items-center gap-2 sm:gap-3 md:gap-4">
             <div className="min-w-0 shrink">
               <h1 className="truncate text-[15px] font-medium tracking-[-0.02em] text-[#1E63B5] sm:text-[18px] md:text-[19px]">
-                {title}
+                <Image src='https://res.cloudinary.com/ddcy9noqo/image/upload/v1781778408/Png_vibhushnam_logo_gfr2ee.png' alt="" height={120} width={120} className="h-[60px] w-auto object-cover" />
               </h1>
             </div>
 

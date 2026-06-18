@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   getStores,
   getDistrictAudits,
+  getRetailAudits,
   filterAuditsByStore,
   filterAuditsByDate,
   searchRetailAudits,
@@ -80,43 +81,41 @@ export function useRetailAudit() {
       }
     }, []);
 
-const fetchDistrictAudits =
-  useCallback(
-    async (
-      storeCode: string
-    ) => {
-      try {
-        setAuditLoading(true);
+  const fetchDistrictAudits =
+    useCallback(
+      async (
+        storeCode: string
+      ) => {
+        try {
+          setAuditLoading(true);
 
-        const data =
-          await getDistrictAudits(
-            storeCode
-          );
+          const data =
+            await getDistrictAudits(
+              storeCode
+            );
 
-        const audits =
-          Array.isArray(data)
-            ? data
-            : [];
+          const audits =
+            Array.isArray(data)
+              ? data
+              : [];
 
-        setAudits(audits);
+          setAudits(audits);
 
-        return audits;
-      } catch (err: any) {
-        const message =
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load audits";
+          return audits;
+        } catch (err: any) {
+          const message =
+            err?.response?.data?.message ||
+            err?.message ||
+            "Failed to load audits";
 
-        setError(message);
-        setAudits([]);
-
-        return [];
-      } finally {
-        setAuditLoading(false);
-      }
-    },
-    []
-  );
+          setError(message);
+          setAudits([]);
+        } finally {
+          setAuditLoading(false);
+        }
+      },
+      []
+    );
   /* -------------------------------------------------------------------------- */
   /*                            FETCH RETAIL STORES                             */
   /* -------------------------------------------------------------------------- */
@@ -147,6 +146,29 @@ const fetchDistrictAudits =
       }
     }, []);
 
+
+  const fetchRetailStoreAudits =
+  useCallback(async (storeCode: string) => {
+    try {
+      setAuditLoading(true);
+
+      const data =
+        await getRetailAudits(
+          storeCode
+        );
+
+      const audits =
+        Array.isArray(data)
+          ? data
+          : [];
+
+      setAudits(audits);
+
+      return audits;
+    } finally {
+      setAuditLoading(false);
+    }
+  }, []);
   /* -------------------------------------------------------------------------- */
   /*                                LOAD DATA                                   */
   /* -------------------------------------------------------------------------- */
@@ -214,15 +236,15 @@ const fetchDistrictAudits =
       []
     );
 
- const updateStore = useCallback(
-  (value: number | null) => {
-    setFilters((prev) => ({
-      ...prev,
-      retailStoreId: value,
-    }));
-  },
-  []
-);
+  const updateStore = useCallback(
+    (value: number | null) => {
+      setFilters((prev) => ({
+        ...prev,
+        retailStoreId: value,
+      }));
+    },
+    []
+  );
 
   const filteredAudits =
     useMemo(() => {
@@ -332,6 +354,7 @@ const fetchDistrictAudits =
     loadData,
 
     fetchDistrictAudits,
+    fetchRetailStoreAudits,
   };
 }
 

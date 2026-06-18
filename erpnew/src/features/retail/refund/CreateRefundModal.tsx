@@ -2,6 +2,7 @@
 
 import { Box, Loader2, X } from "lucide-react";
 import { FormEvent, useState } from "react";
+import type { ExchangeInvoiceItem } from "./api/exchange-api";
 import {
   createExchange,
   getInvoiceForExchange,
@@ -78,6 +79,9 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
   const [error, setError] = useState("");
   const [loadingInvoice, setLoadingInvoice] = useState(false);
   const [invoiceLoaded, setInvoiceLoaded] = useState(false);
+  const [invoiceItems, setInvoiceItems] = useState<ExchangeInvoiceItem[]>([]);
+  const [selectedOldItem, setSelectedOldItem] =
+    useState<string>("");
   const [loadingNewProduct, setLoadingNewProduct] =
     useState(false);
 
@@ -174,53 +178,82 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
         form.invoice_number.trim()
       );
 
-      const invoiceData = response.data;
+      const items = response.data.items || [];
 
-      const oldProduct =
-        invoiceData.latest_exchange_product ||
-        invoiceData.items?.[0];
-
-      if (!oldProduct) {
-        throw new Error("No product found");
+      if (!items.length) {
+        throw new Error("No products found in invoice");
       }
 
+
+      // show all products
+      setInvoiceItems(items);
+
+      // do not auto select
       setForm((prev) => ({
         ...prev,
 
-        old_product_code: oldProduct.product_code || "",
-        old_product_name: oldProduct.product_name || "",
-        old_purity: oldProduct.purity || "",
-
-        old_gross_weight: String(
-          oldProduct.gross_weight ?? ""
-        ),
-
-        old_net_weight: String(
-          oldProduct.net_weight ?? ""
-        ),
-
-        old_stone_weight: String(
-          oldProduct.stone_weight ?? ""
-        ),
-
-        old_value: String(
-          oldProduct.value ?? ""
-        ),
+        old_product_code: "",
+        old_product_name: "",
+        old_metal: "",
+        old_purity: "",
+        old_gross_weight: "",
+        old_net_weight: "",
+        old_stone_weight: "",
+        old_value: "",
+        old_item_id: "",
       }));
 
       setInvoiceLoaded(true);
+
     } catch (error: any) {
+
       setInvoiceLoaded(false);
+      setInvoiceItems([]);
 
       setError(
         error?.message ||
         "Failed to fetch invoice"
       );
+
     } finally {
       setLoadingInvoice(false);
     }
   }
+  function selectOldProduct(item: ExchangeInvoiceItem) {
+    setSelectedOldItem(String(item.invoice_id));
 
+    setForm((prev) => ({
+      ...prev,
+
+      old_item_id: String(item.invoice_id),
+
+      old_product_code: item.product_code || "",
+
+      old_product_name: item.product_name || "",
+
+      old_metal: item.metal_type || "",
+
+      old_purity: item.purity || "",
+
+      old_gross_weight: String(
+        item.gross_weight ?? ""
+      ),
+
+      old_net_weight: String(
+        item.net_weight ?? ""
+      ),
+
+      old_stone_weight: String(
+        item.stone_weight ?? ""
+      ),
+
+      old_value: String(
+        item.value ?? ""
+      ),
+
+      old_condition: "OLD",
+    }));
+  }
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
@@ -311,366 +344,582 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999]  flex items-center justify-center bg-black/40 p-3 sm:p-5 backdrop-blur-sm">
-      <form
-        onSubmit={handleSubmit}
-        className="
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <form
+      onSubmit={handleSubmit}
+      className="
       relative
       flex
-      h-[95vh]
+      h-[92vh]
       w-full
-      max-w-[691px]
+      border-[1px]
+      border-[#0000001A]
+      max-w-[661px]
       flex-col
+      shadow-[0px_4px_6px_-4px_#0000001A]
       overflow-hidden
-      rounded-2xl
-      sm:rounded-3xl
+      rounded-[32px]
       bg-white
-      shadow-erp-sm
-    "
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-[22px] top-[18px] z-10 flex h-8 w-8 items-center justify-center rounded-full text-[#111827] transition hover:bg-[#F3F4F6]"
-        >
-          <X className="h-5 w-5" />
-        </button>
+      shadow-2xl
+      "
+    >
 
-        <div className="shrink-0 border-b border-slate-100 px-4 py-4 sm:px-6">
-          <h2 className="pr-10 text-lg font-semibold text-[#020617] sm:text-2xl">
+      {/* HEADER */}
+      <div className="
+      flex
+      items-center
+      justify-between
+      px-6
+      py-5
+      "
+      >
+
+        <div>
+          <h2 className="text-[18px] leading-[18px] font-[600] text-[#0A0A0A]
+          ">
             Enter Exchange Details
           </h2>
         </div>
 
-        <div className="dashboard-hidden-scroll flex-1 overflow-y-auto px-[26px] pb-[20px] pt-[22px] max-[768px]:px-[10px]">
-          <ProductSection
-            variant="old"
-            title="Original Product"
-            borderClass="border-[#FF2020]"
-            bgClass="bg-[#FFF5F5]"
-          >
-            <div
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="
+          flex
+          h-9
+          w-9
+          items-center
+          justify-center
+          rounded-full
+          hover:bg-slate-100
+          "
+        >
+          <X size={20}/>
+        </button>
+
+      </div>
+
+
+
+      {/* BODY */}
+
+      <div
+      className="
+      flex-1
+      overflow-y-auto
+      space-y-6
+      p-6
+      py-0
+      "
+      >
+
+
+        {/* OLD PRODUCT */}
+
+        <ProductSection
+          variant="old"
+          title="Original Product"
+          subtitle="Select product from invoice"
+        >
+
+
+          <div className="flex gap-3">
+
+
+            <input
+              value={form.invoice_number}
+              onChange={(e)=>
+                updateField(
+                  "invoice_number",
+                  e.target.value
+                )
+              }
+
+              placeholder="Enter invoice number"
+
               className="
-    grid
-    grid-cols-1
-    gap-4
-    md:grid-cols-12
-  "
-            >
-              <div className="col-span-12">
-                <label className="flex flex-col">
-                  <span className="mb-[8px] block text-[15px]">
-                    Invoice Number
-                  </span>
-
-                  <div className="lg:flex gap-3 ">
-                    <input
-                      value={form.invoice_number}
-                      onChange={(e) =>
-                        updateField(
-                          "invoice_number",
-                          e.target.value
-                        )
-                      }
-                      className="h-[45px] flex-1 rounded-[10px] max-[768px]:w-full border border-gray-300 px-3"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={handleFetchInvoice}
-                      disabled={loadingInvoice}
-                      className="
-h-[39px]
-min-w-[100px]
-rounded-[10px]
-bg-black
-px-4
-text-white
-font-medium
-hover:bg-[#111827]
-transition
-max-[768px]:mt-[12px]
-max-[768px]:w-full
-"
-                    >
-                      {loadingInvoice
-                        ? "..."
-                        : "Fetch"}
-                    </button>
-                  </div>
-                </label>
-              </div>
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Product Code"
-                value={form.old_product_code}
-                readOnly
-                onChange={() => { }}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Product Name"
-                readOnly
-                value={form.old_product_name}
-                onChange={(v) => updateField("old_product_name", v)}
-              />
-
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Metal"
-                readOnly
-                value={form.old_metal}
-                onChange={(v) => updateField("old_metal", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Purity"
-                readOnly
-                value={form.old_purity}
-                onChange={(v) => updateField("old_purity", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Stone Wt."
-                readOnly
-                value={form.old_stone_weight}
-                onChange={(v) => updateField("old_stone_weight", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Net Wt."
-                readOnly
-                value={form.old_net_weight}
-                onChange={(v) => updateField("old_net_weight", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Gross Wt."
-                readOnly
-                value={form.old_gross_weight}
-                onChange={(v) => updateField("old_gross_weight", v)}
-              />
-
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Condition"
-                readOnly
-                value={form.old_condition}
-                onChange={(v) => updateField("old_condition", v)}
-              />
-              <Field
-                className="col-span-12 md:col-span-4"
-                label="Value"
-                readOnly
-                value={form.old_value}
-                onChange={(v) => updateField("old_value", v)}
-              />
-            </div>
-          </ProductSection>
-
-          <ProductSection
-            variant="new"
-            title="New Product"
-            borderClass="border-[#16B833]"
-            bgClass="bg-[#F0FFF5]"
-          >
-            <>
-              {/* Product Code + Fetch */}
-              <div className="mb-5">
-                <label className="flex flex-col">
-                  <span className="mb-[8px] block text-[15px]">
-                    Product Code
-                  </span>
-
-                  <div className="flex gap-3 max-[768px]:flex-col">
-                    <input
-                      value={form.new_product_code}
-                      onChange={(e) =>
-                        updateField(
-                          "new_product_code",
-                          e.target.value
-                        )
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleFetchNewProduct();
-                        }
-                      }}
-                      className="
-            h-[45px]
-            flex-1
-            rounded-[10px]
-            border
-            border-gray-300
-            bg-white
-            px-3
-          "
-                    />
-
-                    <button
-                      type="button"
-                      onClick={handleFetchNewProduct}
-                      disabled={loadingNewProduct}
-                      className="
-            h-[45px]
-            min-w-[120px]
-            rounded-[10px]
-            bg-black
-            px-4
-            text-white
-            font-medium
-            transition
-            hover:bg-[#111827]
-            disabled:opacity-50
-            max-[768px]:w-full
-          "
-                    >
-                      {loadingNewProduct
-                        ? "Loading..."
-                        : "Fetch"}
-                    </button>
-                  </div>
-                </label>
-              </div>
-
-              <div className="grid grid-cols-12 gap-x-5 gap-y-5">
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Item ID"
-                  readOnly
-                  value={form.new_item_id}
-                  onChange={() => { }}
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Product Name"
-                  readOnly
-                  value={form.new_product_name}
-                  onChange={() => { }}
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Metal"
-                  readOnly
-                  value={form.new_metal}
-                  onChange={() => { }}
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Purity"
-                  readOnly
-                  value={form.new_purity}
-                  onChange={() => { }}
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Stone Wt."
-                  readOnly
-                  value={form.new_stone_weight}
-                  onChange={() => { }}
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Net Wt."
-                  readOnly
-                  value={form.new_net_weight}
-                  onChange={() => { }}
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Gross Wt."
-                  readOnly
-                  value={form.new_gross_weight}
-                  onChange={() => { }}
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Condition"
-                  value={form.new_condition}
-                  onChange={(v) =>
-                    updateField(
-                      "new_condition",
-                      v
-                    )
-                  }
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-4"
-                  label="Value"
-                  readOnly
-                  value={form.new_value}
-                  onChange={() => { }}
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-6"
-                  label="Making Charge"
-                  value={form.making_charge}
-                  onChange={(v) =>
-                    updateField(
-                      "making_charge",
-                      v
-                    )
-                  }
-                />
-
-                <Field
-                  className="col-span-12 md:col-span-6"
-                  label="Stone Amount"
-                  value={form.stone_amount}
-                  onChange={(v) =>
-                    updateField(
-                      "stone_amount",
-                      v
-                    )
-                  }
-                />
-              </div>
-            </>
+              h-12
+              flex-1
+              rounded-xl
+              bg-[#fff]
+              px-4
+              outline-none
+              focus:ring-4
+              focus:ring-blue-100
+              "
+            />
 
 
-          </ProductSection>
-
-          {error ? (
-            <div className="mt-[20px] rounded-[12px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600">
-              {error}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="shrink-0 border-t border-[#F1F5F9] bg-white px-[26px] py-[18px] sm:px-[30px]">
-          <div className="grid grid-cols-1 gap-[14px] sm:grid-cols-[250px_1fr]">
             <button
               type="button"
-              onClick={onClose}
-              className="h-[44px] rounded-[10px] border border-[#E5E7EB] bg-white text-[15px] font-medium text-[#020617] shadow-erp-sm transition hover:bg-[#F8FAFC]"
+              onClick={handleFetchInvoice}
+              disabled={loadingInvoice}
+
+              className="
+              rounded-xl
+              bg-black
+              px-6
+              text-white
+              font-medium
+              "
             >
-              Cancel
+              {
+                loadingInvoice
+                ?
+                "Fetching..."
+                :
+                "Fetch"
+              }
             </button>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="flex h-[44px] items-center justify-center gap-2 rounded-[10px] bg-[#02031A] text-[15px] font-medium text-white shadow-erp-sm transition hover:bg-[#111827] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Create Invoice
-            </button>
+
           </div>
+
+
+
+          {
+            invoiceItems.length > 0 &&
+            (
+
+            <div className="mt-6">
+
+
+              <div className="
+              mb-3
+              flex
+              justify-between
+              "
+              >
+
+                <h3 className="font-semibold">
+                  Choose item
+                </h3>
+
+
+                <span className="
+                text-xs
+                text-slate-500
+                ">
+                  {invoiceItems.length} products
+                </span>
+
+              </div>
+
+
+
+              <div className="
+              grid
+              gap-3
+              md:grid-cols-2
+              "
+              >
+
+              {
+              invoiceItems.map((item)=>(
+
+              <button
+              key={item.invoice_id}
+              type="button"
+              onClick={()=>selectOldProduct(item)}
+
+              className={`
+              rounded-2xl
+              border
+              p-4
+              text-left
+              transition
+
+              ${
+              selectedOldItem===String(item.invoice_id)
+              ?
+              "border-[#FF0000] bg-blue-50"
+              :
+              "border-slate-200 hover:border-blue-300"
+              }
+              `}
+              >
+
+                <div className="flex justify-between">
+
+                  <span className="font-semibold">
+                    {item.product_code}
+                  </span>
+
+
+                  {
+                  selectedOldItem===String(item.invoice_id)
+                  &&
+                  <span className="
+                  rounded-full
+                  bg-[#FF0000]
+                  px-2
+                  text-xs
+                  text-white
+                  p-2
+                  ">
+                    Selected
+                  </span>
+                  }
+
+                </div>
+
+
+                <p className="mt-2 text-sm">
+                  {item.product_name}
+                </p>
+
+
+                <p className="
+                mt-2
+                text-xs
+                text-slate-500
+                ">
+                  {item.metal_type}
+                  {" • "}
+                  {item.purity}
+                </p>
+
+
+                <div className="
+                mt-3
+                flex
+                justify-between
+                text-xs
+                text-slate-600
+                ">
+
+                  <span>
+                    Gross {item.gross_weight}g
+                  </span>
+
+                  <span>
+                    ₹{item.value}
+                  </span>
+
+                </div>
+
+
+              </button>
+
+              ))
+              }
+
+
+              </div>
+
+            </div>
+
+            )
+          }
+
+
+
+
+          <div className="
+          mt-6
+          grid
+          grid-cols-1
+          gap-4
+          md:grid-cols-3
+          ">
+
+            <Field
+              label="Product Code"
+              value={form.old_product_code}
+              readOnly
+              onChange={()=>{}}
+            />
+
+            <Field
+              label="Product Name"
+              value={form.old_product_name}
+              readOnly
+              onChange={()=>{}}
+            />
+
+            <Field
+              label="Metal"
+              value={form.old_metal}
+              readOnly
+              onChange={()=>{}}
+            />
+
+            <Field
+              label="Purity"
+              value={form.old_purity}
+              readOnly
+              onChange={()=>{}}
+            />
+
+            <Field
+              label="Gross Weight"
+              value={form.old_gross_weight}
+              readOnly
+              onChange={()=>{}}
+            />
+
+            <Field
+              label="Net Weight"
+              value={form.old_net_weight}
+              readOnly
+              onChange={()=>{}}
+            />
+
+            <Field
+              label="Stone Weight"
+              value={form.old_stone_weight}
+              readOnly
+              onChange={()=>{}}
+            />
+
+            <Field
+              label="Value"
+              value={form.old_value}
+              readOnly
+              onChange={()=>{}}
+            />
+
+          </div>
+
+
+        </ProductSection>
+
+
+
+
+
+        {/* NEW PRODUCT */}
+
+        <ProductSection
+          variant="new"
+          title="New Product"
+          subtitle="Scan replacement item"
+        >
+
+
+          <div className="flex gap-3">
+
+
+            <input
+              value={form.new_product_code}
+
+              onChange={(e)=>
+                updateField(
+                  "new_product_code",
+                  e.target.value
+                )
+              }
+
+              placeholder="Enter product code"
+
+              className="
+              h-12
+              flex-1
+              rounded-xl
+              border
+              px-4
+              "
+            />
+
+
+            <button
+            type="button"
+            onClick={handleFetchNewProduct}
+            disabled={loadingNewProduct}
+
+            className="
+            rounded-xl
+            bg-black
+            px-6
+            text-white
+            "
+            >
+
+              {
+              loadingNewProduct
+              ?
+              "Loading..."
+              :
+              "Fetch"
+              }
+
+            </button>
+
+
+          </div>
+
+
+
+          <div className="
+          mt-6
+          grid
+          gap-4
+          md:grid-cols-3
+          ">
+
+
+            <Field label="Item ID"
+            value={form.new_item_id}
+            readOnly
+            onChange={()=>{}}
+            />
+
+
+            <Field label="Product Name"
+            value={form.new_product_name}
+            readOnly
+            onChange={()=>{}}
+            />
+
+
+            <Field label="Metal"
+            value={form.new_metal}
+            readOnly
+            onChange={()=>{}}
+            />
+
+
+            <Field label="Purity"
+            value={form.new_purity}
+            readOnly
+            onChange={()=>{}}
+            />
+
+
+            <Field label="Gross Weight"
+            value={form.new_gross_weight}
+            readOnly
+            onChange={()=>{}}
+            />
+
+
+            <Field label="Net Weight"
+            value={form.new_net_weight}
+            readOnly
+            onChange={()=>{}}
+            />
+
+
+            <Field label="Stone Weight"
+            value={form.new_stone_weight}
+            readOnly
+            onChange={()=>{}}
+            />
+
+
+            <Field label="Value"
+            value={form.new_value}
+            readOnly
+            onChange={()=>{}}
+            />
+
+
+            <Field
+            label="Making Charge"
+            value={form.making_charge}
+            onChange={(v)=>
+              updateField(
+                "making_charge",
+                v
+              )
+            }
+            />
+
+
+            <Field
+            label="Stone Amount"
+            value={form.stone_amount}
+            onChange={(v)=>
+              updateField(
+                "stone_amount",
+                v
+              )
+            }
+            />
+
+          </div>
+
+
+        </ProductSection>
+
+
+
+
+        {
+        error &&
+        <div className="
+        rounded-xl
+        border
+        border-red-200
+        bg-red-50
+        p-4
+        text-sm
+        text-red-600
+        ">
+          {error}
         </div>
-      </form>
-    </div>
-  );
+        }
+
+
+      </div>
+
+
+
+
+
+      <div className="
+      flex
+      gap-3
+      bg-white
+      p-5
+      "
+      >
+
+        <button
+        type="button"
+        onClick={onClose}
+        className="
+        h-12
+        flex-1
+        rounded-xl
+        border
+        "
+        >
+          Cancel
+        </button>
+
+
+        <button
+        type="submit"
+        disabled={submitting}
+
+        className="
+        h-12
+        flex-1
+        rounded-xl
+        bg-black
+        text-white
+        "
+        >
+
+          {
+          submitting &&
+          <Loader2 className="mr-2 inline animate-spin"/>
+          }
+
+          Create Exchange
+
+        </button>
+
+
+      </div>
+
+
+    </form>
+
+  </div>
+);
 }
 
 function ProductSection({
@@ -694,9 +943,10 @@ function ProductSection({
     rounded-2xl
     border
     p-6
+    
     max-[768px]:p-3
     shadow-erp-sm
-    ${isOld ? "mb-6" : ""}
+    ${isOld ? "mb-6 border-[#FF0000] border-[1px] bg-[#FEF2F2]" : "border-[1px] border-[#00A63E] bg-[#F0FDF4]" }
     ${borderClass}
     ${bgClass}
   `}

@@ -16,11 +16,11 @@ export type StaffUser = {
   created_at?: string;
 };
 
-export type StaffStats = {
-  total_staff: string | number;
-  active: string | number;
-  on_leave: string | number;
-  departments: string | number;
+type StaffStats = {
+  total_staff: number;
+  active: number;
+  on_leave: number;
+  departments: number;
 };
 
 export type StaffPagination = {

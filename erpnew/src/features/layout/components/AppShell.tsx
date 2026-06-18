@@ -64,12 +64,7 @@ const NAV_ITEMS: Record<AppRole, NavItem[]> = {
   ],
 };
 
-const TITLES: Record<AppRole, string> = {
-  head_office: "Athratech Pvt Limited",
-  state: "Athratech Pvt Limited",
-  district: "Athratech Pvt Limited",
-  retail: "Athratech Pvt Limited",
-};
+
 
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -92,7 +87,6 @@ export default function AppShell({
     <GlobalSearchProvider>
       <div className="min-h-screen bg-[#F3F4F6]">
         <AppTopbar
-          title={TITLES[role]}
           role={role}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={() => setIsSidebarCollapsed((prev) => !prev)}

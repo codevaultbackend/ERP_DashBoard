@@ -172,13 +172,13 @@ export default function HeadTransitDetailContent({
     <>
       <div className="w-full min-w-0 font-erp">
         <div>
-          <h1 className="erp-page-title">In Transit / Tracking</h1>
-          <p className="mt-1 erp-page-subtitle">
+          <h1 className="text-[30px] font-[600] leading-[36px] text-[#101828] tracking-[0.4px]">In Transit / Tracking</h1>
+          <p className="text-[16px] font-[400] text-[#4A5565] tracking-[-0.31px]">
             Monitor stock shipments across all locations
           </p>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-5 xl:grid-cols-3">
+        <div className="mt-5 grid grid-cols-2 gap-5 max-[395px]:!grid-cols-1 xl:grid-cols-3">
           <StatCard
             icon={<Truck className="h-6 w-6" />}
             title="In Transit"

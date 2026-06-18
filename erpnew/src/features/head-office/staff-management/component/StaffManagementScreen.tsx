@@ -204,45 +204,36 @@ function StaffAvatar({ row }: { row: StaffRow }) {
   );
 }
 
-function SummaryCards({ rows }: { rows: StaffRow[] }) {
-  const activeRows = rows.filter(
-    (row) =>
-      !String((row as any)?.status || "")
-        .toLowerCase()
-        .includes("leave")
-  );
-
-  const leaveRows = rows.filter((row) =>
-    String((row as any)?.status || "")
-      .toLowerCase()
-      .includes("leave")
-  );
-
-  const stats = [
+function SummaryCards({
+  stats,
+}: {
+  stats: StaffStats;
+}) {
+  const cards = [
     {
       label: "Total Staff",
-      value: rows.length,
+      value: stats.total_staff,
       icon: Users,
       wrap: "bg-erp-primary-soft",
       iconColor: "text-erp-primary",
     },
     {
       label: "Active",
-      value: activeRows.length || rows.length,
+      value: stats.active,
       icon: UserCheck,
       wrap: "bg-erp-success-soft",
       iconColor: "text-erp-success",
     },
     {
       label: "On Leave",
-      value: leaveRows.length,
+      value: stats.on_leave,
       icon: CalendarMinus,
       wrap: "bg-[#FFF0D9]",
       iconColor: "text-[#FF6B00]",
     },
     {
       label: "Departments",
-      value: new Set(rows.map((row) => row.role).filter(Boolean)).size,
+      value: stats.departments,
       icon: Users,
       wrap: "bg-erp-purple-soft",
       iconColor: "text-erp-purple",
@@ -251,13 +242,13 @@ function SummaryCards({ rows }: { rows: StaffRow[] }) {
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {stats.map((card) => {
+      {cards.map((card) => {
         const Icon = card.icon;
 
         return (
           <div
             key={card.label}
-            className="flex h-[110px] items-center gap-[10px] rounded-erp-2xl border border-erp-border bg-erp-card px-[14px] shadow-erp-card sm:gap-[14px] sm:px-[24px]"
+            className="flex h-[110px] items-center gap-[10px] rounded-[24px] border border-erp-border bg-erp-card px-[14px] shadow-erp-card sm:gap-[14px] sm:px-[24px]"
           >
             <div
               className={cn(
@@ -273,12 +264,12 @@ function SummaryCards({ rows }: { rows: StaffRow[] }) {
               />
             </div>
 
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-normal leading-[18px] tracking-[-0.02em] text-erp-muted sm:text-[16px] sm:leading-[20px]">
+            <div>
+              <p className="text-sm font-[400] text-erp-muted">
                 {card.label}
               </p>
 
-              <p className="mt-[4px] truncate text-[20px] font-semibold leading-[24px] tracking-[-0.03em] text-erp-text sm:text-[28px] sm:leading-[34px]">
+              <p className="mt-1 text-2xl font-semibold">
                 {card.value}
               </p>
             </div>
@@ -321,7 +312,7 @@ function Toolbar({
   }, []);
 
   return (
-    <div className="rounded-[22px] border border-erp-border bg-erp-card px-3 py-3 shadow-erp-card sm:rounded-[30px] sm:px-[18px] sm:py-[17px]">
+    <div className="rounded-[32px] border border-erp-border bg-erp-card px-3 py-3 shadow-erp-card  max-[768px]:px-[18px] max-[768px]:py-[17px]">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="relative w-full xl:max-w-[760px] 2xl:max-w-[860px]">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-[#8C96A6] sm:left-[18px] sm:h-[18px] sm:w-[18px]" />
@@ -785,7 +776,21 @@ function Info({
 }
 
 export default function StaffManagementScreen() {
+  type StaffStats = {
+  total_staff: number;
+  active: number;
+  on_leave: number;
+  departments: number;
+};
+
+const [stats, setStats] = useState<StaffStats>({
+  total_staff: 0,
+  active: 0,
+  on_leave: 0,
+  departments: 0,
+});
   const [rows, setRows] = useState<StaffRow[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -796,24 +801,44 @@ export default function StaffManagementScreen() {
   const [selectedBranch, setSelectedBranch] = useState("All");
 
   async function fetchEmployees(keepOldData = false) {
-    try {
-      keepOldData ? setRefreshing(true) : setLoading(true);
+  try {
+    keepOldData
+      ? setRefreshing(true)
+      : setLoading(true);
 
-      const res = await getStaffList({ page: 1, limit: 100 });
-      const list = extractStaffList(res);
+    const res = await getStaffList({
+      page: 1,
+      limit: 100,
+    });
 
-      setRows(list.map(normalizeEmployee).filter((item) => item.id));
-    } catch (err) {
-      console.error("STAFF LIST ERROR:", getApiError(err));
+    setStats({
+      total_staff: Number(res?.stats?.total_staff || 0),
+      active: Number(res?.stats?.active || 0),
+      on_leave: Number(res?.stats?.on_leave || 0),
+      departments: Number(res?.stats?.departments || 0),
+    });
 
-      if (!keepOldData) {
-        setRows([]);
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    const list = extractStaffList(res);
+
+    setRows(
+      list
+        .map(normalizeEmployee)
+        .filter((item) => item.id)
+    );
+  } catch (err) {
+    console.error(
+      "STAFF LIST ERROR:",
+      getApiError(err)
+    );
+
+    if (!keepOldData) {
+      setRows([]);
     }
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
   }
+}
 
   useEffect(() => {
     fetchEmployees(false);
@@ -875,7 +900,7 @@ export default function StaffManagementScreen() {
             </p>
           </div>
 
-          <SummaryCards rows={rows} />
+          <SummaryCards stats={stats} />
 
           <Toolbar
             search={search}

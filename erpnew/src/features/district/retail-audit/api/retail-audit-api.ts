@@ -85,6 +85,7 @@ export type RetailAuditDetails = {
   audit_name?: string;
   audit_title?: string;
   store_name?: string;
+  store_code?: string; 
   organization_name?: string;
   created_at?: string;
   updated_at?: string;

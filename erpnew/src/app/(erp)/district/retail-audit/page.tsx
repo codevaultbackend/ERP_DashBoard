@@ -72,7 +72,6 @@ export default function DistrictAuditPage() {
 
   return (
     <div className="min-h-screen ">
-      <RetailAuditHeader />
       <RetailAuditFilters
         search={search}
         selectedStore={selectedStore}
@@ -176,7 +175,7 @@ export default function DistrictAuditPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {stores.map((store) => (
+              {filteredStores.map((store) => (
                 <button
                   key={store.id}
                   onClick={() =>
@@ -197,7 +196,6 @@ export default function DistrictAuditPage() {
                     transition-all
                     duration-300
                     hover:-translate-y-1
-                    hover:border-[#2563EB]
                     hover:shadow-xl
                   "
                 >

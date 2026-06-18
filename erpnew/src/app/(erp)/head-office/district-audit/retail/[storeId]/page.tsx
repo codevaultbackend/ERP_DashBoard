@@ -1,258 +1,275 @@
 "use client";
 
 import {
-  ChevronRight,
-  FileText,
+  useEffect,
+  useMemo,
+} from "react";
+
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
+
+import {
+  ChevronLeft,
 } from "lucide-react";
+
+import RetailAuditFilters from "@/features/head-office/district-audit/components/RetailAuditFilters";
+import RetailAuditGrid from "@/features/head-office/district-audit/components/RetailAuditGrid";
+
+import { useRetailAudit } from "@/features/head-office/district-audit/hooks/useRetailAudit";
 
 import type {
   RetailAudit,
 } from "@/features/head-office/district-audit/types/retail-audit.types";
 
-type Props = {
-  audit: RetailAudit;
+import {
+  downloadRetailAudit,
+} from "@/features/head-office/district-audit/api/merge-audit-api";
 
-  onView?: (
-    audit: RetailAudit
-  ) => Promise<void> | void;
-};
+export default function RetailStoreAuditPage() {
+  const params = useParams();
+  const router = useRouter();
 
-function formatDate(
-  value?: string
-) {
-  if (!value) return "--";
+  const retailStoreId = Number(
+    params?.storeId
+  );
 
-  try {
-    return new Date(
-      value
-    ).toLocaleDateString(
-      "en-GB"
-    );
-  } catch {
-    return "--";
-  }
-}
+  const {
+    retailStores,
+    districtStores,
 
-export default function RetailAuditCard({
-  audit,
-  onView,
-}: Props) {
-  const title =
-    audit.audit_name ||
-    audit.audit_title ||
-    audit.audit_no ||
-    `Report ${audit.id}`;
+    filteredAudits,
 
-  const auditId =
-    audit.audit_no ||
-    `AUD-${audit.id}`;
+    loading,
+    auditLoading,
 
-  const handleClick = async () => {
-    try {
-      if (
-        typeof onView === "function"
-      ) {
-        await onView(audit);
-      }
-    } catch (error) {
-      console.error(
-        "RetailAuditCard click failed:",
-        error
+    filters,
+
+    updateSearch,
+    updateStore,
+    updateDate,
+    clearFilters,
+
+    fetchRetailStoreAudits,
+  } = useRetailAudit();
+
+  const currentStore =
+    useMemo(() => {
+      return (
+        retailStores.find(
+          (store) =>
+            Number(store.id) ===
+            retailStoreId
+        ) || null
       );
-    }
+    }, [
+      retailStores,
+      retailStoreId,
+    ]);
+
+  useEffect(() => {
+    const loadRetailAudits =
+      async () => {
+        if (
+          !currentStore?.store_code
+        ) {
+          return;
+        }
+
+        updateStore(
+          Number(currentStore.id)
+        );
+
+        await fetchRetailStoreAudits(
+          currentStore.store_code
+        );
+      };
+
+    loadRetailAudits();
+  }, [
+    currentStore,
+    fetchRetailStoreAudits,
+    updateStore,
+  ]);
+
+  const handleStoreChange = (
+    value: string | null
+  ) => {
+    if (!value) return;
+
+    router.push(
+      `/head-office/district-audit/retail/${value}`
+    );
+  };
+  const getDistrictStoreCode = (
+    audit: RetailAudit
+  ) => {
+    return districtStores.find(
+      (district) =>
+        String(district.id) ===
+        String(audit.district_id)
+    )?.store_code;
   };
 
+  const handleViewAudit = async (
+  audit: RetailAudit
+) => {
+  try {
+    const districtStoreCode =
+      getDistrictStoreCode(audit);
+
+    if (!districtStoreCode) {
+      console.error(
+        "District store code not found",
+        audit.district_id
+      );
+      return;
+    }
+
+    await downloadRetailAudit(
+      districtStoreCode,
+      audit.id
+    );
+  } catch (error) {
+    console.error(
+      "Download failed:",
+      error
+    );
+  }
+};
+
+
+
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      aria-label={`Download audit report ${title}`}
-      className="
-        group
-        relative
-        w-full
-        overflow-hidden
-        rounded-3xl
-        border
-        border-[#E8EAED]
-        bg-white
-        p-4
-        sm:p-5
-        lg:p-6
-        text-left
-        transition-all
-        duration-300
-        hover:-translate-y-1
-        hover:border-[#2563EB]
-        hover:shadow-xl
-        active:scale-[0.99]
-      "
-    >
-      <div
-        className="
-          flex
-          flex-col
-          gap-4
-          sm:flex-row
-          sm:items-center
-          sm:justify-between
-        "
-      >
-        {/* LEFT SECTION */}
+    <div className="min-h-screen">
+      <div className="mx-auto w-full max-w-[1600px]">
 
-        <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-          <div
-            className="
-              flex
-              h-[56px]
-              w-[56px]
-              sm:h-[64px]
-              sm:w-[64px]
-              shrink-0
-              items-center
-              justify-center
-              rounded-[18px]
-              border
-              border-[#DBEAFE]
-              bg-[#EEF4FF]
-              transition-all
-              duration-300
-              group-hover:scale-105
-              group-hover:bg-[#DBEAFE]
-            "
-          >
-            <FileText
-              className="
-                h-7
-                w-7
-                sm:h-8
-                sm:w-8
-                text-[#2563EB]
-              "
-            />
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <p
-              className="
-                mb-1
-                text-[11px]
-                sm:text-[12px]
-                font-medium
-                uppercase
-                tracking-wider
-                text-[#94A3B8]
-              "
-            >
-              Audit Report
-            </p>
-
-            <h3
-              className="
-                break-words
-                text-[16px]
-                sm:text-[18px]
-                lg:text-[20px]
-                font-semibold
-                leading-tight
-                text-[#02011A]
-              "
-            >
-              {title}
-            </h3>
-
-            <div
-              className="
-                mt-2
-                flex
-                flex-wrap
-                items-center
-                gap-x-3
-                gap-y-1
-              "
-            >
-              <span
-                className="
-                  text-[12px]
-                  sm:text-[13px]
-                  font-medium
-                  text-[#64748B]
-                "
-              >
-                {formatDate(
-                  audit.created_at
-                )}
-              </span>
-
-              <span
-                className="
-                  hidden
-                  sm:block
-                  h-1
-                  w-1
-                  rounded-full
-                  bg-[#CBD5E1]
-                "
-              />
-
-              <span
-                className="
-                  text-[12px]
-                  sm:text-[13px]
-                  font-medium
-                  text-[#2563EB]
-                "
-              >
-                Download Report
-              </span>
-            </div>
-
-            <p
-              className="
-                mt-2
-                break-all
-                text-[11px]
-                sm:text-[12px]
-                text-[#94A3B8]
-              "
-            >
-              {auditId}
-            </p>
-          </div>
-        </div>
-
-        {/* RIGHT SECTION */}
-
-        <div
+        <button
+          type="button"
+          onClick={() =>
+            router.back()
+          }
           className="
+            mb-6
             flex
-            h-10
-            w-10
-            shrink-0
-            self-end
-            sm:self-center
             items-center
-            justify-center
+            gap-2
             rounded-xl
-            bg-[#F4F4F5]
+            border
+            border-[#E5E7EB]
+            bg-white
+            px-4
+            py-2.5
+            text-[24px]
+            font-medium
+            text-[#111827]
             transition-all
-            duration-300
-            group-hover:bg-[#EEF4FF]
-            group-hover:shadow-sm
+            hover:text-[#2563EB]
+            shadow-erp-bg
           "
         >
-          <ChevronRight
+          <ChevronLeft />
+        </button>
+
+        <div className="mb-8">
+          <h1
             className="
-              h-[18px]
-              w-[18px]
-              text-[#111827]
-              transition-transform
-              duration-300
-              group-hover:translate-x-1
+              text-[42px]
+              font-bold
+              tracking-tight
+              text-[#02011A]
             "
+          >
+            {currentStore?.store_name ??
+              "Retail Audit Reports"}
+          </h1>
+
+          <p
+            className="
+              mt-2
+              text-[15px]
+              text-[#64748B]
+            "
+          >
+            View all audit reports
+            for this retail store.
+          </p>
+        </div>
+
+        <div className="mb-6">
+          <RetailAuditFilters
+            search={
+              filters.search
+            }
+            selectedStore={
+              filters.retailStoreId
+                ? String(
+                  filters.retailStoreId
+                )
+                : null
+            }
+            selectedDate={
+              filters.date
+            }
+            stores={
+              retailStores
+            }
+            onSearchChange={
+              updateSearch
+            }
+            onStoreChange={
+              handleStoreChange
+            }
+            onDateChange={
+              updateDate
+            }
           />
         </div>
+
+        <RetailAuditGrid
+          audits={
+            filteredAudits
+          }
+          loading={
+            loading ||
+            auditLoading
+          }
+          downloadingId={
+            null
+          }
+          onView={
+            handleViewAudit
+          }
+          onDownload={(auditId) => {
+  const audit =
+    filteredAudits.find(
+      (a) => a.id === auditId
+    );
+
+  if (!audit) return;
+
+  const districtStoreCode =
+    getDistrictStoreCode(audit);
+
+  if (!districtStoreCode) {
+    console.error(
+      "District store code not found",
+      audit.district_id
+    );
+    return;
+  }
+
+  return downloadRetailAudit(
+    districtStoreCode,
+    auditId
+  );
+}}
+          onClearFilters={
+            clearFilters
+          }
+        />
       </div>
-    </button>
+    </div>
   );
 }

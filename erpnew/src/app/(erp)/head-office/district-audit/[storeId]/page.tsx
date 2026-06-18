@@ -1,8 +1,19 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import {
+  useMemo,
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
+
+import {
+  ChevronLeft,
+} from "lucide-react";
 
 import RetailAuditFilters from "@/features/head-office/district-audit/components/RetailAuditFilters";
 import RetailAuditGrid from "@/features/head-office/district-audit/components/RetailAuditGrid";
@@ -14,14 +25,16 @@ import type {
 } from "@/features/head-office/district-audit/types/retail-audit.types";
 
 import {
-  downloadRetailAudit,
+  downloadDistrictAudit,
 } from "@/features/head-office/district-audit/api/merge-audit-api";
 
 export default function DistrictStoreAuditPage() {
   const params = useParams();
   const router = useRouter();
 
-  const districtId = Number(params?.storeId);
+  const districtId = Number(
+    params?.storeId
+  );
 
   const {
     filteredAudits,
@@ -38,90 +51,172 @@ export default function DistrictStoreAuditPage() {
     clearFilters,
 
     fetchDistrictAudits,
+    fetchRetailStoreAudits,
   } = useRetailAudit();
 
-  const currentDistrict = useMemo(() => {
-    return (
-      districtStores.find(
-        (store) =>
-          Number(store.id) === districtId
-      ) || null
-    );
-  }, [
-    districtStores,
-    districtId,
-  ]);
+  const [
+    districtAuditCache,
+    setDistrictAuditCache,
+  ] = useState<RetailAudit[]>(
+    []
+  );
+
+  const currentDistrict =
+    useMemo(() => {
+      return (
+        districtStores.find(
+          (store) =>
+            Number(store.id) ===
+            districtId
+        ) || null
+      );
+    }, [
+      districtStores,
+      districtId,
+    ]);
 
   useEffect(() => {
-    if (!currentDistrict?.store_code) return;
+    const loadDistrictAudits =
+      async () => {
+        if (
+          !currentDistrict?.store_code
+        )
+          return;
 
-    fetchDistrictAudits(
-      currentDistrict.store_code
-    );
+        const data =
+          await fetchDistrictAudits(
+            currentDistrict.store_code
+          );
+
+        setDistrictAuditCache(
+          data || []
+        );
+      };
+
+    loadDistrictAudits();
   }, [
     currentDistrict?.store_code,
     fetchDistrictAudits,
   ]);
 
-  const districtAudits = useMemo(() => {
-    return filteredAudits;
-  }, [filteredAudits]);
+  const districtRetailStores =
+    useMemo(() => {
+      const uniqueStores =
+        new Map();
 
-  const districtRetailStores = useMemo(() => {
-    const uniqueStores = new Map();
+      districtAuditCache.forEach(
+        (audit: any) => {
+          const storeId =
+            audit.store_id ??
+            audit.retail_store_id;
 
-    districtAudits.forEach((audit) => {
-      const storeId =
-        audit.store_id ??
-        audit.retail_store_id;
+          const storeName =
+            audit.store_name ??
+            audit.retail_store_name;
 
-      const storeName =
-        audit.store_name ??
-        audit.retail_store_name;
-
-      if (storeId && storeName) {
-        uniqueStores.set(
-          String(storeId),
-          {
-            id: String(storeId),
-            store_name: storeName,
-            store_code:
-              audit.store_code ?? "",
+          if (
+            storeId &&
+            storeName
+          ) {
+            uniqueStores.set(
+              String(storeId),
+              {
+                id: String(
+                  storeId
+                ),
+                store_name:
+                  storeName,
+                store_code:
+                  audit.store_code ??
+                  "",
+              }
+            );
           }
+        }
+      );
+
+      return Array.from(
+        uniqueStores.values()
+      );
+    }, [
+      districtAuditCache,
+    ]);
+
+  const handleStoreChange = async (
+    value: number | null
+  ) => {
+    updateStore(
+      value
+        ? Number(value)
+        : null
+    );
+
+    try {
+      if (!value) {
+        await fetchDistrictAudits(
+          currentDistrict?.store_code ??
+          ""
+        );
+
+        return;
+      }
+
+      const selectedStore =
+        districtRetailStores.find(
+          (store) =>
+            Number(store.id) === value
+        );
+
+      console.log(
+        "SELECTED RETAIL STORE",
+        selectedStore
+      );
+
+      if (
+        selectedStore?.store_code
+      ) {
+        await fetchRetailStoreAudits(
+          selectedStore.store_code
         );
       }
-    });
-
-    return Array.from(
-      uniqueStores.values()
-    );
-  }, [districtAudits]);
-
-  const handleViewAudit = async (
-    audit: RetailAudit
-  ) => {
-    try {
-      if (!currentDistrict?.store_code)
-        return;
-
-      await downloadRetailAudit(
-        currentDistrict.store_code,
-        audit.id
-      );
     } catch (error) {
       console.error(
-        "Download failed:",
+        "Store change failed",
         error
       );
     }
   };
 
+  const handleViewAudit =
+    async (
+      audit: RetailAudit
+    ) => {
+      try {
+        console.log(
+          "DOWNLOAD AUDIT",
+          audit
+        );
+
+        await downloadDistrictAudit(
+          audit.id
+        );
+      } catch (error) {
+        console.error(
+          "Download failed:",
+          error
+        );
+      }
+    };
+
   return (
     <div className="min-h-screen">
       <div className="mx-auto w-full max-w-[1600px]">
+
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() =>
+            router.back()
+          }
           className="
             mb-6
             flex
@@ -137,7 +232,6 @@ export default function DistrictStoreAuditPage() {
             font-medium
             text-[#111827]
             transition-all
-            hover:border-[#2563EB]
             hover:text-[#2563EB]
             shadow-erp-bg
           "
@@ -165,34 +259,31 @@ export default function DistrictStoreAuditPage() {
               text-[#64748B]
             "
           >
-            View all audit reports for this district.
+            View all audit reports
+            for this district.
           </p>
         </div>
 
         <div className="mb-6">
           <RetailAuditFilters
-            search={filters.search}
-            selectedStore={
-              filters.retailStoreId
-                ? String(
-                    filters.retailStoreId
-                  )
-                : null
+            search={
+              filters.search
             }
-            selectedDate={filters.date}
-            stores={districtRetailStores}
+            selectedStore={
+              filters.retailStoreId ?? null
+            }
+            selectedDate={
+              filters.date
+            }
+            stores={
+              districtRetailStores
+            }
             onSearchChange={
               updateSearch
             }
-            onStoreChange={(
-              value
-            ) => {
-              updateStore(
-                value
-                  ? Number(value)
-                  : null
-              );
-            }}
+            onStoreChange={
+              handleStoreChange
+            }
             onDateChange={
               updateDate
             }
@@ -200,12 +291,16 @@ export default function DistrictStoreAuditPage() {
         </div>
 
         <RetailAuditGrid
-          audits={districtAudits}
+          audits={
+            filteredAudits
+          }
           loading={
             loading ||
             auditLoading
           }
-          downloadingId={null}
+          downloadingId={
+            null
+          }
           onView={
             handleViewAudit
           }
@@ -214,7 +309,7 @@ export default function DistrictStoreAuditPage() {
           ) =>
             downloadRetailAudit(
               currentDistrict?.store_code ??
-                "",
+              "",
               auditId
             )
           }

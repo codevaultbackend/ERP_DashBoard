@@ -34,8 +34,8 @@ export default function DistrictAuditPage() {
   const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
-  const [selectedStore, setSelectedStore] =
-    useState<string | null>(null);
+const [selectedStore, setSelectedStore] =
+  useState<number | null>(null);
   const [selectedDate, setSelectedDate] =
     useState("");
   const filteredDistrictStores =
@@ -94,16 +94,16 @@ export default function DistrictAuditPage() {
   }, []);
 
   const handleRetailStoreSelect = (
-    value: string | null
-  ) => {
-    setSelectedStore(value);
+  value: number | null
+) => {
+  setSelectedStore(value);
 
-    if (value) {
-      router.push(
-        `/head-office/district-audit/retail/${value}`
-      );
-    }
-  };
+  if (value !== null) {
+    router.push(
+      `/head-office/district-audit/retail/${value}`
+    );
+  }
+};
 
   return (
     <div className="min-h-screen">
@@ -126,7 +126,7 @@ export default function DistrictAuditPage() {
 
       <div className="mx-auto w-full max-w-[1600px]">
         {loading ? (
-          <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({
               length: 6,
             }).map((_, i) => (
@@ -235,17 +235,16 @@ export default function DistrictAuditPage() {
                       group
                       relative
                       overflow-hidden
-                      rounded-[28px]
+                      rounded-[32px]
+                      max-h-[104px]
                       border
                       border-[#E5E7EB]
                       bg-white
                       p-6
+                      shadow-[1px_1px_4px_0px_#0000001A]
                       text-left
                       transition-all
                       duration-300
-                      hover:-translate-y-1
-                      hover:border-[#2563EB]
-                      hover:shadow-xl
                     "
                   >
                     <div
@@ -269,18 +268,18 @@ export default function DistrictAuditPage() {
                         <div
                           className="
                             flex
-                            h-[64px]
-                            w-[64px]
+                            h-[56px]
+                            w-[56px]
                             items-center
                             justify-center
-                            rounded-[20px]
-                            bg-[#EEF4FF]
+                            rounded-[16px]
+                            bg-[#F5F9FF]
                             transition-all
                             duration-300
                             group-hover:scale-110
                           "
                         >
-                          <Building2 className="h-8 w-8 text-[#2563EB]" />
+                          <Building2 className="h-7 w-7 text-[#2563EB]" />
                         </div>
 
                         <div className="min-w-0 max-w-[167px]">
@@ -289,26 +288,16 @@ export default function DistrictAuditPage() {
                               
                               text-[18px]
                               font-semibold
-                              text-[#02011A]
+                              text-[#101828]
+                              leading-[28px]
+                              tracking-[-0.44px]
+                              line-clamp-1
                             "
                           >
                             {
                               store.store_name
                             }
                           </h3>
-
-                          <p
-                            className="
-                              mt-1
-                              text-sm
-                              font-medium
-                              text-[#64748B]
-                            "
-                          >
-                            {
-                              store.store_code
-                            }
-                          </p>
 
                           <span
                             className="
@@ -318,13 +307,12 @@ export default function DistrictAuditPage() {
                               bg-[#EEF4FF]
                               px-3
                               py-1
-                              text-xs
-                              font-medium
-                              text-[#2563EB]
+                              text-[14px]
+                              font-[400]
+                              text-[#4A5565]
                             "
                           >
-                            District
-                            Store
+                            {store.store_code}
                           </span>
                         </div>
                       </div>

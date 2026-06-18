@@ -3,6 +3,7 @@
 import {
   Search,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 
 import type {
@@ -14,19 +15,12 @@ type Props = {
   selectedStore: number | null;
   selectedDate: string;
   stores?: RetailAuditStore[];
+  loadingStores?: boolean;
+  storeError?: string | null;
 
-  onSearchChange: (
-    value: string
-  ) => void;
-
-  onStoreChange: (
-    value: number | null
-  ) => void;
-
-  onDateChange: (
-    value: string
-  ) => void;
-
+  onSearchChange: (value: string) => void;
+  onStoreChange: (value: number | null) => void;
+  onDateChange: (value: string) => void;
   onClearFilters: () => void;
 };
 
@@ -35,6 +29,8 @@ export default function RetailAuditFilters({
   selectedStore,
   selectedDate,
   stores = [],
+  loadingStores = false,
+  storeError = null,
   onSearchChange,
   onStoreChange,
   onDateChange,
@@ -42,29 +38,30 @@ export default function RetailAuditFilters({
   return (
     <div
       className="
-        mb-6
-        sm:mb-8
-        lg:mb-10
+        mb-8
         flex
         flex-col
-        gap-3
-        lg:flex-row
-        lg:items-center
+        gap-4
+        xl:flex-row
+        xl:items-center
+        bg-white
+        h-[70px]
+        rounded-full
+             shadow-sm
+             pl-6
+            pr-6
       "
     >
       {/* SEARCH */}
 
-      <div className="relative w-full flex-1">
+      <div className="relative flex-1 ">
         <Search
           className="
             absolute
-            left-4
-            sm:left-5
+            left-5
             top-1/2
-            h-4
-            w-4
-            sm:h-5
-            sm:w-5
+            h-5
+            w-5
             -translate-y-1/2
             text-[#94A3B8]
           "
@@ -79,29 +76,22 @@ export default function RetailAuditFilters({
           }
           placeholder="Search by name..."
           className="
-            h-[56px]
-            sm:h-[60px]
-            lg:h-[68px]
+            h-[36px]
             w-full
-            rounded-2xl
-            lg:rounded-full
+            rounded-full
+             pl-14
+            pr-6
             border
             border-[#E5E7EB]
-            bg-white
-            pl-12
-            sm:pl-14
-            pr-4
-            sm:pr-6
-            text-sm
-            sm:text-[16px]
+            bg-[#F7F7F7]
+            
+            text-[16px]
             font-medium
-            text-[#02011A]
-            shadow-sm
+            text-[#111827]
             outline-none
             transition-all
             duration-200
             placeholder:text-[#9CA3AF]
-            hover:border-[#CBD5E1]
             focus:border-[#2563EB]
             focus:ring-4
             focus:ring-[#DBEAFE]
@@ -111,88 +101,64 @@ export default function RetailAuditFilters({
 
       {/* STORE FILTER */}
 
-      <div className="relative w-full lg:w-auto">
+      <div className="relative w-full xl:w-auto shadow-erp-card h-[35px] p-2 rounded-[32px]">
         <select
           value={selectedStore ?? ""}
+          disabled={loadingStores || !!storeError}
           onChange={(e) =>
             onStoreChange(
               e.target.value
-                ? Number(
-                    e.target.value
-                  )
+                ? Number(e.target.value)
                 : null
             )
           }
-          className="
-            h-[56px]
-            sm:h-[60px]
-            lg:h-[68px]
-            w-full
-            lg:min-w-[240px]
-            appearance-none
-            rounded-2xl
-            lg:rounded-full
-            border
-            border-[#E5E7EB]
-            bg-white
-            px-4
-            sm:px-6
-            pr-12
-            text-sm
-            sm:text-[16px]
-            font-medium
-            text-[#111827]
-            shadow-sm
-            outline-none
-            transition-all
-            duration-200
-            hover:border-[#CBD5E1]
-            focus:border-[#2563EB]
-            focus:ring-4
-            focus:ring-[#DBEAFE]
-          "
         >
-          <option value="">
-            All Stores
-          </option>
-
-          {stores.map(
-            (store) => (
-              <option
-                key={store.id}
-                value={store.id}
-              >
-                {store.store_name ||
-                  (store as any)
-                    .organization_name ||
-                  (store as any)
-                    .name ||
-                  `Store ${store.id}`}
+          {loadingStores ? (
+            <option>Loading stores...</option>
+          ) : storeError ? (
+            <option>Failed to load stores</option>
+          ) : (
+            <>
+              <option value="">
+                All Stores
+                {stores.length > 0
+                  ? ` (${stores.length})`
+                  : ""}
               </option>
-            )
+
+              {stores.map((store) => (
+                <option
+                  key={store.id}
+                  value={store.id}
+                >
+                  {store.store_name}
+                </option>
+              ))}
+            </>
           )}
         </select>
 
-        <ChevronDown
-          className="
-            pointer-events-none
-            absolute
-            right-4
-            sm:right-5
-            top-1/2
-            h-4
-            w-4
-            sm:h-5
-            sm:w-5
-            -translate-y-1/2
-            text-[#64748B]
-          "
-        />
+        {loadingStores ? (
+          <Loader2
+            className="
+              absolute
+              right-5
+              top-1/2
+              h-5
+              w-5
+              -translate-y-1/2
+              animate-spin
+              text-[#64748B]
+            "
+          />
+        ) : (
+          <></>
+        )}
       </div>
 
       {/* DATE FILTER */}
 
-      <div className="relative w-full lg:w-auto">
+      <div className="w-full xl:w-auto">
         <input
           type="date"
           value={selectedDate}
@@ -202,27 +168,21 @@ export default function RetailAuditFilters({
             )
           }
           className="
-            h-[56px]
-            sm:h-[60px]
-            lg:h-[68px]
+            h-[36px]
             w-full
-            lg:min-w-[220px]
-            rounded-2xl
-            lg:rounded-full
+            xl:w-[240px]
+            rounded-full
             border
             border-[#E5E7EB]
             bg-white
-            px-4
-            sm:px-6
-            text-sm
-            sm:text-[16px]
+            px-6
+            text-[16px]
             font-medium
             text-[#111827]
             shadow-sm
             outline-none
             transition-all
             duration-200
-            hover:border-[#CBD5E1]
             focus:border-[#2563EB]
             focus:ring-4
             focus:ring-[#DBEAFE]
@@ -232,3 +192,4 @@ export default function RetailAuditFilters({
     </div>
   );
 }
+

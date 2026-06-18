@@ -88,7 +88,6 @@ export default function DistrictStoreAuditPage() {
         font-medium
         text-[#111827]
         transition-all
-        hover:border-[#2563EB]
         hover:text-[#2563EB]
         shadow-erp-bg
     "

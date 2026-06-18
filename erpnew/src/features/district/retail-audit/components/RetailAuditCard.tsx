@@ -85,7 +85,6 @@ export default function RetailAuditCard({
         transition-all
         duration-300
         hover:-translate-y-1
-        hover:border-[#2563EB]
         hover:shadow-lg
         active:scale-[0.99]
       "

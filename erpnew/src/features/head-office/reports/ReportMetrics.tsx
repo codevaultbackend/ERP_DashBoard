@@ -11,7 +11,7 @@ type Props = {
 
 export default function ReportMetrics({ cards }: Props) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+    <div className="grid grid-cols-1 gap-4 max-[768px]:grid-cols-2 xl:grid-cols-4 xl:gap-5">
       <ReportMetricCard
         title="Total Revenue"
         value={cards.totalRevenue}

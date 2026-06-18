@@ -84,7 +84,6 @@ export default function StateCards({ cards }: Props) {
       tone: "purple",
     },
 
-    // ✅ FIXED GOLD PRICE
     {
       title: "Gold Price",
       value: formatCurrencyCompact(cards?.goldPrice || 0),
@@ -99,8 +98,19 @@ export default function StateCards({ cards }: Props) {
     },
   ];
 
+  console.log("StateCards deadStock", cards?.deadStock);
+
   return (
-    <div className="grid grid-cols-2 gap-4 max-[768px]:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+    <div
+      className="
+    grid
+    grid-cols-1
+    gap-4
+    max-[768px]:grid-cols-2
+    md:grid-cols-3
+    min-[1240px]:!grid-cols-6
+  "
+    >
       {stats.map((item) => {
         const Icon = item.icon;
         const tone = getToneClasses(item.tone);
@@ -108,24 +118,46 @@ export default function StateCards({ cards }: Props) {
         return (
           <div
             key={item.title}
-            className="min-h-[132px] rounded-erp-md border border-erp-border bg-erp-card px-4 py-4 shadow-erp-card sm:min-h-[140px] sm:rounded-erp-lg sm:px-5 sm:py-5 xl:min-h-[150px] xl:rounded-erp-xl"
+            className="
+  min-h-[132px]
+  h-[153px]
+  rounded-erp-2xl
+  border
+  border-erp-border
+  bg-erp-card
+  px-4
+  py-4
+  shadow-erp-card
+  sm:px-5
+  sm:py-5
+"
           >
             <div
               className={cn(
-                "flex h-[42px] w-[42px] items-center justify-center rounded-erp-xs sm:h-[48px] sm:w-[48px] sm:rounded-erp-sm xl:h-[52px] xl:w-[52px]",
+                "flex h-[42px] w-[42px] items-center justify-center rounded-erp-xs sm:h-[48px] sm:w-[48px] sm:rounded-erp-sm xl:h-[50px] xl:w-[50px]",
                 tone.softBg
               )}
             >
-              <Icon className={cn("h-5 w-5 xl:h-[23px] xl:w-[23px]", tone.icon)} />
+              <Icon className={cn("h-4 w-4 xl:h-4 xl:w-4", tone.icon)} />
             </div>
 
-            <div className="mt-4 sm:mt-5">
-              <p className="text-[13px] font-medium leading-[1.25] text-erp-muted sm:text-[14px] xl:text-[15px]">
+            <div className="mt-4 max-[768px]:!mt-8">
+              <p className="text-[14px] font-[400] leading-[100%] text-erp-muted ">
                 {item.title}
               </p>
 
-              <div className="mt-2 flex items-end justify-between gap-2">
-                <h3 className="break-words text-[22px] font-semibold leading-none tracking-[-0.04em] text-erp-heading sm:text-[24px] xl:text-[25px]">
+              <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
+                <h3
+                  className="
+    truncate
+    text-[28px]
+    font-semibold
+    leading-tight
+    text-erp-heading
+    max-[768px]:text-[22px]
+    xl:text-[28px]
+  "
+                >
                   {item.value}
                 </h3>
 

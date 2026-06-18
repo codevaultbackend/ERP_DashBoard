@@ -229,10 +229,17 @@ export type CreateExchangePayload = {
   invoice_number: string;
 
   original_products: Array<{
-    product_code: string;
-    product_name: string;
-    value: number;
-  }>;
+  product_code: string;
+  product_name: string;
+
+  purity?: string;
+
+  gross_weight?: number;
+  net_weight?: number;
+  stone_weight?: number;
+
+  value: number;
+}>;
 
   new_products: Array<{
     product_code: string;
@@ -250,13 +257,19 @@ export type CreateExchangePayload = {
 
 export type ExchangeInvoiceItem = {
   invoice_id: number;
+
   product_code: string;
   product_name: string;
+
+  metal_type: string;
+
   purity: string;
-  gross_weight: number;
-  net_weight: number;
-  stone_weight: number;
-  value: number;
+
+  gross_weight: string;
+  net_weight: string;
+  stone_weight: string;
+
+  value: string;
 };
 
 export type ExchangeInvoiceResponse = {
@@ -462,38 +475,50 @@ export function mapExchangeStatsToRefundStats(
   ];
 }
 
-export function mapExchangeToRefundRequest(
+function mapExchangeToRefundRequest(
   item: ExchangeDashboardItem,
   index = 0
 ): RefundRequest {
   const days = Number(item.days_since_purchase || 0);
   const difference = Number(item.difference || 0);
-  const oldValue = Number(item.old_value || 0);
-  const makingCharges = Number(item.making_charges || 0);
-  const finalAmount = Math.max(0, oldValue + difference);
 
   return {
-    id: item.exchange_number || `EXG-${item.id}`,
+    id: item.exchange_number,
 
-    customerName: item.name || "-",
-    phone: item.phone || "-",
-    billNo: item.invoice_number || "-",
+    customerName: item.name,
+    phone: item.phone,
+    billNo: item.invoice_number,
 
     purchaseDate: formatDate(item.invoice_date),
     exchangeDate: formatDate(item.exchange_date),
 
-    statusBadge: `${days} days since purchase`,
-    status: getStatus(days),
+    statusBadge:
+      days <= 7
+        ? "Within 7 Days"
+        : "After 7 Days",
 
-    refundReason: "Product exchange",
+    status:
+      days <= 7
+        ? "approved"
+        : "processing",
+
+    refundReason: "Product Exchange",
+
     refundMethod:
       difference >= 0
-        ? "Customer payable"
-        : "Store payable",
+        ? "Customer Payable"
+        : "Store Payable",
 
-    refundAmount: formatCurrency(oldValue),
-    deduction: getDeduction(days),
-    finalRefund: formatCurrency(finalAmount),
+    refundAmount: item.old_value,
+
+    deduction:
+      days <= 7
+        ? "FREE"
+        : "5%",
+
+    finalRefund: String(
+      Math.abs(difference)
+    ),
 
     old_product_code:
       item.old_product_code || "-",
@@ -508,7 +533,7 @@ export function mapExchangeToRefundRequest(
       item.old_net_weight || "-",
 
     old_value:
-      formatCurrency(item.old_value),
+      item.old_value || "0",
 
     new_product_code:
       item.new_product_code || "-",
@@ -523,13 +548,13 @@ export function mapExchangeToRefundRequest(
       item.new_net_weight || "-",
 
     new_value:
-      formatCurrency(item.new_value),
+      item.new_value || "0",
 
     making_charges:
-      formatCurrency(makingCharges),
+      item.making_charges || "0",
 
     difference:
-      formatCurrency(difference),
+      item.difference || "0",
 
     expanded: index === 0,
   };

@@ -247,17 +247,12 @@ export type RetailAuditGridProps = {
 /* -------------------------------------------------------------------------- */
 /*                          DETAILS DRAWER                                    */
 /* -------------------------------------------------------------------------- */
-
-export type RetailAuditDetailsDrawerProps =
-  {
-    open: boolean;
-
-    auditId:
-      | number
-      | null;
-
-    onClose: () => void;
-  };
+export type RetailAuditDetailsDrawerProps = {
+  open: boolean;
+  auditId: string | number | null;
+  storeCode: string;
+  onClose: () => void;
+};
 
 /* -------------------------------------------------------------------------- */
 /*                              METRICS                                       */

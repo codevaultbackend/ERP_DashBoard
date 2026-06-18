@@ -44,7 +44,6 @@ export default function RetailStoreCard({
         shadow-sm
         transition-all
         duration-300
-        hover:border-[#2563EB]
         hover:shadow-md
         hover:-translate-y-1
         active:scale-[0.98]

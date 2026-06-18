@@ -41,9 +41,9 @@ function statusClass(
   status?: string
 ) {
   switch (
-    String(
-      status
-    ).toLowerCase()
+  String(
+    status
+  ).toLowerCase()
   ) {
     case "completed":
     case "approved":
@@ -79,6 +79,7 @@ function statusClass(
 export default function RetailAuditDetailsDrawer({
   open,
   auditId,
+  storeCode,
   onClose,
 }: RetailAuditDetailsDrawerProps) {
   const [loading, setLoading] =
@@ -115,13 +116,13 @@ export default function RetailAuditDetailsDrawer({
             response
           );
         } catch (
-          err: any
+        err: any
         ) {
           setError(
             err?.response?.data
               ?.message ||
-              err?.message ||
-              "Failed to load audit"
+            err?.message ||
+            "Failed to load audit"
           );
         } finally {
           setLoading(false);
@@ -134,26 +135,29 @@ export default function RetailAuditDetailsDrawer({
     auditId,
   ]);
 
-  const handleDownload =
-    async () => {
-      if (!auditId)
-        return;
+  const handleDownload = async () => {
+    if (!storeCode || !auditId) {
+      console.log("Missing download params", {
+        storeCode,
+        auditId,
+      });
+      return;
+    }
 
-      try {
-        setDownloading(
-          true
-        );
+    try {
+      setDownloading(true);
 
-        await downloadRetailAudit(
-          auditId
-        );
-      } finally {
-        setDownloading(
-          false
-        );
-      }
-    };
+      await downloadRetailAudit(
+        storeCode,
+        auditId
+      );
 
+    } catch (error) {
+      console.error("Download failed", error);
+    } finally {
+      setDownloading(false);
+    }
+  };
   if (!open)
     return null;
 
@@ -326,8 +330,8 @@ export default function RetailAuditDetailsDrawer({
                         text-xs
                         font-semibold
                         ${statusClass(
-                          audit.status
-                        )}
+                        audit.status
+                      )}
                       `}
                     >
                       {audit.status}

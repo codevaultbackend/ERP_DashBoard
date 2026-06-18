@@ -13,7 +13,7 @@ function ReportsSkeleton() {
         <div className="mt-3 h-4 w-[430px] max-w-full animate-pulse rounded-erp-xs bg-erp-border" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5">
+      <div className="grid grid-cols-1 gap-4 max-[768px]:grid-cols-2 xl:grid-cols-4 xl:gap-5">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
