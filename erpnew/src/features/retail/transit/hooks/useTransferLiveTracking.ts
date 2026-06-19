@@ -150,34 +150,34 @@ export function useTransferLiveTracking(
   }, []);
 
   const fetchLatest = useCallback(async () => {
-    if (!transferId) return;
+  if (!transferId) return;
 
-    try {
-      const res = await getTransferLiveLocation(transferId);
+  try {
+    const res = await getTransferLiveLocation(transferId);
 
-      const live = res.data.live_location;
-      const dest = res.data.destination;
+    const live = res.data.current_location;
+    const dest = res.data.destination;
 
-      applyPayload({
-        transfer_id: res.data.transfer_id,
-        transfer_no: res.data.transfer_no,
-        status: res.data.status,
-        is_tracking_active: res.data.is_tracking_active,
-        current_location: {
-          latitude: live.latitude,
-          longitude: live.longitude,
-          recorded_at: live.updated_at,
-        },
-        destination: dest,
-      });
-    } catch (error: any) {
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: error?.message || "Failed to fetch live location",
-      }));
-    }
-  }, [transferId, applyPayload]);
+    applyPayload({
+      transfer_id: Number(res.data.transfer_id),
+      transfer_no: res.data.transfer_no,
+      status: res.data.status,
+      is_tracking_active: res.data.is_tracking_active,
+      current_location: {
+        latitude: live?.latitude,
+        longitude: live?.longitude,
+        recorded_at: live?.recorded_at,
+      },
+      destination: dest,
+    });
+  } catch (error: any) {
+    setState((prev) => ({
+      ...prev,
+      isLoading: false,
+      error: error?.message || "Failed to fetch live location",
+    }));
+  }
+}, [transferId, applyPayload]);
 
   useEffect(() => {
     if (!transferId || !enabled) return;
