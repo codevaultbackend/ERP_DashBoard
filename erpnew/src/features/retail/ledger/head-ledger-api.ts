@@ -286,6 +286,25 @@ export function fetchHeadInvoicePayments(invoiceId: string | number) {
 }
 
 /**
+ * Head Office Invoice PDF Download
+ * GET /headledger/invoice/:invoice_id/download-pdf
+ */
+export function downloadHeadOfficeInvoicePdf(
+  invoiceId: string | number
+) {
+  if (isInvalidId(invoiceId)) {
+    throw new Error("invoice_id is required");
+  }
+
+  return downloadBlob(
+    `${HEAD_INVOICE_BASE}/invoice/${encodeURIComponent(
+      String(invoiceId)
+    )}/download-pdf`,
+    `head-office-invoice-${invoiceId}.pdf`
+  );
+}
+
+/**
  * Updated invoice PDF endpoint:
  * GET /invoice/:invoice_id/download-pdf
  *
@@ -298,7 +317,7 @@ export function downloadHeadInvoicePdf(invoiceId: string | number) {
   }
 
   return downloadBlob(
-    `/headledger/invoice/${encodeURIComponent(
+    `/ladger/invoice/${encodeURIComponent(
       String(invoiceId)
     )}/download`,
     `invoice-${invoiceId}.pdf`

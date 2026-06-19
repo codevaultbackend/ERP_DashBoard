@@ -261,31 +261,23 @@ export function getMapPoints(item?: TransitTransfer | null) {
   return Array.from(unique.values());
 }
 
-export function buildMergedSummary(items: TransitTransfer[]) {
-  let in_transit = 0;
-  let shipments = 0;
-  let goods_receipt = 0;
-
-  for (const item of items) {
-    const status = String(item.status || "").toLowerCase();
-
-    if (["approved", "dispatched", "in_transit"].includes(status)) {
-      in_transit += 1;
-    }
-
-    if (["approved", "dispatched", "in_transit", "received", "delivered"].includes(status)) {
-      shipments += 1;
-    }
-
-    if (["received", "delivered"].includes(status)) {
-      goods_receipt += 1;
-    }
-  }
-
+export function buildMergedSummary(
+  items: TransitTransfer[]
+) {
   return {
-    in_transit,
-    shipments,
-    goods_receipt,
+    in_transit: items.filter(
+      (i) => i.status === "in_transit"
+    ).length,
+
+    shipments: items.filter(
+      (i) => i.status === "dispatched"
+    ).length,
+
+    goods_receipt: items.filter(
+      (i) =>
+        i.status === "received" ||
+        i.status === "delivered"
+    ).length,
   };
 }
 

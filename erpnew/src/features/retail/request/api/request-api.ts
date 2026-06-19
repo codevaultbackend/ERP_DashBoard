@@ -440,9 +440,11 @@ function normalizeApproveDispatchItems(
         item_id: Number(item.item_id),
         qty,
         approved_qty: qty,
-        parent_batch_id: item.parent_batch_id
-          ? Number(item.parent_batch_id)
-          : null,
+        parent_batch_id:
+          item.parent_batch_id !== null &&
+            item.parent_batch_id !== undefined
+            ? Number(item.parent_batch_id)
+            : null,
         weight: Number(item.weight || 0),
         rate: Number(item.rate || 0),
         remarks: item.remarks || null,

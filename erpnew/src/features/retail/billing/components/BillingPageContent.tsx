@@ -1053,7 +1053,7 @@ export default function BillingPageContent() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F6F7F9]">
+    <div className="min-h-screen overflow-x-hidden ">
 
       <DesktopBillingScannerReceiver
         onItemReceived={

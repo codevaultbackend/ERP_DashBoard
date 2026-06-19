@@ -66,17 +66,43 @@ export async function getTransitTransfers(): Promise<{
   data: TransitTransfer[];
 }> {
   const [incoming, outgoing] = await Promise.all([
-    apiFetch<TransitListResponse>("/request/transfers/incoming"),
-    apiFetch<TransitListResponse>("/request/transfers/outgoing"),
+    apiFetch<TransitListResponse>(
+      "/request/transfers/incoming"
+    ),
+    apiFetch<TransitListResponse>(
+      "/request/transfers/outgoing"
+    ),
   ]);
 
-  const incomingRows = mapWithDirection(incoming?.data || [], "incoming");
-  const outgoingRows = mapWithDirection(outgoing?.data || [], "outgoing");
+  const incomingRows = mapWithDirection(
+    incoming?.data || [],
+    "incoming"
+  );
 
-  const data = sortTransfersByRecent([...incomingRows, ...outgoingRows]);
+  const outgoingRows = mapWithDirection(
+    outgoing?.data || [],
+    "outgoing"
+  );
+
+  const data = sortTransfersByRecent([
+    ...incomingRows,
+    ...outgoingRows,
+  ]);
 
   return {
-    summary: buildMergedSummary(data),
+    summary: {
+      in_transit:
+        (incoming?.summary?.in_transit || 0) +
+        (outgoing?.summary?.in_transit || 0),
+
+      shipments:
+        (incoming?.summary?.shipment || 0) +
+        (outgoing?.summary?.shipment || 0),
+
+      goods_receipt:
+        (incoming?.summary?.goods_receipt || 0) +
+        (outgoing?.summary?.goods_receipt || 0),
+    },
     data,
   };
 }

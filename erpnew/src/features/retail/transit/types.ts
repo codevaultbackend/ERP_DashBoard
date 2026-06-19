@@ -95,9 +95,20 @@ export type TransitTransfer = {
 };
 
 export type TransitSummary = {
+  incoming?: number;
+  outgoing?: number;
+
   in_transit: number;
-  shipments: number;
+  shipment?: number;
+  shipments?: number;
+
   goods_receipt: number;
+
+  pending_receive?: number;
+  received?: number;
+
+  totalIncoming?: number;
+  totalOutgoing?: number;
 };
 
 export type TransitListResponse = {

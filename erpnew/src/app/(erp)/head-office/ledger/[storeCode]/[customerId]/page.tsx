@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import ClientLedgerTable from "../../../../../../features/retail/ledger/ClientLedgerTable";
 import InvoicePreviewModal from "../../../../../../features/retail/ledger/InvoicePreviewModal";
 import {
-  downloadHeadInvoicePdf,
+  downloadHeadOfficeInvoicePdf,
   fetchHeadCustomerInvoices,
   fetchHeadInvoicePayments,
 } from "../../../../../../features/retail/ledger/head-ledger-api";
@@ -127,71 +127,27 @@ export default function HeadOfficeCustomerLedgerPage() {
     }
   }
 
-  const handleDownloadInvoice =
-    async (
-      invoice:
-        | ClientInvoiceRow
-        | any
-    ) => {
+ const handleDownloadInvoice = async (
+  invoice: ClientInvoiceRow
+) => {
+  try {
+    const invoiceId = getInvoiceId(invoice);
 
-      try {
+    if (!invoiceId) {
+      alert("Invoice ID not found.");
+      return;
+    }
 
-        const invoiceId =
-          invoice?.invoiceId ||
-          invoice?.invoice_id ||
-          invoice?.id ||
-          invoice?.reference_id ||
-          invoice?.referenceId ||
-          invoice?.raw
-            ?.invoice_id ||
-          invoice?.raw
-            ?.invoiceId ||
-          invoice?.raw?.id ||
-          null;
+    await downloadHeadOfficeInvoicePdf(invoiceId);
+  } catch (error: any) {
+    console.error("Invoice download failed:", error);
 
-        /**
-         * SAFE VALIDATION
-         */
-        if (
-          !invoiceId ||
-          invoiceId ===
-            "undefined" ||
-          invoiceId ===
-            "null"
-        ) {
-
-          console.error(
-            "Invoice ID missing:",
-            invoice
-          );
-
-          alert(
-            "Invoice ID not found."
-          );
-
-          return;
-        }
-
-        /**
-         * DOWNLOAD PDF
-         */
-        await downloadHeadInvoicePdf(
-          invoiceId
-        );
-
-      } catch (error: any) {
-
-        console.error(
-          "Invoice download failed:",
-          error
-        );
-
-        alert(
-          error?.message ||
-            "Failed to download invoice."
-        );
-      }
-    };
+    alert(
+      error?.message ||
+      "Failed to download invoice."
+    );
+  }
+};
 
   return (
     <div className="w-full pb-8">

@@ -35,6 +35,8 @@ type Props = {
 
 type DispatchItemState = {
   item_id: number;
+  parent_batch_id: number | null;
+  root_batch_id: number | null;
   name: string;
   requested: number;
   approvedQty: string;
@@ -299,15 +301,27 @@ export default function ApproveDispatchModal({
 
           return {
             item_id: toNumber(row?.item_id || itemData?.id),
+
+            parent_batch_id: row?.parent_batch_id
+              ? Number(row.parent_batch_id)
+              : null,
+
+            root_batch_id: row?.root_batch_id
+              ? Number(row.root_batch_id)
+              : null,
+
             name:
               itemData?.item_name ||
               itemData?.article_code ||
               itemData?.sku_code ||
               `Item ${row?.item_id || itemData?.id || ""}`,
+
             requested: requestedQty,
+
             approvedQty: String(
               toNumber(row?.approved_qty) || requestedQty || 0
             ),
+
             grossWeight: getItemGrossWeight(itemData),
             netWeight: getItemNetWeight(itemData),
             rate: getItemRate(itemData),
@@ -362,9 +376,9 @@ export default function ApproveDispatchModal({
       prev.map((row, rowIndex) =>
         rowIndex === index
           ? {
-              ...row,
-              approvedQty: cleanValue,
-            }
+            ...row,
+            approvedQty: cleanValue,
+          }
           : row
       )
     );
@@ -610,6 +624,12 @@ export default function ApproveDispatchModal({
           .filter((item) => toNumber(item.approvedQty) > 0)
           .map((item) => ({
             item_id: item.item_id,
+
+            parent_batch_id:
+              item.parent_batch_id ??
+              item.root_batch_id ??
+              null,
+
             qty: toNumber(item.approvedQty),
             approved_qty: toNumber(item.approvedQty),
             weight: item.grossWeight || item.netWeight || 0,

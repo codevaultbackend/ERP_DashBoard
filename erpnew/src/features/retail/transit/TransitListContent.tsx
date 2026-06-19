@@ -68,7 +68,9 @@ export default function TransitListContent({
   basePath?: string;
 }) {
   const [loading, setLoading] = useState(true);
-  const [items, setItems] = useState<TransitTransfer[]>([]);
+  const [items, setItems] = useState<
+    TransitTransfer[]
+  >([]);
   const [summary, setSummary] = useState<SummaryState>({
     in_transit: 0,
     shipments: 0,
@@ -87,17 +89,33 @@ export default function TransitListContent({
       setError("");
 
       const res = await getTransitTransfers();
-      const safeItems = Array.isArray(res?.data) ? res.data : [];
+
+      const safeItems = Array.isArray(res?.data)
+        ? res.data
+        : [];
 
       setItems(safeItems);
+
       setSummary({
-        in_transit: Number(res?.summary?.in_transit ?? 0),
-        shipments: Number(res?.summary?.shipments ?? 0),
-        goods_receipt: Number(res?.summary?.goods_receipt ?? 0),
+        in_transit: Number(
+          res?.summary?.in_transit ?? 0
+        ),
+        shipments: Number(
+          res?.summary?.shipments ?? 0
+        ),
+        goods_receipt: Number(
+          res?.summary?.goods_receipt ?? 0
+        ),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load transfers");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load transfers"
+      );
+
       setItems([]);
+
       setSummary({
         in_transit: 0,
         shipments: 0,
@@ -112,23 +130,29 @@ export default function TransitListContent({
     loadTransfers();
   }, []);
 
-  const incomingCount = useMemo(() => {
-    return items.filter((item) => isIncoming(item)).length;
-  }, [items]);
+  const incomingCount = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          item.direction === "incoming"
+      ).length,
+    [items]
+  );
 
-  const outgoingCount = useMemo(() => {
-    return items.filter((item) => isOutgoing(item)).length;
-  }, [items]);
+  const outgoingCount = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          item.direction === "outgoing"
+      ).length,
+    [items]
+  );
 
   const activeShipments = useMemo(() => {
-    return items.filter((item) => {
-      const directionMatch =
-        activeTab === "incoming" ? isIncoming(item) : isOutgoing(item);
-
-      if (!directionMatch) return false;
-
-      return isInTransitStatus(item.status) || isDeliveredStatus(item.status);
-    });
+    return items.filter(
+      (item) =>
+        item.direction === activeTab
+    );
   }, [items, activeTab]);
 
   const handleMarkDelivered = async (
@@ -222,15 +246,12 @@ export default function TransitListContent({
         <section className="mt-[32px]">
           <div className="flex flex-col gap-[18px] lg:flex-row lg:items-center lg:justify-between">
             <h2 className="erp-section-title">Active Shipments</h2>
-
-           {
-            !isHeadOfficeUser &&  <TransitDirectionToggle
+            <TransitDirectionToggle
               value={activeTab}
               onChange={setActiveTab}
               incomingCount={incomingCount}
               outgoingCount={outgoingCount}
             />
-           }
           </div>
 
           <div className="mt-[28px] space-y-[20px]">
@@ -314,8 +335,8 @@ export default function TransitListContent({
                               {markingId === item.id
                                 ? "Updating..."
                                 : delivered
-                                ? "Delivered"
-                                : "Mark Delivered"}
+                                  ? "Delivered"
+                                  : "Mark Delivered"}
                             </button>
                           ) : (
                             <span className="inline-flex h-[42px] items-center justify-center rounded-[12px] border border-erp-border bg-erp-card-soft px-[18px] text-[15px] font-semibold leading-[20px] tracking-[-0.02em] text-erp-muted">
