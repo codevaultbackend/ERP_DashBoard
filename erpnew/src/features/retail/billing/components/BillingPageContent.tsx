@@ -385,10 +385,11 @@ export default function BillingPageContent() {
     setCustomerPhone,
   ] = useState("");
 
-  const [items, setItems] =
-    useState<
-      BillingCartItem[]
-    >([]);
+  const [scannerItems, setScannerItems] =
+    useState<BillingCartItem[]>([]);
+
+  const [manualItems, setManualItems] =
+    useState<BillingCartItem[]>([]);
 
   const [
     showSuggestions,
@@ -403,7 +404,7 @@ export default function BillingPageContent() {
   const [scanError, setScanError] =
     useState("");
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  
+
 
   const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [invoiceForm, setInvoiceForm] =
@@ -435,7 +436,7 @@ export default function BillingPageContent() {
 
     if (stored) {
 
-      setItems(
+      setScannerItems(
         stored.items || []
       );
 
@@ -459,7 +460,7 @@ export default function BillingPageContent() {
 
   }, []);
   const handleCreateBill = () => {
-    if (!items.length) {
+    if (!scannerItems.length) {
       setScanError("No items added");
       return;
     }
@@ -477,103 +478,103 @@ export default function BillingPageContent() {
     }));
   };
   const handleInvoiceSubmit = async (
-  customerForm: InvoiceCustomerForm
-) => {
-  try {
-    setCreatingInvoice(true);
+    customerForm: InvoiceCustomerForm
+  ) => {
+    try {
+      setCreatingInvoice(true);
 
-    const payload = {
-      customer: {
-        name: customerForm.name,
-        phone: customerForm.phone,
-        pan_card_number:
-          customerForm.pan_card_number,
-        pincode:
-          customerForm.pincode,
-        address:
-          customerForm.address,
-      },
+      const payload = {
+        customer: {
+          name: customerForm.name,
+          phone: customerForm.phone,
+          pan_card_number:
+            customerForm.pan_card_number,
+          pincode:
+            customerForm.pincode,
+          address:
+            customerForm.address,
+        },
 
-      items: items.map(
-        (
-          item
-        ): CreateBillItemPayload => ({
-          item_id:
-            item.item_id ||
-            item.id,
+        items: scannerItems.map(
+          (
+            item
+          ): CreateBillItemPayload => ({
+            item_id:
+              item.item_id ||
+              item.id,
 
-          product_code:
-            item.code,
+            product_code:
+              item.code,
 
-          description:
-            item.name,
+            description:
+              item.name,
 
-          qty:
-            Number(
-              item.qty || 1
-            ),
+            qty:
+              Number(
+                item.qty || 1
+              ),
 
-          net_weight:
-            Number(
-              item.net_weight ||
-              item.weight ||
-              0
-            ),
+            net_weight:
+              Number(
+                item.net_weight ||
+                item.weight ||
+                0
+              ),
 
-          rate:
-            Number(
-              item.rate || 0
-            ),
+            rate:
+              Number(
+                item.rate || 0
+              ),
 
-          making_charge_percent:
-            Number(
-              item.making_charge_percent ||
-              0
-            ),
+            making_charge_percent:
+              Number(
+                item.making_charge_percent ||
+                0
+              ),
 
-          unit:
-            item.unit ||
-            "gram",
-        })
-      ),
-    };
+            unit:
+              item.unit ||
+              "gram",
+          })
+        ),
+      };
 
-    console.log(
-      "CREATE BILL PAYLOAD",
-      payload
-    );
-
-    const response =
-      await createBillingInvoice(
+      console.log(
+        "CREATE BILL PAYLOAD",
         payload
       );
 
-    console.log(
-      "CREATE BILL RESPONSE",
-      response
-    );
+      const response =
+        await createBillingInvoice(
+          payload
+        );
 
-    setBillSuccess(
-      response?.message ||
-      "Invoice created successfully"
-    );
+      console.log(
+        "CREATE BILL RESPONSE",
+        response
+      );
 
-    setShowInvoiceModal(false);
+      setBillSuccess(
+        response?.message ||
+        "Invoice created successfully"
+      );
 
-    endBillingSession();
+      setShowInvoiceModal(false);
 
-  } catch (error: any) {
+      endBillingSession();
 
-    setScanError(
-      error?.message ||
-      "Failed to create invoice"
-    );
+    } catch (error: any) {
 
-  } finally {
+      setScanError(
+        error?.message ||
+        "Failed to create invoice"
+      );
 
-    setCreatingInvoice(false);
-  }
-};
+    } finally {
+
+      setCreatingInvoice(false);
+    }
+  };
 
   useEffect(() => {
 
@@ -584,7 +585,7 @@ export default function BillingPageContent() {
     }
 
     if (
-      items.length === 0 &&
+      scannerItems.length === 0 &&
       !customerName &&
       !customerPhone &&
       !lastScannedItem
@@ -596,7 +597,7 @@ export default function BillingPageContent() {
     }
 
     writeStoredBillingSession({
-      items,
+      items: scannerItems,
 
       customerName,
 
@@ -609,7 +610,7 @@ export default function BillingPageContent() {
     });
 
   }, [
-    items,
+    scannerItems,
     customerName,
     customerPhone,
     lastScannedItem,
@@ -642,7 +643,7 @@ export default function BillingPageContent() {
   const totalItems =
     useMemo(() => {
 
-      return items.reduce(
+      return scannerItems.reduce(
         (
           acc,
           item
@@ -651,12 +652,12 @@ export default function BillingPageContent() {
         0
       );
 
-    }, [items]);
+    }, [scannerItems]);
 
   const totalWeight =
     useMemo(() => {
 
-      return items.reduce(
+      return scannerItems.reduce(
         (
           acc,
           item
@@ -667,12 +668,12 @@ export default function BillingPageContent() {
         0
       );
 
-    }, [items]);
+    }, [scannerItems]);
 
   const metalValue =
     useMemo(() => {
 
-      return items.reduce(
+      return scannerItems.reduce(
         (
           acc,
           item
@@ -683,12 +684,12 @@ export default function BillingPageContent() {
         0
       );
 
-    }, [items]);
+    }, [scannerItems]);
 
   const makingCharges =
     useMemo(() => {
 
-      return items.reduce(
+      return scannerItems.reduce(
         (
           acc,
           item
@@ -699,7 +700,7 @@ export default function BillingPageContent() {
         0
       );
 
-    }, [items]);
+    }, [scannerItems]);
 
   const gst = useMemo(() => {
 
@@ -738,7 +739,7 @@ export default function BillingPageContent() {
         product
       );
 
-    setItems((prev) => {
+    setScannerItems((prev) => {
 
       const existing =
         prev.find(
@@ -809,7 +810,7 @@ export default function BillingPageContent() {
             scannedItem
           );
 
-        setItems((prev) => {
+        setScannerItems((prev) => {
 
           const existing =
             prev.find(
@@ -959,7 +960,7 @@ export default function BillingPageContent() {
     code: string
   ) {
 
-    setItems((prev) =>
+    setScannerItems((prev) =>
       prev.filter(
         (x) =>
           x.code !== code
@@ -971,7 +972,7 @@ export default function BillingPageContent() {
     code: string
   ) {
 
-    setItems((prev) =>
+    setScannerItems((prev) =>
       prev.map(
         (item) => {
 
@@ -1004,7 +1005,7 @@ export default function BillingPageContent() {
     code: string
   ) {
 
-    setItems((prev) =>
+    setScannerItems((prev) =>
       prev
         .map(
           (item) => {
@@ -1035,7 +1036,8 @@ export default function BillingPageContent() {
 
     scannedEventIdsRef.current.clear();
 
-    setItems([]);
+    setScannerItems([]);
+    setManualItems([]);
 
     setCustomerName("");
 
@@ -1051,6 +1053,9 @@ export default function BillingPageContent() {
 
     clearStoredBillingSession();
   }
+  const handleManualBillCreated = () => {
+  endBillingSession();
+};
 
   return (
     <div className="min-h-screen overflow-x-hidden ">
@@ -1120,11 +1125,11 @@ export default function BillingPageContent() {
             {billSuccess}
           </div>
         ) : null}
-        
+
         <div className="grid grid-cols-1 gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1fr)_376px]">
 
           <BillingItemsCard
-            items={items}
+            items={scannerItems}
             totalItems={
               totalItems
             }
@@ -1157,7 +1162,7 @@ export default function BillingPageContent() {
           />
 
           <BillSummaryCard
-            items={items}
+            items={scannerItems}
             metalValue={metalValue}
             makingCharges={makingCharges}
             gst={gst}

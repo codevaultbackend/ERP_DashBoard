@@ -207,7 +207,7 @@ export default function PendingAmountModal({
         if (!response.ok) {
           throw new Error(
             data?.message ||
-              "Payment failed"
+            "Payment failed"
           );
         }
 
@@ -224,7 +224,7 @@ export default function PendingAmountModal({
 
         setError(
           err?.message ||
-            "Something went wrong"
+          "Something went wrong"
         );
       } finally {
         setLoading(false);
@@ -242,10 +242,10 @@ export default function PendingAmountModal({
         onClick={(e) =>
           e.stopPropagation()
         }
-        className="relative w-full max-w-2xl rounded-[32px] bg-white shadow-2xl"
+        className="relative w-full max-w-2xl rounded-[32px] bg-white shadow-2xl py-4"
       >
         {/* HEADER */}
-        <div className="border-b border-gray-100 px-6 py-5 sm:px-8">
+        <div className=" px-6 py-5 sm:px-8">
           <button
             onClick={onClose}
             className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 transition hover:bg-gray-100"
@@ -253,7 +253,7 @@ export default function PendingAmountModal({
             <X className="h-5 w-5 text-gray-600" />
           </button>
 
-          <h2 className="text-2xl font-bold text-gray-900 sm:text-4xl">
+          <h2 className="text-[18px] leading-[18px] font-[600] text-[#0A0A0A] ">
             Update Payment
           </h2>
 
@@ -265,7 +265,7 @@ export default function PendingAmountModal({
         </div>
 
         {/* BODY */}
-        <div className="max-h-[85vh] overflow-y-auto px-6 py-6 sm:px-8">
+        <div className="max-h-[85vh] overflow-y-auto px-6 py-3 sm:px-8">
           {/* ALERT */}
           {error ? (
             <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
@@ -283,8 +283,8 @@ export default function PendingAmountModal({
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             {/* AMOUNT */}
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Amount
+              <label className="mb-4 block text-sm leading-[14px] font-[500] text-[#0A0A0A]">
+                Received Amount
               </label>
 
               <input
@@ -297,14 +297,14 @@ export default function PendingAmountModal({
                   )
                 }
                 placeholder="Enter amount"
-                className="h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                className="h-[39px] w-full rounded-2xl border border-gray-200 bg-[#EEEEEE] px-4 outline-none transition   "
               />
             </div>
 
             {/* DATE */}
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Payment Date
+              <label className="mb-4 block text-sm leading-[14px] font-[500] text-[#0A0A0A]">
+                Date
               </label>
 
               <div className="relative">
@@ -316,10 +316,8 @@ export default function PendingAmountModal({
                       e.target.value
                     )
                   }
-                  className="hide-date-icon h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 pr-12 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                  className="hide-date-icon h-[39px] w-full rounded-2xl border border-gray-200 bg-[#EEEEEE] px-4 pr-4 outline-none transition"
                 />
-
-                <CalendarDays className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
               </div>
             </div>
           </div>
@@ -379,29 +377,29 @@ export default function PendingAmountModal({
           {(paymentMethod ===
             "UPI" ||
             paymentMethod ===
-              "BANK") && (
-            <div className="mt-5">
-              <label className="mb-2 block text-sm font-semibold text-gray-700">
-                Transaction ID
-              </label>
+            "BANK") && (
+              <div className="mt-5">
+                <label className="mb-4 block text-sm leading-[14px] font-[500] text-[#0A0A0A]">
+                  Transaction ID
+                </label>
 
-              <input
-                type="text"
-                value={txnId}
-                onChange={(e) =>
-                  setTxnId(
-                    e.target.value
-                  )
-                }
-                placeholder="Enter transaction ID"
-                className="h-14 w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
-              />
-            </div>
-          )}
+                <input
+                  type="text"
+                  value={txnId}
+                  onChange={(e) =>
+                    setTxnId(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Enter transaction ID"
+                  className="h-[39px] bg-[#EEEEEE] placeholder:text-[14px] w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                />
+              </div>
+            )}
 
           {/* REMARKS */}
           <div className="mt-5">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
+            <label className="mb-4 block text-sm leading-[14px] font-[500] text-[#0A0A0A]">
               Remarks
             </label>
 
@@ -414,7 +412,7 @@ export default function PendingAmountModal({
                 )
               }
               placeholder="Optional remarks"
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+              className="w-full rounded-2xl  bg-[#EEEEEE] placeholder:text-[14px] border border-gray-200 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
             />
           </div>
 
@@ -422,7 +420,7 @@ export default function PendingAmountModal({
           <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row">
             <button
               onClick={onClose}
-              className="h-14 w-full rounded-2xl border border-gray-200 bg-white font-semibold transition hover:bg-gray-100"
+              className="h-[39px] text-[14px] w-full rounded-2xl border border-gray-200 bg-white font-semibold transition hover:bg-gray-100"
             >
               Cancel
             </button>
@@ -430,7 +428,7 @@ export default function PendingAmountModal({
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-black font-semibold text-white transition hover:opacity-95 disabled:opacity-60"
+              className="flex h-[39px] text-[14px] w-full items-center justify-center gap-2 rounded-2xl bg-black font-semibold text-white transition hover:opacity-95 disabled:opacity-60"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -455,31 +453,15 @@ function MethodCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-16 items-center justify-between rounded-2xl border px-4 transition ${
-        active
-          ? "border-emerald-500 bg-emerald-50"
-          : "border-gray-200 bg-white hover:bg-gray-50"
-      }`}
+      className={`flex h-[39px] items-center justify-center  transition `}
     >
-      <div className="flex items-center gap-3">
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-            active
-              ? "bg-emerald-500 text-white"
-              : "bg-gray-100 text-gray-700"
-          }`}
-        >
-          {icon}
-        </div>
+      <div className="flex justify-end gap-3">
 
-        <span className="font-semibold">
+        <input type="checkbox" className="h-[18px] w-[18px] border-[#00000033] border-[1px]" />
+        <span className="font-semibold text-[14px] font-[500] text-[#191C1D]">
           {label}
         </span>
       </div>
-
-      {active ? (
-        <Check className="h-5 w-5 text-emerald-600" />
-      ) : null}
     </button>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 type StockManagementToolbarProps = {
   selectedCount: number;
   onCreateReport: () => void;
+  auditMode?: boolean;
 
   /**
    * Retail + District dono ke liye common.
@@ -35,6 +36,7 @@ type StockManagementToolbarProps = {
 };
 
 export default function StockManagementToolbar({
+  auditMode = false,
   selectedCount,
   onCreateReport,
   onAddItem,
@@ -284,9 +286,10 @@ export default function StockManagementToolbar({
                 <Plus className="h-[18px] w-[18px] stroke-[2.2]" />
 
                 <span className="whitespace-nowrap">
-                  Create Audit Report
-                  {selectedCount > 0 ? ` (${selectedCount})` : ""}
-                </span>
+  {auditMode
+    ? `Submit Audit`
+    : "Create Audit"}
+</span>
               </>
             )}
           </button>

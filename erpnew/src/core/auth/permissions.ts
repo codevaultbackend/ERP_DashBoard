@@ -3,9 +3,18 @@ export const isHeadOfficeUser = (): boolean => {
 
   const level =
     localStorage.getItem("level") ||
-    sessionStorage.getItem("level");
+    sessionStorage.getItem("level") ||
+    "";
 
-  return level === "head_office";
+  const role =
+    localStorage.getItem("role") ||
+    sessionStorage.getItem("role") ||
+    "";
+
+  return (
+    level === "head_office" ||
+    role === "head_manager"
+  );
 };
 
 export const getUserLevel = (): string => {

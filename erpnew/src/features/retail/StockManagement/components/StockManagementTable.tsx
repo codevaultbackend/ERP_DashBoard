@@ -58,6 +58,7 @@ type Props = {
   rows: StockRow[];
   loading?: boolean;
   loadingRowCategory?: string | null;
+  auditMode?: boolean;
   auditMap: AuditMap;
   setAuditMap: React.Dispatch<React.SetStateAction<AuditMap>>;
   reportedArticles?: Record<string, boolean>;
@@ -78,7 +79,7 @@ const headers = [
   "Action",
 ];
 
-const childHeaders = [
+const getChildHeaders = (auditMode: boolean) => [
   "View Article",
   "Article",
   "Code",
@@ -89,8 +90,8 @@ const childHeaders = [
   "Net Wt.",
   "Stone Wt.",
   "Gross Wt.",
-  "Checklist",
-];
+  ...(auditMode ? ["Checklist"] : []),
+];;
 
 const FALLBACK_IMAGE = "/placeholder-product.png";
 
@@ -118,31 +119,32 @@ function isAuditDoneToday(article: StockArticle) {
   );
 }
 
- export async function updateItemImage(
-    itemId: string | number,
-    image: File
-  ) {
-    const formData = new FormData();
+export async function updateItemImage(
+  itemId: string | number,
+  image: File
+) {
+  const formData = new FormData();
 
-    formData.append("image", image);
-    
+  formData.append("image", image);
 
-    const res = await stockApi.patch(
-      `/stock/item/${itemId}/image`,
-      formData,
-      {
-        headers: {
-          "Content-Type":
-            "multipart/form-data",
-        },
-      }
-    );
 
-    return res.data;
-  }
+  const res = await stockApi.patch(
+    `/stock/item/${itemId}/image`,
+    formData,
+    {
+      headers: {
+        "Content-Type":
+          "multipart/form-data",
+      },
+    }
+  );
+
+  return res.data;
+}
 
 export default function StockManagementTable({
   rows = [],
+  auditMode = false,
   loading,
   loadingRowCategory,
   auditMap,
@@ -198,6 +200,9 @@ export default function StockManagementTable({
     });
   }, [rows, searchValue, selectedCategory]);
 
+
+  const childHeaders = getChildHeaders(auditMode);
+
   const toggleRow = async (row: StockRow) => {
     if (didDragRef.current) return;
 
@@ -209,7 +214,7 @@ export default function StockManagementTable({
     }
   };
 
- 
+
 
   const handleImageUpload = async (
     itemId: string,
@@ -664,84 +669,84 @@ export default function StockManagementTable({
                                         <td className="border-b border-r border-erp-border px-6 py-4 text-center text-[14px] font-medium text-[#1F2937]">
                                           {safeValue(article.grossWeight)}
                                         </td>
-
-                                        <td className="border-b border-erp-border px-6 py-4 text-center">
-                                          <div className="flex items-center justify-center gap-2">
-                                            {isCompleted ? (
-                                              <div className="inline-flex h-[30px] min-w-[116px] items-center justify-center gap-2 rounded-full border border-erp-success bg-erp-success-soft px-3 text-[11px] font-semibold text-erp-success">
-                                                <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-erp-success text-white">
-                                                  <Check
-                                                    size={12}
-                                                    strokeWidth={3}
-                                                  />
-                                                </span>
-                                                Audit Done
-                                              </div>
-                                            ) : (
-                                              <>
-                                                <button
-                                                  type="button"
-                                                  onClick={() =>
-                                                    markDone(article)
-                                                  }
-                                                  className={cn(
-                                                    "inline-flex h-[30px] min-w-[78px] items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold transition",
-                                                    isDone
-                                                      ? "border-erp-success bg-erp-success-soft text-erp-success"
-                                                      : "border-erp-border bg-white text-[#1F2937] hover:border-erp-success"
-                                                  )}
-                                                >
-                                                  <span
+                                        {auditMode && (
+                                          <td className="border-b border-erp-border px-6 py-4 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                              {isCompleted ? (
+                                                <div className="inline-flex h-[30px] min-w-[116px] items-center justify-center gap-2 rounded-full border border-erp-success bg-erp-success-soft px-3 text-[11px] font-semibold text-erp-success">
+                                                  <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-erp-success text-white">
+                                                    <Check
+                                                      size={12}
+                                                      strokeWidth={3}
+                                                    />
+                                                  </span>
+                                                  Audit Done
+                                                </div>
+                                              ) : (
+                                                <>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      markDone(article)
+                                                    }
                                                     className={cn(
-                                                      "h-[10px] w-[10px] rounded-full border",
+                                                      "inline-flex h-[30px] min-w-[78px] items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold transition",
                                                       isDone
-                                                        ? "border-erp-success bg-erp-success"
-                                                        : "border-[#9CA3AF] bg-white"
+                                                        ? "border-erp-success bg-erp-success-soft text-erp-success"
+                                                        : "border-erp-border bg-white text-[#1F2937] hover:border-erp-success"
                                                     )}
-                                                  />
-                                                  Done
-                                                </button>
+                                                  >
+                                                    <span
+                                                      className={cn(
+                                                        "h-[10px] w-[10px] rounded-full border",
+                                                        isDone
+                                                          ? "border-erp-success bg-erp-success"
+                                                          : "border-[#9CA3AF] bg-white"
+                                                      )}
+                                                    />
+                                                    Done
+                                                  </button>
 
-                                                <button
-                                                  type="button"
-                                                  onClick={() =>
-                                                    openReason(article)
-                                                  }
-                                                  className={cn(
-                                                    "inline-flex h-[30px] min-w-[92px] items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold transition",
-                                                    isMissing
-                                                      ? "border-erp-danger bg-erp-danger-soft text-erp-danger"
-                                                      : "border-erp-border bg-white text-[#1F2937] hover:border-erp-danger"
-                                                  )}
-                                                >
-                                                  <span
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      openReason(article)
+                                                    }
                                                     className={cn(
-                                                      "h-[10px] w-[10px] rounded-full border",
+                                                      "inline-flex h-[30px] min-w-[92px] whitespace-nowrap items-center justify-center gap-2 rounded-full border px-3 text-[11px] font-semibold transition",
                                                       isMissing
-                                                        ? "border-erp-danger bg-erp-danger"
-                                                        : "border-[#9CA3AF] bg-white"
+                                                        ? "border-erp-danger bg-erp-danger-soft text-erp-danger"
+                                                        : "border-erp-border bg-white text-[#1F2937] hover:border-erp-danger"
                                                     )}
-                                                  />
-                                                  Not Done
-                                                </button>
-                                              </>
-                                            )}
-                                          </div>
+                                                  >
+                                                    <span
+                                                      className={cn(
+                                                        "h-[10px] w-[10px] rounded-full border",
+                                                        isMissing
+                                                          ? "border-erp-danger bg-erp-danger"
+                                                          : "border-[#9CA3AF] bg-white"
+                                                      )}
+                                                    />
+                                                    Not Done
+                                                  </button>
+                                                </>
+                                              )}
+                                            </div>
 
-                                          {!isCompleted && !audit?.status ? (
-                                            <p className="mt-1 text-[11px] font-medium text-erp-danger">
-                                              Required
-                                            </p>
-                                          ) : null}
+                                            {!isCompleted && !audit?.status ? (
+                                              <p className="mt-1 text-[11px] font-medium text-erp-danger">
+                                                Required
+                                              </p>
+                                            ) : null}
 
-                                          {!isCompleted &&
-                                            isMissing &&
-                                            audit?.remark ? (
-                                            <p className="mt-1 line-clamp-1 text-[11px] font-medium text-erp-danger">
-                                              {audit.remark}
-                                            </p>
-                                          ) : null}
-                                        </td>
+                                            {!isCompleted &&
+                                              isMissing &&
+                                              audit?.remark ? (
+                                              <p className="mt-1 line-clamp-1 text-[11px] font-medium text-erp-danger">
+                                                {audit.remark}
+                                              </p>
+                                            ) : null}
+                                          </td>)}
                                       </tr>
                                     );
                                   })}

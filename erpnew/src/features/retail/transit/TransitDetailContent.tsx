@@ -103,6 +103,9 @@ export default function TransitDetailContent({
   }, [loadData]);
 
   const delivered = useMemo(() => isDeliveredStatus(item?.status), [item]);
+  const isReceivingTransfer =
+    item?.direction === "incoming" ||
+    item?.is_receiver === true;
 
   const handleMarkDelivered = async () => {
     if (!item || !canMarkDelivered(item.status)) return;
@@ -157,8 +160,8 @@ export default function TransitDetailContent({
   const products: ApiProduct[] = Array.isArray(item.products)
     ? item.products
     : Array.isArray(item.transfer_items)
-    ? item.transfer_items
-    : [];
+      ? item.transfer_items
+      : [];
 
   const dispatchImages = toMediaArray(item.media?.dispatch_image_url);
   const receiveImages = toMediaArray(item.media?.receive_image_url);
@@ -178,7 +181,7 @@ export default function TransitDetailContent({
         <div className="mt-5 grid grid-cols-2 gap-5 xl:grid-cols-3">
           <StatCard
             icon={<Truck className="h-6 w-6" />}
-            title="In Transit"
+            title="On The Way"
             value={String(item.status).toLowerCase() === "in_transit" ? 1 : 0}
             iconWrapClass="bg-erp-purple-soft"
             iconClass="text-erp-purple"
@@ -186,7 +189,7 @@ export default function TransitDetailContent({
 
           <StatCard
             icon={<CheckCircle2 className="h-6 w-6" />}
-            title="Shipments"
+            title="Ready To Dispatch"
             value={1}
             iconWrapClass="bg-erp-success-soft"
             iconClass="text-erp-success"
@@ -194,7 +197,7 @@ export default function TransitDetailContent({
 
           <StatCard
             icon={<Package2 className="h-6 w-6" />}
-            title="Goods Receipt"
+            title="Reached"
             value={delivered ? 1 : 0}
             iconWrapClass="bg-erp-blue-soft"
             iconClass="text-erp-primary"
@@ -285,23 +288,25 @@ export default function TransitDetailContent({
             </div>
 
             <div className="flex min-w-0 flex-col gap-5">
-              <div className="flex justify-start xl:justify-end">
-                <button
-                  type="button"
-                  onClick={handleMarkDelivered}
-                  disabled={
-                    !canMarkDelivered(item.status) || marking || delivered
-                  }
-                  className="inline-flex h-[44px] items-center justify-center gap-2 rounded-erp-sm bg-erp-success px-5 text-[15px] font-semibold text-white shadow-erp-card transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <CheckCircle2 className="h-[18px] w-[18px]" />
-                  {marking
-                    ? "Updating..."
-                    : delivered
-                    ? "Delivered"
-                    : "Mark Delivered"}
-                </button>
-              </div>
+              {isReceivingTransfer ? (
+                <div className="flex justify-start xl:justify-end">
+                  <button
+                    type="button"
+                    onClick={handleMarkDelivered}
+                    disabled={
+                      !canMarkDelivered(item.status) || marking || delivered
+                    }
+                    className="inline-flex h-[44px] items-center justify-center gap-2 rounded-erp-sm bg-erp-success px-5 text-[15px] font-semibold text-white shadow-erp-card transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <CheckCircle2 className="h-[18px] w-[18px]" />
+                    {marking
+                      ? "Updating..."
+                      : delivered
+                        ? "Delivered"
+                        : "Mark Delivered"}
+                  </button>
+                </div>
+              ) : null}
 
               <div
                 onClick={() => setMapOpen(true)}

@@ -77,40 +77,72 @@ export default function ProfilePage() {
     }));
   }
 
-  async function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  async function handleImageChange(
+  e: ChangeEvent<HTMLInputElement>
+) {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    setSuccess("");
+  setSuccess("");
 
-    if (!file.type.startsWith("image/")) return;
+  const allowedTypes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+  ];
 
-    const localPreview = URL.createObjectURL(file);
-    setPreviewImage(localPreview);
+  if (!allowedTypes.includes(file.type)) {
+    alert("Only JPG, JPEG and PNG images are allowed.");
+    e.target.value = "";
+    return;
+  }
 
-    if (isProfileLocked) {
+  const localPreview = URL.createObjectURL(file);
+  setPreviewImage(localPreview);
+
+  if (isProfileLocked) {
+    try {
       await updateProfilePicture(file);
-      setSuccess("Profile picture updated successfully.");
-      return;
+
+      setSuccess(
+        "Profile picture updated successfully."
+      );
+    } catch {
+      URL.revokeObjectURL(localPreview);
+
+      setSuccess("");
     }
 
-    setSelectedImageFile(file);
+    return;
   }
+
+  setSelectedImageFile(file);
+
+  setSuccess(
+    "New profile image selected. Click Save Changes to upload."
+  );
+}
 
   async function handleSave() {
-    try {
-      setSuccess("");
+  try {
+    setSuccess("");
 
-      await saveProfile({
-        name: form.name,
-        phone: form.phone_number,
-        phone_number: form.phone_number,
-        image: selectedImageFile,
-      });
+    await saveProfile({
+      name: form.name,
+      phone: form.phone_number,
+      phone_number: form.phone_number,
+      image: selectedImageFile,
+    });
 
-      setSuccess("Profile updated successfully.");
-    } catch {}
-  }
+    setSuccess(
+      selectedImageFile
+        ? "Profile and profile picture updated successfully."
+        : "Profile updated successfully."
+    );
+
+    setSelectedImageFile(null);
+  } catch {}
+}
 
   const editableInputClass =
     "h-[52px] w-full rounded-[18px] border border-[#E5E7EB] bg-white px-5 text-[15px] font-normal text-black outline-none shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition placeholder:text-[#9CA3AF] focus:border-[#0D4CBA] sm:text-[16px]";
@@ -164,7 +196,7 @@ export default function ProfilePage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept=".jpg,.jpeg,.png,image/jpeg,image/png"
               onChange={handleImageChange}
               className="hidden"
             />

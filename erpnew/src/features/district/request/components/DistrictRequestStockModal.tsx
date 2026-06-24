@@ -953,7 +953,7 @@ export default function DistrictRequestStockModal({
                 }
                 className={cn(
                   "flex-1 rounded-full py-3 text-sm font-medium transition-all duration-200",
-                  targetLevel ===
+                  targetLevel !=
                     "head"
                     ? "bg-[#02011A] text-white"
                     : "bg-white text-[#0F172A]"
@@ -974,7 +974,7 @@ export default function DistrictRequestStockModal({
                 }}
                 className={cn(
                   "flex-1 rounded-full py-3 text-sm font-medium transition-all duration-200",
-                  targetLevel ===
+                  targetLevel !=
                     "retail"
                     ? "bg-[#02011A] text-white"
                     : "bg-white text-[#0F172A]"

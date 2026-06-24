@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getExchangeRefundData } from "@/features/retail/refund/api/exchange-api";
 
 import RefundMetricCard from "../../../../features/retail/refund/RefundMetricCard";
 import RefundPolicyCard from "../../../../features/retail/refund/RefundPolicyCard";
@@ -55,8 +56,8 @@ export default function RefundReturnPage() {
     } catch (err: any) {
       setPageError(
         err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load exchange dashboard"
+        err?.message ||
+        "Failed to load exchange dashboard"
       );
       setStats(EMPTY_STATS);
       setRequests([]);
@@ -99,33 +100,44 @@ export default function RefundReturnPage() {
   }, [stats]);
 
   const filteredRequests = useMemo(() => {
-  const query = search.trim().toLowerCase();
-  const selectedDate = normalizeDateToISO(date.trim());
+    const query = search.trim().toLowerCase();
+    const selectedDate = normalizeDateToISO(date.trim());
 
-  return requests.filter((item) => {
-    const matchesSearch =
-      !query ||
-      item.customerName.toLowerCase().includes(query) ||
-      item.id.toLowerCase().includes(query) ||
-      item.billNo.toLowerCase().includes(query) ||
-      item.old_product_name.toLowerCase().includes(query) ||
-      item.old_product_code.toLowerCase().includes(query) ||
-      item.new_product_name.toLowerCase().includes(query) ||
-      item.new_product_code.toLowerCase().includes(query);
+    return requests.filter((item) => {
+      const matchesSearch =
+        !query ||
+        item.customerName.toLowerCase().includes(query) ||
+        item.id.toLowerCase().includes(query) ||
+        item.billNo.toLowerCase().includes(query) ||
+        (item.productName || "")
+          .toLowerCase()
+          .includes(query) ||
 
-    const matchesMonth =
-      month === "Select Month" ||
-      getMonthName(item.exchangeDate) === month ||
-      getMonthName(item.purchaseDate) === month;
+        (item.productCode || "")
+          .toLowerCase()
+          .includes(query) ||
 
-    const matchesDate =
-      !selectedDate ||
-      normalizeDisplayDate(item.exchangeDate) === selectedDate ||
-      normalizeDisplayDate(item.purchaseDate) === selectedDate;
+        (item.newProductName || "")
+          .toLowerCase()
+          .includes(query) ||
 
-    return matchesSearch && matchesMonth && matchesDate;
-  });
-}, [requests, search, month, date]);
+        (item.newProductCode || "")
+          .toLowerCase()
+          .includes(query)
+
+      const matchesMonth =
+        month === "Select Month" ||
+        getMonthName(item.exchangeDate) === month ||
+        getMonthName(item.purchaseDate) === month;
+
+      const matchesDate =
+        !selectedDate ||
+        normalizeDisplayDate(item.exchangeDate) === selectedDate ||
+        normalizeDisplayDate(item.purchaseDate) === selectedDate;
+
+      return matchesSearch && matchesMonth && matchesDate;
+    });
+  }, [requests, search, month, date]);
 
   return (
     <>
@@ -155,14 +167,14 @@ export default function RefundReturnPage() {
         <section className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
           {loading
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[120px] animate-pulse rounded-erp-lg bg-white shadow-erp-card"
-                />
-              ))
+              <div
+                key={i}
+                className="h-[120px] animate-pulse rounded-erp-lg bg-white shadow-erp-card"
+              />
+            ))
             : exchangeStats.map((item) => (
-                <RefundMetricCard key={item.title} item={item} />
-              ))}
+              <RefundMetricCard key={item.title} item={item} />
+            ))}
         </section>
 
         <section className="mt-4">
@@ -214,44 +226,7 @@ export default function RefundReturnPage() {
   );
 }
 
-function mapExchangeToRefundRequest(item: ExchangeDashboardItem): RefundRequest {
-  const days = Number(item.days_since_purchase || 0);
-  const within7 = days <= 7;
 
-  return {
-    id: item.exchange_number || `EX-${item.id}`,
-    customerName: safeText(item.name),
-    phone: safeText(item.phone),
-    billNo: safeText(item.invoice_number),
-
-    purchaseDate: formatDate(item.invoice_date),
-    exchangeDate: formatDate(item.exchange_date),
-
-    status: within7 ? "approved" : "processing",
-    statusBadge: `${days} days since purchase`,
-
-    refundReason: "Product exchange",
-    refundMethod: "Exchange",
-
-    refundAmount: formatCurrency(item.old_value),
-    deduction: within7 ? "FREE" : "5%",
-    finalRefund: formatCurrency(item.difference),
-
-    productName: safeText(item.old_product_name),
-    productCode: safeText(item.old_product_code),
-    metal: safeText(item.old_purity),
-    weight: formatWeight(item.old_gross_weight),
-    originalValue: formatCurrency(item.old_value),
-
-    newProductName: safeText(item.new_product_name),
-    newProductCode: safeText(item.new_product_code),
-    newValue: formatCurrency(item.new_value),
-    makingCharges: formatCurrency(item.making_charges),
-    difference: formatCurrency(item.difference),
-
-    expanded: false,
-  };
-}
 
 function safe(value?: string) {
   return (value || "").toLowerCase();

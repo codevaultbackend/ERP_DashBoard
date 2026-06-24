@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronLeft } from "lucide-react";
 
 import Link from "next/link";
 
@@ -424,9 +424,9 @@ export default function LedgerClientDetailPage() {
 
         <Link
           href={backPath}
-          className="flex h-[58px] w-[58px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)] transition hover:bg-[#F8FAFC]"
+          className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)] transition hover:bg-[#F8FAFC]"
         >
-          <ArrowLeft className="h-7 w-7" />
+          <ChevronLeft className="h-6 w-6" />
         </Link>
 
         <div className="min-w-0">

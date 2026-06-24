@@ -343,7 +343,7 @@ export const downloadRetailAudit =
       link.href = url;
 
       link.download =
-        `audit-report-${auditId}.pdf`;
+        `audit-report-${auditId}.xlsx`;
 
       document.body.appendChild(
         link
@@ -369,7 +369,7 @@ export const downloadRetailAudit =
   };
 
 
-  export const downloadDistrictAudit =
+export const downloadDistrictAudit =
   async (
     auditId: string | number
   ) => {
@@ -381,15 +381,17 @@ export const downloadRetailAudit =
             responseType: "blob",
           }
         );
+      console.log("CONTENT TYPE:", response.headers["content-type"]);
+      console.log("CONTENT DISPOSITION:", response.headers["content-disposition"]);
 
       const blob = new Blob(
         [response.data],
         {
           type:
             response.headers[
-              "content-type"
+            "content-type"
             ] ||
-            "application/pdf",
+            "application/xlsx",
         }
       );
 
@@ -404,7 +406,7 @@ export const downloadRetailAudit =
       link.href = url;
 
       link.download =
-        `district-audit-${auditId}.pdf`;
+        `district-audit-${auditId}.xlsx`;
 
       document.body.appendChild(
         link
@@ -423,7 +425,7 @@ export const downloadRetailAudit =
       console.error(
         "District audit download error",
         error?.response?.data ||
-          error
+        error
       );
 
       throw error;

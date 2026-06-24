@@ -4,6 +4,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import DirectTransferModal from "./DirectTransferModal";
+import ApproveStockRequestModal from "./ApproveDispatchModal";
 import {
   CheckCircle2,
   ChevronDown,
@@ -68,6 +70,12 @@ export default function HeadOfficeTransitPage({
 }) {
   const [initialLoading, setInitialLoading] =
     useState(true);
+  const [showApproveModal, setShowApproveModal] =
+    useState(false);
+  const [showDirectTransferModal, setShowDirectTransferModal] =
+    useState(false);
+  const [transferData, setTransferData] =
+    useState<any>(null);
 
   const [tableLoading, setTableLoading] =
     useState(false);
@@ -109,7 +117,30 @@ export default function HeadOfficeTransitPage({
       district_store_code: "all",
       retail_store_code: "all",
     });
+  const handleDirectTransferSubmit = (
+    items: any[],
+    districtId: number
+  ) => {
+    setTransferData({
+      items,
+      districtId,
+    });
 
+    setShowDirectTransferModal(false);
+
+    setTimeout(() => {
+      setShowApproveModal(true);
+    }, 200);
+  };
+  const openDispatchModal = () => {
+    setShowDirectTransferModal(false);
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        setShowApproveModal(true);
+      }, 150);
+    });
+  };
   async function loadTransfers() {
     try {
       if (items.length === 0) {
@@ -276,7 +307,7 @@ export default function HeadOfficeTransitPage({
             icon={
               <Truck className="h-[24px] w-[24px]" />
             }
-            title="In Transit"
+            title="On The Way"
             value={summary.inTransit}
             iconWrapClass="bg-erp-purple-soft"
             iconClass="text-erp-purple"
@@ -286,7 +317,7 @@ export default function HeadOfficeTransitPage({
             icon={
               <CheckCircle2 className="h-[24px] w-[24px]" />
             }
-            title="Shipments"
+            title="Ready To Dispatch"
             value={summary.shipments}
             iconWrapClass="bg-erp-success-soft"
             iconClass="text-erp-success"
@@ -296,7 +327,7 @@ export default function HeadOfficeTransitPage({
             icon={
               <Package2 className="h-[24px] w-[24px]" />
             }
-            title="Goods Receipt"
+            title="Reached"
             value={summary.goodsReceipt}
             iconWrapClass="bg-erp-blue-soft"
             iconClass="text-erp-primary"
@@ -314,9 +345,9 @@ export default function HeadOfficeTransitPage({
     shadow-erp-card
   "
         >
-          <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
+          <div className="flex max-[1030px]:!flex-col gap-3 lg:flex-row lg:flex-wrap">
             {/* Search */}
-            <div className="relative flex-1 min-w-[280px]">
+            <div className="relative flex-1 lg:min-w-[280px]">
               <Search
                 className="
         absolute
@@ -355,7 +386,7 @@ export default function HeadOfficeTransitPage({
             </div>
 
             {/* Transit */}
-            <div className="!w-full lg:w-[180px]">
+            <div className="!w-full lg:w-[180px] lg:max-w-[180px]">
               <FilterDropdown
                 value={filters.status}
                 placeholder="All Transits"
@@ -426,6 +457,7 @@ export default function HeadOfficeTransitPage({
                   })),
                 ]}
               />
+
             </div>
           </div>
         </section>
@@ -447,13 +479,26 @@ export default function HeadOfficeTransitPage({
         ) : null}
 
         <section className="mt-[32px]">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <h2 className="erp-section-title">
               Active Shipments
             </h2>
 
-            <div className="rounded-full bg-erp-card-soft px-[16px] py-[10px] text-[14px] font-semibold text-erp-heading">
-              Total: {activeShipments.length}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDirectTransferModal(true)
+                }}
+                className="inline-flex h-[44px] items-center justify-center gap-2 rounded-[12px] bg-[#020617] px-5 text-[14px] font-medium text-white transition hover:opacity-90"
+              >
+                <Package2 className="h-4 w-4" />
+                Direct Transfer
+              </button>
+
+              <div className="rounded-full bg-erp-card-soft px-[16px] py-[10px] text-[14px] font-semibold text-erp-heading">
+                Total: {activeShipments.length}
+              </div>
             </div>
           </div>
 
@@ -590,18 +635,27 @@ export default function HeadOfficeTransitPage({
           </div>
         </section>
       </div>
+      <DirectTransferModal
+        open={showDirectTransferModal}
+        onClose={() =>
+          setShowDirectTransferModal(false)
+        }
+        onSubmit={handleDirectTransferSubmit}
+      />
+
+      <ApproveStockRequestModal
+        open={showApproveModal}
+        onClose={() =>
+          setShowApproveModal(false)
+        }
+        transferData={transferData}
+      />
 
       <TransitMapModal
-        open={
-          !!selectedMapItem
-        }
-        item={
-          selectedMapItem
-        }
+        open={!!selectedMapItem}
+        item={selectedMapItem}
         onClose={() =>
-          setSelectedMapItem(
-            null
-          )
+          setSelectedMapItem(null)
         }
       />
     </>

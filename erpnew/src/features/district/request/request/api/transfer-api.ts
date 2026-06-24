@@ -117,13 +117,20 @@ export async function transferRequestToDistrict(
   requestId: number | string,
   payload: TransferToDistrictPayload
 ) {
-  const response = await api.post(
-    `/request/head/requests/${requestId}/transfer-to-district`,
-    {
-      district_store_code: payload.district_store_code,
-      notes: payload.notes || "",
-    }
-  );
+  try {
+    const response = await api.post(
+      `/request/head/requests/${requestId}/transfer-to-district`,
+      {
+        district_store_code: payload.district_store_code,
+        notes: payload.notes || "",
+      }
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error: any) {
+    console.log("TRANSFER DISTRICT ERROR");
+    console.log("STATUS:", error?.response?.status);
+    console.log("DATA:", error?.response?.data);
+    throw error;
+  }
 }

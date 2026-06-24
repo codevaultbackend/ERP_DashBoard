@@ -87,12 +87,32 @@ function formatDate(value?: string | null) {
   return `${year}-${month}-${day}`;
 }
 
-function normalizeStatus(req: StockRequestApi, type: "mine" | "received") {
-  const status = String(req.status || "pending").toLowerCase();
+function normalizeStatus(
+  req: StockRequestApi,
+  type: "mine" | "received"
+) {
+  const status = String(
+    req.status || "pending"
+  ).toLowerCase();
 
   if (type === "received") {
-    if (req.transfer?.status === "in_transit") return "dispatch";
-    if (status === "approved" || status === "partially_approved") return "dispatch";
+    if (status === "forwarded") {
+      return "forwarded";
+    }
+
+    if (
+      req.transfer?.status === "in_transit" ||
+      req.transfer?.status === "received"
+    ) {
+      return "dispatch";
+    }
+
+    if (
+      status === "approved" ||
+      status === "partially_approved"
+    ) {
+      return "dispatch";
+    }
   }
 
   if (
@@ -100,7 +120,8 @@ function normalizeStatus(req: StockRequestApi, type: "mine" | "received") {
     status === "pending" ||
     status === "partially_approved" ||
     status === "rejected" ||
-    status === "completed"
+    status === "completed" ||
+    status === "forwarded"
   ) {
     return status;
   }
@@ -395,7 +416,8 @@ export default function DistrictRequestPage() {
                       const alreadyDispatched =
                         item.raw?.transfer?.status === "in_transit" ||
                         item.raw?.transfer?.status === "received" ||
-                        item.status === "dispatch";
+                        item.status === "dispatch" ||
+                        item.status === "forwarded";
 
                       if (alreadyDispatched) return;
 

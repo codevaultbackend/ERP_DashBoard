@@ -164,28 +164,24 @@ export async function addStockItem(
   const formData = new FormData();
 
   const items = [
-    {
-      item_name: payload.item_name.trim(),
-      item_code: payload.item_code?.trim() || "",
+  {
+    item_name: normalizeText(payload.item_name),
+    item_code: normalizeText(payload.item_code),
+    metal_type: payload.metal_type,
+    category: normalizeText(payload.category),
+    purity: normalizeText(payload.purity),
 
-      metal_type: payload.metal_type,
-      category: payload.category.trim(),
+    qty: Number(payload.qty),
 
-      purity: payload.purity.trim(),
+    net_weight: Number(payload.net_weight),
 
-      qty: Number(payload.qty),
+    stone_weight: Number(payload.stone_weight || 0),
 
-      net_weight: Number(payload.net_weight),
+    making_charge: Number(payload.making_charge || 0),
 
-      stone_weight: Number(
-        payload.stone_weight || 0
-      ),
-
-      making_charge: Number(
-        payload.making_charge || 0
-      ),
-    },
-  ];
+    selling_price: Number(payload.selling_price || 0),
+  },
+];
 
   formData.append(
     "items",

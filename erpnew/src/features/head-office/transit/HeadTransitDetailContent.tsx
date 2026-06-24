@@ -288,24 +288,6 @@ export default function HeadTransitDetailContent({
             </div>
 
             <div className="flex min-w-0 flex-col gap-5">
-              <div className="flex justify-start xl:justify-end">
-                <button
-                  type="button"
-                  onClick={handleMarkDelivered}
-                  disabled={
-                    !canMarkDelivered(item.status) || marking || delivered
-                  }
-                  className="inline-flex h-[44px] items-center justify-center gap-2 rounded-erp-sm bg-erp-success px-5 text-[15px] font-semibold text-white shadow-erp-card transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <CheckCircle2 className="h-[18px] w-[18px]" />
-                  {marking
-                    ? "Updating..."
-                    : delivered
-                    ? "Delivered"
-                    : "Mark Delivered"}
-                </button>
-              </div>
-
               <div
                 onClick={() => setMapOpen(true)}
                 className="h-[250px] cursor-pointer overflow-hidden rounded-[24px] shadow-[0_8px_24px_rgba(15,23,42,0.08)]"

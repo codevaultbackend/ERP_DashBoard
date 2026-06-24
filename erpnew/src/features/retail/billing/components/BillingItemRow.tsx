@@ -65,30 +65,6 @@ export default function BillingItemRow({
       </div>
 
       <div className="mt-[20px] flex items-center justify-between border-t border-dashed border-[#D1D5DB] pt-[18px]">
-        <div className="flex h-[34px] items-center rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-[6px] shadow-[0px_2px_6px_rgba(15,23,42,0.04)]">
-          <button
-            type="button"
-            onClick={onDecrease}
-            className="flex h-[24px] w-[24px] items-center justify-center rounded-full text-[16px] font-semibold text-[#111827] transition hover:bg-white"
-            aria-label="Decrease quantity"
-          >
-            -
-          </button>
-
-          <span className="min-w-[34px] text-center text-[14px] font-semibold text-[#111827]">
-            {item.qty}
-          </span>
-
-          <button
-            type="button"
-            onClick={onIncrease}
-            className="flex h-[24px] w-[24px] items-center justify-center rounded-full text-[16px] font-semibold text-[#111827] transition hover:bg-white"
-            aria-label="Increase quantity"
-          >
-            +
-          </button>
-        </div>
-
         <button
           type="button"
           onClick={onRemove}

@@ -160,35 +160,25 @@ export default function ManualBillingEntryModal({
 
   }, [open]);
 
-  const computedTotal =
-    useMemo(() => {
+  const computedTotal = useMemo(() => {
+    const netWeight =
+      Number(form.net_weight || 0);
 
-      const netWeight =
-        Number(
-          form.net_weight || 0
-        );
+    const rate =
+      Number(form.rate || 0);
 
-      const rate =
-        Number(
-          form.rate || 0
-        );
+    const makingCharge =
+      Number(form.making_charge_value || 0);
 
-      const making =
-        Number(
-          form.making_charge_value ||
-            0
-        );
+    const metalValue =
+      netWeight * rate;
 
-      const metalValue =
-        netWeight * rate;
-
-      return metalValue + making;
-
-    }, [
-      form.net_weight,
-      form.rate,
-      form.making_charge_value,
-    ]);
+    return metalValue + makingCharge;
+  }, [
+    form.net_weight,
+    form.rate,
+    form.making_charge_value,
+  ]);
 
   async function handleSearchProduct() {
 
@@ -275,7 +265,7 @@ export default function ManualBillingEntryModal({
 
       setError(
         error?.message ||
-          "Failed to fetch product"
+        "Failed to fetch product"
       );
 
     } finally {
@@ -334,8 +324,7 @@ export default function ManualBillingEntryModal({
 
       const parsedMaking =
         parseFloat(
-          form.making_charge_percent ||
-            0
+          form.making_charge_value || 0
         );
 
       if (parsedRate <= 0) {
@@ -354,31 +343,31 @@ export default function ManualBillingEntryModal({
 
         customer:
           customerForm.name ||
-          customerForm.phone ||
-          customerForm.pan_card_number
+            customerForm.phone ||
+            customerForm.pan_card_number
             ? {
-                name:
-                  customerForm.name?.trim() ||
-                  null,
+              name:
+                customerForm.name?.trim() ||
+                null,
 
-                phone:
-                  customerForm.phone?.trim() ||
-                  null,
+              phone:
+                customerForm.phone?.trim() ||
+                null,
 
-                pan_card_number:
-                  customerForm.pan_card_number
-                    ?.trim()
-                    ?.toUpperCase() ||
-                  null,
+              pan_card_number:
+                customerForm.pan_card_number
+                  ?.trim()
+                  ?.toUpperCase() ||
+                null,
 
-                pincode:
-                  customerForm.pincode?.trim() ||
-                  null,
+              pincode:
+                customerForm.pincode?.trim() ||
+                null,
 
-                address:
-                  customerForm.address?.trim() ||
-                  null,
-              }
+              address:
+                customerForm.address?.trim() ||
+                null,
+            }
             : null,
 
         paid_amount: 0,
@@ -395,26 +384,26 @@ export default function ManualBillingEntryModal({
 
             batch_id:
               form.batch_id &&
-              !isNaN(
-                Number(
-                  form.batch_id
-                )
-              )
-                ? Number(
+                !isNaN(
+                  Number(
                     form.batch_id
                   )
+                )
+                ? Number(
+                  form.batch_id
+                )
                 : null,
 
             product_code:
               String(
                 form.product_code ||
-                  ""
+                ""
               ).trim(),
 
             description:
               String(
                 form.item_name ||
-                  ""
+                ""
               ).trim(),
 
             qty: 1,
@@ -426,6 +415,11 @@ export default function ManualBillingEntryModal({
               parsedRate,
 
             making_charge_percent:
+              Number(
+                form.making_charge_percent || 0
+              ),
+
+            making_charge_value:
               parsedMaking,
 
             unit:
@@ -450,70 +444,66 @@ export default function ManualBillingEntryModal({
       );
 
       const createdItem: ManualBillingEntry =
-        {
-          id: crypto.randomUUID(),
+      {
+        id: crypto.randomUUID(),
 
-          item_id:
-            Number(
-              form.item_id
-            ),
+        item_id:
+          Number(
+            form.item_id
+          ),
 
-          product_code:
-            form.product_code,
+        product_code:
+          form.product_code,
 
-          item_name:
-            form.item_name,
+        item_name:
+          form.item_name,
 
-          purity:
-            form.purity,
+        purity:
+          form.purity,
 
-          gross_weight:
-            Number(
-              form.gross_weight ||
-                0
-            ),
+        gross_weight:
+          Number(
+            form.gross_weight ||
+            0
+          ),
 
-          net_weight:
-            parsedWeight,
+        net_weight:
+          parsedWeight,
 
-          rate:
-            parsedRate,
+        rate:
+          parsedRate,
 
-          making_charge_percent:
-            parsedMaking,
+        making_charge_percent:
+          parsedMaking,
 
-          making_charge_value:
-            Number(
-              form.making_charge_value ||
-                0
-            ),
+        making_charge_value:
+          Number(
+            form.making_charge_value ||
+            0
+          ),
 
-          total_amount:
-            Number(
-              form.total_amount ||
-                0
-            ) || computedTotal,
+        total_amount:
+          Number(
+            form.total_amount ||
+            0
+          ) || computedTotal,
 
-          unit:
-            form.unit || "g",
+        unit:
+          form.unit || "g",
 
-          batch_id:
-            form.batch_id ||
-            null,
-        };
+        batch_id:
+          form.batch_id ||
+          null,
+      };
 
-      onCreate?.(
-        createdItem
-      );
-
+      
       onBillCreated?.(
         response
       );
 
       setSuccess(
-        `Invoice created successfully • Bill No: ${
-          response?.data
-            ?.bill_number || ""
+        `Invoice created successfully • Bill No: ${response?.data
+          ?.bill_number || ""
         }`
       );
 
@@ -629,23 +619,18 @@ export default function ManualBillingEntryModal({
     <>
       <div className="fixed inset-0 z-[999] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-5 backdrop-blur-[3px]">
 
-        <div className="relative flex max-h-[95vh] w-full max-w-[920px] flex-col overflow-hidden rounded-[24px] border border-[#E5E7EB] bg-white shadow-[0px_30px_80px_rgba(15,23,42,0.18)]">
+        <div className="relative flex max-h-[95vh] w-full max-w-[512px] flex-col overflow-hidden rounded-[24px] border border-[#E5E7EB] bg-white shadow-[0px_30px_80px_rgba(15,23,42,0.18)]">
 
           {/* HEADER */}
           <div className="flex items-start justify-between border-b border-[#EEF2F6] px-5 py-5 sm:px-7">
 
             <div>
 
-              <div className="inline-flex items-center gap-2 rounded-full bg-[#F4F3FF] px-3 py-1.5 text-[12px] font-bold text-[#7C3AED]">
-                <Sparkles className="h-4 w-4" />
-                Manual Billing
-              </div>
-
-              <h2 className="mt-3 text-[28px] font-bold tracking-[-0.03em] text-[#111827]">
-                Create Bill
+              <h2 className="mt-0 text-[18px] font-[600] tracking-[-0.44px] text-[#0A0A0A]">
+                Create New Bill Entry
               </h2>
 
-              <p className="mt-1 text-sm text-[#667085]">
+              <p className="mt-1 text-[14px] font-[400] text-[#0A0A0A]">
                 Scan or manually add billing item
               </p>
 
@@ -704,7 +689,7 @@ export default function ManualBillingEntryModal({
                       )
                     }
                     placeholder="Enter or scan product code"
-                    className="h-14 w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] pl-11 pr-4 text-sm font-semibold outline-none transition-all focus:border-[#7C3AED] focus:bg-white focus:ring-4 focus:ring-[#F4EBFF]"
+                    className="h-[39px] w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] pl-11 pr-4 text-sm font-semibold outline-none transition-all focus:border-[#7C3AED] focus:bg-white focus:ring-4 focus:ring-[#F4EBFF]"
                   />
 
                 </div>
@@ -716,7 +701,7 @@ export default function ManualBillingEntryModal({
                   disabled={
                     searching
                   }
-                  className="flex h-14 min-w-[130px] items-center justify-center gap-2 rounded-2xl bg-[#050816] px-5 text-sm font-bold text-white disabled:opacity-60"
+                  className="flex h-[39px] min-w-[130px] items-center justify-center gap-2 rounded-2xl bg-[#050816] px-5 text-sm font-bold text-white disabled:opacity-60"
                 >
 
                   {searching ? (
@@ -738,6 +723,7 @@ export default function ManualBillingEntryModal({
 
               <Field
                 label="Product Name"
+                readOnly
                 value={
                   form.item_name
                 }
@@ -757,6 +743,7 @@ export default function ManualBillingEntryModal({
               />
 
               <Field
+                readOnly
                 label="Purity"
                 value={
                   form.purity
@@ -777,6 +764,7 @@ export default function ManualBillingEntryModal({
               />
 
               <Field
+                readOnly
                 type="number"
                 label="Gross Weight"
                 value={
@@ -798,6 +786,7 @@ export default function ManualBillingEntryModal({
               />
 
               <Field
+                readOnly
                 type="number"
                 label="Net Weight"
                 value={
@@ -819,6 +808,7 @@ export default function ManualBillingEntryModal({
               />
 
               <Field
+                readOnly
                 type="number"
                 label="Rate"
                 value={
@@ -841,22 +831,13 @@ export default function ManualBillingEntryModal({
 
               <Field
                 type="number"
-                label="Making %"
-                value={
-                  form.making_charge_percent
-                }
-                onChange={(
-                  value: string
-                ) =>
-                  setForm(
-                    (
-                      prev: any
-                    ) => ({
-                      ...prev,
-                      making_charge_percent:
-                        value,
-                    })
-                  )
+                label="Making Charges"
+                value={form.making_charge_value}
+                onChange={(value: string) =>
+                  setForm((prev: any) => ({
+                    ...prev,
+                    making_charge_value: value,
+                  }))
                 }
               />
 
@@ -879,7 +860,7 @@ export default function ManualBillingEntryModal({
                       Estimated Total
                     </p>
 
-                    <p className="mt-1 text-[30px] font-bold text-[#111827]">
+                    <p className="mt-1 text-[20px] font-bold text-[#111827]">
                       ₹
                       {formatNumber(
                         computedTotal
@@ -1127,24 +1108,24 @@ function Field({
   value,
   onChange,
   type = "text",
+  readOnly = false,
 }: any) {
 
   return (
     <div>
 
-      <label className="mb-2 block text-sm font-bold text-[#111827]">
+      <label className="mb-2 block text-sm font-[500] text-[#111827]">
         {label}
       </label>
 
       <input
         type={type}
         value={value}
+        readOnly={readOnly}
         onChange={(e) =>
-          onChange(
-            e.target.value
-          )
+          onChange(e.target.value)
         }
-        className="h-14 w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] px-4 text-sm font-semibold text-[#111827] outline-none transition-all focus:border-[#7C3AED] focus:bg-white focus:ring-4 focus:ring-[#F4EBFF]"
+        className="h-[39px] w-full rounded-2xl border border-[#E5E7EB] bg-[#F8FAFC] px-4 text-sm font-semibold text-[#111827] outline-none transition-all focus:border-[#7C3AED] focus:bg-white focus:ring-4 focus:ring-[#F4EBFF]"
       />
 
     </div>

@@ -198,7 +198,6 @@ function getDistrictScope() {
     user?.organizationId ||
     localStorage.getItem("organization_id") ||
     "";
-
   return {
     store_code: storeCode,
     organization_id: organizationId,
@@ -396,6 +395,9 @@ async function addDistrictStockItem(
       purity: normalizeText(
         payload.purity
       ),
+      selling_price: Number(
+        payload.selling_price || 0
+      ),
 
       qty: Number(payload.qty),
 
@@ -444,6 +446,7 @@ export default function StockManagementPage() {
   const [rows, setRows] = useState<StockRow[]>([]);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [auditMode, setAuditMode] = useState(false);
 
   const [summary, setSummary] = useState<StockSummaryApi>({
     total_stock_items: 0,
@@ -610,7 +613,9 @@ export default function StockManagementPage() {
     }).length;
   }, [auditMap]);
 
-  const handleAddStockSubmit = async (payload: DistrictAddStockFormPayload) => {
+  const handleAddStockSubmit = async (
+    payload: DistrictAddStockFormPayload[]
+  ) => {
     try {
       if (addStockLoading) return;
 
@@ -618,7 +623,15 @@ export default function StockManagementPage() {
       setAddStockError("");
       setPageError("");
 
-      const result = await addDistrictStockItem(payload);
+      for (const item of payload) {
+        const result = await addDistrictStockItem(item);
+
+        if (!result?.success) {
+          throw new Error(
+            result?.message || "Failed to add stock item"
+          );
+        }
+      }
 
       if (!result?.success) {
         throw new Error(result?.message || "Failed to add stock item");
@@ -706,14 +719,7 @@ export default function StockManagementPage() {
   };
 
   const getRowsForAudit = async () => {
-    const targetRows =
-      selectedCategory === "All"
-        ? rows
-        : rows.filter(
-          (row) =>
-            row.category?.toLowerCase().trim() ===
-            selectedCategory?.toLowerCase().trim()
-        );
+    const targetRows = rows;
 
     const hydratedRows: StockRow[] = [];
 
@@ -768,7 +774,17 @@ export default function StockManagementPage() {
 
     return true;
   };
+  const handleAuditButtonClick = async () => {
+    if (!auditMode) {
+      setAuditMode(true);
 
+      await getRowsForAudit();
+
+      return;
+    }
+
+    await handleCreateReport();
+  };
   const handleCreateReport = async () => {
     try {
       if (submitting) return;
@@ -825,6 +841,8 @@ export default function StockManagementPage() {
       console.log("FINAL AUDIT PAYLOAD:", JSON.stringify(payload, null, 2));
 
       const result = await createDailyAudit(payload);
+      setAuditMode(false);
+      setAuditMap({});
 
       console.log("AUDIT RESPONSE:", result);
 
@@ -923,7 +941,8 @@ export default function StockManagementPage() {
 
       <StockManagementToolbar
         selectedCount={auditedCount}
-        onCreateReport={handleCreateReport}
+        auditMode={auditMode}
+        onCreateReport={handleAuditButtonClick}
         onAddItem={handleOpenAddStock}
         onUploadStock={handleUploadStock}
         searchValue={searchValue}
@@ -943,6 +962,7 @@ export default function StockManagementPage() {
 
       <StockManagementTable
         rows={rows}
+        auditMode={auditMode}
         loading={loading}
         loadingRowCategory={loadingRowCategory}
         auditMap={auditMap}

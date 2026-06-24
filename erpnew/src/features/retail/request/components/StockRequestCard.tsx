@@ -39,11 +39,23 @@ function isDispatched(item: RequestCardData) {
   const transferStatus = normalize(item?.raw?.transfer?.status);
 
   return (
-    status === "dispatch" ||
+    status === "forwarded" ||
     status === "dispatched" ||
+    status === "proceed" ||
+    status === "completed" ||
     transferStatus === "in_transit" ||
     transferStatus === "received" ||
     transferStatus === "dispatched"
+  );
+}
+function canDispatch(item: RequestCardData) {
+  const status = normalize(item?.status);
+
+  return (
+    !isDispatched(item) &&
+    (status === "pending" ||
+      status === "approved" ||
+      status === "received")
   );
 }
 
@@ -51,28 +63,45 @@ function isDispatched(item: RequestCardData) {
 
 function StatusBadge({ item }: { item: RequestCardData }) {
   const dispatched = isDispatched(item);
-  const status = normalize(item?.status) || "pending";
+  const status = normalize(item?.status);
 
-  if (dispatched) {
+  if (status === "forwarded") {
     return (
-      <span className="inline-flex h-[34px] items-center justify-center gap-2 rounded-erp-full bg-erp-success px-5 text-[14px] font-medium text-white sm:min-w-[130px]">
+      <span className="inline-flex h-[34px] items-center justify-center gap-2 rounded-erp-full bg-[#2563EB] px-5 text-[14px] font-medium text-white">
         <Truck className="h-4 w-4" />
-        Dispatch
+        Transferred
       </span>
     );
   }
 
-  if (status === "approved" || status === "completed") {
+  if (dispatched) {
+    return (
+      <span className="inline-flex h-[34px] items-center justify-center gap-2 rounded-erp-full bg-erp-success px-5 text-[14px] font-medium text-white">
+        <Truck className="h-4 w-4" />
+        Dispatched
+      </span>
+    );
+  }
+
+  if (status === "approved") {
     return (
       <span className="inline-flex h-[26px] items-center rounded-erp-full bg-erp-success-soft px-3 text-[13px] font-medium text-[#15803D]">
-        approved
+        Approved
+      </span>
+    );
+  }
+
+  if (status === "pending") {
+    return (
+      <span className="inline-flex h-[26px] items-center rounded-erp-full bg-[#FFF7ED] px-3 text-[13px] font-medium text-[#EA580C]">
+        Pending
       </span>
     );
   }
 
   return (
     <span className="inline-flex h-[26px] items-center rounded-erp-full bg-erp-border-soft px-3 text-[13px] font-medium text-erp-muted capitalize">
-      {status.replaceAll("_", " ") || "Not found"}
+      {status.replaceAll("_", " ")}
     </span>
   );
 }
@@ -225,7 +254,26 @@ export default function StockRequestCard({
         </div>
 
         <div className="flex items-center gap-3">
-          {onTransfer && (
+          {onDispatch ? (
+            canDispatch(item) ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDispatch(item);
+                }}
+                className="h-[38px] rounded-full bg-erp-primary px-5 text-[14px] font-medium text-white hover:opacity-90"
+              >
+                Dispatch
+              </button>
+            ) : (
+              <StatusBadge item={item} />
+            )
+          ) : (
+            <StatusBadge item={item} />
+          )}
+
+          {onTransfer && !dispatched && (
             <button
               type="button"
               onClick={(e) => {
@@ -237,8 +285,6 @@ export default function StockRequestCard({
               Transfer
             </button>
           )}
-
-          <StatusBadge item={item} />
         </div>
       </div>
 

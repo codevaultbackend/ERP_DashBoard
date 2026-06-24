@@ -216,17 +216,25 @@ export default function StockManagementPage() {
     transit_goods: 0,
   });
 
-  const handleAddStockSubmit = async (payload: AddStockFormPayload) => {
+  const handleAddStockSubmit = async (
+    payload: AddStockFormPayload[]
+  ) => {
     try {
       if (addStockLoading) return;
 
       setAddStockLoading(true);
       setAddStockError("");
 
-      const result = await addStockItem(payload);
+      for (const item of payload) {
+        console.log("RETAIL STOCK ITEM", item);
 
-      if (!result?.success) {
-        throw new Error(result?.message || "Failed to add stock item");
+        const result = await addStockItem(item);
+
+        if (!result?.success) {
+          throw new Error(
+            result?.message || "Failed to add stock item"
+          );
+        }
       }
 
       setAddStockOpen(false);
@@ -255,6 +263,7 @@ export default function StockManagementPage() {
 
   const [auditMap, setAuditMap] = useState<AuditMap>({});
   const [submitting, setSubmitting] = useState(false);
+  const [auditMode, setAuditMode] = useState(false);
   const [addStockOpen, setAddStockOpen] = useState(false);
   const [addStockLoading, setAddStockLoading] = useState(false);
   const [addStockError, setAddStockError] = useState("");
@@ -448,15 +457,7 @@ export default function StockManagementPage() {
   };
 
   const getRowsForAudit = async () => {
-    const targetRows =
-      selectedCategory === "All"
-        ? rows
-        : rows.filter(
-          (row) =>
-            row.category?.toLowerCase().trim() ===
-            selectedCategory?.toLowerCase().trim()
-        );
-
+    const targetRows = rows;
     const hydratedRows: StockRow[] = [];
 
     for (const row of targetRows) {
@@ -512,8 +513,6 @@ export default function StockManagementPage() {
   };
 
   const handleCreateAudit = async () => {
-    console.log(" AUDIT DEBUG START");
-
     try {
       if (submitting) return;
 
@@ -525,10 +524,14 @@ export default function StockManagementPage() {
         throw new Error("No category found for audit");
       }
 
-      const articles = auditRows.flatMap((row) => row.articles || []);
+      const articles = auditRows.flatMap(
+        (row) => row.articles || []
+      );
 
       if (!articles.length) {
-        throw new Error("No frontend articles found for audit");
+        throw new Error(
+          "No frontend articles found for audit"
+        );
       }
 
       if (!validateAuditRows(articles)) {
@@ -536,11 +539,15 @@ export default function StockManagementPage() {
       }
 
       const items = articles
-        .filter((article) => !isTodayAuditDone(article))
+        .filter(
+          (article) => !isTodayAuditDone(article)
+        )
         .map((article) => {
-          const audit = auditMap[article.id];
+          const audit =
+            auditMap[article.id];
 
-          const status: AuditStatus = audit?.status || "pending";
+          const status: AuditStatus =
+            audit?.status || "pending";
 
           return {
             item_id: Number(article.id),
@@ -548,16 +555,21 @@ export default function StockManagementPage() {
             checklist_note:
               status === "present"
                 ? "Audit completed"
-                : audit?.remark || "Not audited",
+                : audit?.remark ||
+                "Not audited",
             missing_reason:
-              status === "missing" || status === "pending"
-                ? audit?.remark || "Not audited"
+              status === "missing" ||
+                status === "pending"
+                ? audit?.remark ||
+                "Not audited"
                 : undefined,
           };
         });
 
       if (!items.length) {
-        alert("All selected items are already audited today.");
+        alert(
+          "All selected items are already audited today."
+        );
         return;
       }
 
@@ -566,44 +578,98 @@ export default function StockManagementPage() {
         items,
       };
 
-      console.log(" FINAL AUDIT PAYLOAD:", JSON.stringify(payload, null, 2));
+      const result =
+        await createDailyAudit(
+          payload
+        );
 
-      const result = await createDailyAudit(payload);
+      setAuditMode(false);
+      setAuditMap({});
 
-      console.log(" AUDIT RESPONSE:", result);
+      const auditedAt =
+        new Date().toISOString();
 
-      setReportedArticles((prev) => {
-        const next = { ...prev };
+      setReportedArticles(
+        (prev) => {
+          const next = {
+            ...prev,
+          };
 
-        articles.forEach((article) => {
-          next[article.id] = true;
-        });
+          items.forEach(
+            (item) => {
+              next[
+                String(
+                  item.item_id
+                )
+              ] = true;
+            }
+          );
 
-        return next;
-      });
+          return next;
+        }
+      );
 
       setRows((prev) =>
         prev.map((row) => ({
           ...row,
-          articles: row.articles?.map((article) =>
-            items.some((item) => String(item.item_id) === article.id)
-              ? {
-                ...article,
-                isItemAudit: true,
-                itemAuditAt: new Date().toISOString(),
-              }
-              : article
-          ),
+          articles:
+            row.articles?.map(
+              (article) =>
+                items.some(
+                  (item) =>
+                    String(
+                      item.item_id
+                    ) ===
+                    article.id
+                )
+                  ? {
+                    ...article,
+                    isItemAudit:
+                      true,
+                    itemAuditAt:
+                      auditedAt,
+                  }
+                  : article
+            ),
         }))
       );
 
-      alert(result?.message || "Audit saved successfully");
-    } catch (err: any) {
-      console.error("❌ AUDIT ERROR:", err?.message || err);
-      alert(err?.message || "Failed to save audit");
+      alert(
+        result?.message ||
+        "Audit saved successfully"
+      );
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to save audit"
+      );
     } finally {
       setSubmitting(false);
     }
+  };
+  const handleAuditButtonClick = async () => {
+    if (!auditMode) {
+      setAuditMode(true);
+
+      const allRows = await getRowsForAudit();
+
+      setRows((prev) =>
+        prev.map((row) => {
+          const hydrated = allRows.find(
+            (x) =>
+              x.category?.toLowerCase().trim() ===
+              row.category?.toLowerCase().trim()
+          );
+
+          return hydrated || row;
+        })
+      );
+
+      return;
+    }
+
+    await handleCreateAudit();
   };
 
   return (
@@ -645,7 +711,8 @@ export default function StockManagementPage() {
 
       <StockManagementToolbar
         selectedCount={auditedCount}
-        onCreateReport={handleCreateAudit}
+        auditMode={auditMode}
+        onCreateReport={handleAuditButtonClick}
         onAddItem={() => {
           setAddStockError("");
           setAddStockOpen(true);
@@ -680,6 +747,7 @@ export default function StockManagementPage() {
       ) : null}
 
       <StockManagementTable
+        auditMode={auditMode}
         rows={rows}
         loading={loading}
         loadingRowCategory={loadingRowCategory}

@@ -40,6 +40,8 @@ type Props = {
   onSelectProduct: (
     product: Product
   ) => void;
+
+  onManualBillCreated?: () => void;
 };
 
 export default function BillingSearchBar({
@@ -50,6 +52,7 @@ export default function BillingSearchBar({
   suggestions,
   onSubmit,
   onSelectProduct,
+  onManualBillCreated,
 }: Props) {
 
   const pathname = usePathname();
@@ -130,7 +133,7 @@ export default function BillingSearchBar({
                       <span className="text-[14px] font-bold text-[#111827]">
                         {formatCurrency(
                           item.metalValue +
-                            item.makingCharges
+                          item.makingCharges
                         )}
                       </span>
                     </button>
@@ -155,31 +158,21 @@ export default function BillingSearchBar({
             </div>
 
             <span className="hidden sm:block">
-              Manual Entry
+              Manual Billing
             </span>
           </button>
-
-          {/* =========================================
-              DYNAMIC ROUTE BUTTON
-          ========================================= */}
-          <Link href={pendingAmountRoute}>
-            <button
-              type="button"
-              className="flex h-[42px] items-center justify-center rounded-[14px] bg-[#050816] px-5 text-[13px] font-semibold text-white shadow-[0px_8px_20px_rgba(2,6,23,0.12)] transition-all hover:opacity-95"
-            >
-              Pending Amounts
-            </button>
-          </Link>
 
         </div>
       </div>
 
       <ManualBillingEntryModal
         open={manualBillingOpen}
-        onClose={() =>
-          setManualBillingOpen(false)
-        }
+        onClose={() => setManualBillingOpen(false)}
         onCreate={() => {
+          setManualBillingOpen(false);
+        }}
+        onBillCreated={() => {
+          onManualBillCreated?.();
           setManualBillingOpen(false);
         }}
       />

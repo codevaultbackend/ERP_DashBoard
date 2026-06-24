@@ -126,11 +126,22 @@ export async function getStockItemsByCategoryByRole(
 
 export type AddStockPayload = {
   item_name: string;
-  metal_type: "Gold" | "Silver";
+  item_code?: string;
+
+  metal_type: "Gold" | "Silver" | "diamond";
+
   category: string;
   purity: string;
+
   qty: number;
+
   net_weight: number;
+  stone_weight?: number;
+  gross_weight?: number;
+
+  making_charge?: number;
+  selling_price?: number;
+
   image?: File | null;
 };
 
@@ -160,19 +171,51 @@ export async function addStockItem(
 ) {
   const formData = new FormData();
 
-  formData.append(
-    "items",
-    JSON.stringify([
-      {
-        item_name: payload.item_name.trim(),
-        metal_type: payload.metal_type,
-        category: payload.category.trim(),
-        purity: payload.purity.trim(),
-        qty: Number(payload.qty),
-        net_weight: Number(payload.net_weight),
-      },
-    ])
-  );
+  const itemsPayload = [
+  {
+    item_name: payload.item_name.trim(),
+
+    item_code: payload.item_code?.trim() || "",
+
+    metal_type: payload.metal_type,
+
+    category: payload.category.trim(),
+
+    purity: payload.purity.trim(),
+
+    qty: Number(payload.qty),
+
+    net_weight: Number(payload.net_weight),
+
+    stone_weight: Number(
+      payload.stone_weight || 0
+    ),
+
+    gross_weight: Number(
+      payload.gross_weight ||
+      payload.net_weight ||
+      0
+    ),
+
+    making_charge: Number(
+      payload.making_charge || 0
+    ),
+
+    selling_price: Number(
+      payload.selling_price || 0
+    ),
+  },
+];
+
+console.log(
+  "STOCK IN PAYLOAD",
+  JSON.stringify(itemsPayload, null, 2)
+);
+
+formData.append(
+  "items",
+  JSON.stringify(itemsPayload)
+);
 
   if (payload.image) {
   formData.append(

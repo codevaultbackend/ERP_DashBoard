@@ -143,53 +143,6 @@ export default function BillSummaryCard({
             </div>
           </div>
         </div>
-
-        {items.length > 0 ? (
-          <div className="mt-[18px] rounded-[18px] border border-[#E5E7EB] bg-[#FAFBFC] p-[14px]">
-            <div className="mb-[12px] flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold text-[#111827]">
-                Added Items
-              </h3>
-
-              <button
-                type="button"
-                onClick={onClearAll}
-                className="inline-flex items-center gap-1 text-[13px] font-medium text-[#DC2626]"
-              >
-                <X className="h-[14px] w-[14px]" />
-
-                Clear all
-              </button>
-            </div>
-
-            <div className="max-h-[260px] space-y-[8px] overflow-y-auto pr-1">
-              {items.map((item) => (
-                <div
-                  key={`${item.code}-${item.item_id || item.id}`}
-                  className="flex items-center justify-between gap-3 rounded-[12px] bg-white px-[12px] py-[11px]"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-[#111827]">
-                      {item.name}
-                    </p>
-
-                    <p className="mt-[2px] truncate text-[12px] font-medium text-[#667085]">
-                      {item.code} × {item.qty}
-                    </p>
-                  </div>
-
-                  <p className="shrink-0 text-[14px] font-semibold text-[#111827]">
-                    {formatCurrency(
-                      (item.metalValue +
-                        item.makingCharges) *
-                      item.qty
-                    )}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
       </div>
     </BillingSectionCard>
   );

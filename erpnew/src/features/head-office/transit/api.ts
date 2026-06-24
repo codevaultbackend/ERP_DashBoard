@@ -88,9 +88,9 @@ export async function markHeadTransferReceived(
   id: string | number
 ) {
   return apiFetch(
-    `/request/transfers/head/${id}/receive`,
+    `/request/transfers/${id}/receive`,
     {
-      method: "PUT",
+      method: "Put",
     }
   );
 }

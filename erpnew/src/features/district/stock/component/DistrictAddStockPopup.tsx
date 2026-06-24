@@ -21,6 +21,7 @@ export type DistrictAddStockFormPayload = {
   stone_weight: number;
 
   making_charge: number;
+  selling_price: number;
 
   image?: File | null;
 };
@@ -30,7 +31,9 @@ type Props = {
   loading?: boolean;
   error?: string;
   onClose: () => void;
-  onSubmit: (payload: DistrictAddStockFormPayload) => Promise<void> | void;
+  onSubmit: (
+    payload: DistrictAddStockFormPayload[]
+  ) => Promise<void> | void;
 };
 
 const INITIAL_FORM = {
@@ -50,6 +53,7 @@ const INITIAL_FORM = {
   stone_weight: "",
 
   making_charge: "",
+  selling_price: "",
 
   image: null as File | null,
 };
@@ -87,10 +91,27 @@ export default function DistrictAddStockPopup({
   const [form, setForm] = useState(INITIAL_FORM);
   const [localError, setLocalError] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [products, setProducts] = useState<
+    DistrictAddStockFormPayload[]
+  >([]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const buildProduct = (): DistrictAddStockFormPayload => ({
+    item_name: form.item_name.trim(),
+    item_code: form.item_code.trim(),
+    metal_type: form.metal_type,
+    category: form.category.trim(),
+    purity: form.purity.trim(),
+    qty: Number(form.qty),
+    net_weight: Number(form.net_weight),
+    stone_weight: Number(form.stone_weight || 0),
+    making_charge: Number(form.making_charge || 0),
+    selling_price: Number(form.selling_price || 0),
+    image: form.image,
+  });
 
   const stoneWeight = Number(form.stone_weight);
   useEffect(() => {
@@ -171,7 +192,7 @@ export default function DistrictAddStockPopup({
     updateField("image", file);
     setImagePreview(URL.createObjectURL(file));
   };
-  const handleSubmit = async () => {
+  const handleAddProduct = () => {
     const validationMessage = validate();
 
     if (validationMessage) {
@@ -179,43 +200,36 @@ export default function DistrictAddStockPopup({
       return;
     }
 
+    setProducts((prev) => [...prev, buildProduct()]);
+
+    setLocalError("");
+    resetForm();
+  };
+  const removeProduct = (index: number) => {
+    setProducts((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
+  };
+  const handleFinalSubmit = async () => {
+    if (!products.length) {
+      setLocalError("Add at least one product.");
+      return;
+    }
+
     try {
       setLocalError("");
 
-      await onSubmit({
-  item_name: form.item_name.trim(),
+      await onSubmit(products);
 
-  item_code: form.item_code.trim(),
-
-  metal_type: form.metal_type,
-
-  category: form.category.trim(),
-
-  purity: form.purity.trim(),
-
-  qty: Number(form.qty),
-
-  net_weight: Number(form.net_weight),
-
-  stone_weight: Number(
-    form.stone_weight || 0
-  ),
-
-  making_charge: Number(
-    form.making_charge || 0
-  ),
-
-  image: form.image,
-});
-
+      setProducts([]);
       resetForm();
-    } catch (submitError) {
-      const message =
-        submitError instanceof Error
-          ? submitError.message
-          : "Failed to add stock item.";
-
-      setLocalError(message);
+      onClose();
+    } catch (error) {
+      setLocalError(
+        error instanceof Error
+          ? error.message
+          : "Failed to submit products."
+      );
     }
   };
 
@@ -273,20 +287,20 @@ export default function DistrictAddStockPopup({
                 />
               </div>
               <div>
-            <label className="mb-[7px] block text-[15px] font-normal leading-[20px]">
-              Item Code
-            </label>
+                <label className="mb-[7px] block text-[15px] font-normal leading-[20px]">
+                  Item Code
+                </label>
 
-            <input
-              value={form.item_code}
-              disabled={loading}
-              onChange={(e) =>
-                updateField("item_code", e.target.value)
-              }
-              placeholder="5704-1234"
-              className={inputClass(Boolean(form.item_code))}
-            />
-          </div>
+                <input
+                  value={form.item_code}
+                  disabled={loading}
+                  onChange={(e) =>
+                    updateField("item_code", e.target.value)
+                  }
+                  placeholder="5704-1234"
+                  className={inputClass(Boolean(form.item_code))}
+                />
+              </div>
 
               <div>
                 <label className="mb-[7px] block text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-[#111111]">
@@ -334,6 +348,26 @@ export default function DistrictAddStockPopup({
                   onChange={(e) => updateField("purity", e.target.value)}
                   placeholder="22K"
                   className={inputClass(Boolean(form.purity))}
+                />
+              </div>
+              <div>
+                <label className="mb-[7px] block text-[15px] font-normal leading-[20px]">
+                  Selling Price
+                </label>
+
+                <input
+                  value={form.selling_price}
+                  disabled={loading}
+                  type="text"
+                  inputMode="decimal"
+                  onChange={(e) =>
+                    updateField(
+                      "selling_price",
+                      normalizeDecimalInput(e.target.value)
+                    )
+                  }
+                  placeholder="25000"
+                  className={inputClass(Boolean(form.selling_price))}
                 />
               </div>
 
@@ -399,6 +433,7 @@ export default function DistrictAddStockPopup({
                 />
               </div>
 
+
               <div>
                 <label className="mb-[7px] block text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-[#111111]">
                   Net Weight
@@ -436,39 +471,111 @@ export default function DistrictAddStockPopup({
                   className={inputClass(Boolean(form.stone_weight))}
                 />
               </div>
+
             </div>
 
-          </div>
-          
-        </div>
+            {products.length > 0 && (
+              <div className="mt-5 rounded-[20px] border border-[#ECEEF2] bg-white p-[18px]">
+                <div className="mb-4 flex items-center justify-between">
+                  <h4 className="text-[18px] font-semibold">
+                    Added Products
+                  </h4>
 
-        <div className="grid shrink-0 grid-cols-1 gap-[10px] bg-white px-[28px] pb-[27px] pt-[12px] sm:grid-cols-2 sm:gap-[12px] max-sm:px-[20px] max-sm:pb-[18px]">
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={loading}
-            className="h-[42px] rounded-[9px] border border-erp-border bg-white text-[16px] font-normal tracking-[-0.02em] text-[#111111] transition hover:bg-erp-card-soft disabled:cursor-not-allowed disabled:opacity-60 sm:h-[40px]"
-          >
-            Cancel
-          </button>
+                  <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+                    {products.length} Items
+                  </span>
+                </div>
 
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="inline-flex h-[42px] items-center justify-center rounded-[9px] bg-erp-dark text-[16px] font-normal tracking-[-0.02em] text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:h-[40px]"
-          >
-            {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Adding...
-              </span>
-            ) : (
-              "Add Stock"
+                <div className="space-y-3">
+                  {products.map((product, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between rounded-xl border border-[#E5E7EB] bg-[#FAFAFB] p-4"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-[#111111]">
+                          {product.item_name}
+                        </p>
+
+                        <p className="text-sm text-[#6B7280]">
+                          {product.category} • {product.purity}
+                        </p>
+
+                        <p className="text-sm text-[#6B7280]">
+                          Qty {product.qty} • {product.net_weight}g
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeProduct(index)}
+                        className="ml-4 rounded-lg bg-red-50 px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-100"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
+
+          </div>
+
+        </div>
+
+        <div className="shrink-0 bg-white px-[28px] pb-[27px] pt-[12px]">
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={loading}
+              className="
+      h-[42px]
+      rounded-[9px]
+      border
+      border-[#D1D5DB]
+      bg-white
+      text-[#374151]
+      font-medium
+      hover:bg-[#F9FAFB]
+      disabled:opacity-50
+      disabled:cursor-not-allowed
+    "
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAddProduct}
+              disabled={loading}
+              className="
+      h-[42px]
+      rounded-[9px]
+      bg-[#0a0a0a]
+      text-white
+      font-medium
+      hover:bg-[#0a0a0a]
+      disabled:opacity-50
+      disabled:cursor-not-allowed
+    "
+            >
+              Add Product
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleFinalSubmit}
+            disabled={loading || products.length === 0}
+            className="mt-3 h-[42px] w-full rounded-[9px] bg-green-600 text-white font-medium hover:bg-green-700 disabled:opacity-50"
+          >
+            Submit All Products ({products.length})
           </button>
         </div>
+
       </div>
+
     </div>
   );
 

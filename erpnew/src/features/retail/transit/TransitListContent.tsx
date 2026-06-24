@@ -11,6 +11,7 @@ import {
   Truck,
 } from "lucide-react";
 
+
 import { getTransitTransfers, markTransferReceived } from "./api";
 import {
   DateInfo,
@@ -220,7 +221,7 @@ export default function TransitListContent({
         <section className="mt-[22px] grid grid-cols-1 gap-[28px] md:grid-cols-2 xl:grid-cols-3">
           <StatCard
             icon={<Truck className="h-[24px] w-[24px]" />}
-            title="In Transit"
+            title="On The Way"
             value={summary.in_transit}
             iconWrapClass="bg-erp-purple-soft"
             iconClass="text-erp-purple"
@@ -228,7 +229,7 @@ export default function TransitListContent({
 
           <StatCard
             icon={<CheckCircle2 className="h-[24px] w-[24px]" />}
-            title="Shipments"
+            title="Ready To Dispatch"
             value={summary.shipments}
             iconWrapClass="bg-erp-success-soft"
             iconClass="text-erp-success"
@@ -236,7 +237,7 @@ export default function TransitListContent({
 
           <StatCard
             icon={<Package2 className="h-[24px] w-[24px]" />}
-            title="Goods Receipt"
+            title="Reached"
             value={summary.goods_receipt}
             iconWrapClass="bg-erp-blue-soft"
             iconClass="text-erp-primary"

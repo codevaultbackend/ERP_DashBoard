@@ -344,10 +344,10 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
   }
 
   return (
-  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-    <form
-      onSubmit={handleSubmit}
-      className="
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="
       relative
       flex
       h-[92vh]
@@ -362,30 +362,30 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
       bg-white
       shadow-2xl
       "
-    >
+      >
 
-      {/* HEADER */}
-      <div className="
+        {/* HEADER */}
+        <div className="
       flex
       items-center
       justify-between
       px-6
       py-5
       "
-      >
+        >
 
-        <div>
-          <h2 className="text-[18px] leading-[18px] font-[600] text-[#0A0A0A]
+          <div>
+            <h2 className="text-[18px] leading-[18px] font-[600] text-[#0A0A0A]
           ">
-            Enter Exchange Details
-          </h2>
-        </div>
+              Enter Exchange Details
+            </h2>
+          </div>
 
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="
+          <button
+            type="button"
+            onClick={onClose}
+            className="
           flex
           h-9
           w-9
@@ -394,163 +394,172 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
           rounded-full
           hover:bg-slate-100
           "
-        >
-          <X size={20}/>
-        </button>
+          >
+            <X size={20} />
+          </button>
 
-      </div>
+        </div>
 
 
 
-      {/* BODY */}
+        {/* BODY */}
 
-      <div
-      className="
+        <div
+          className="
       flex-1
       overflow-y-auto
       space-y-6
       p-6
       py-0
       "
-      >
-
-
-        {/* OLD PRODUCT */}
-
-        <ProductSection
-          variant="old"
-          title="Original Product"
-          subtitle="Select product from invoice"
         >
 
 
-          <div className="flex gap-3">
+          {/* OLD PRODUCT */}
+
+          <ProductSection
+            variant="old"
+            title="Original Product"
+            subtitle="Select product from invoice"
+          >
 
 
-            <input
-              value={form.invoice_number}
-              onChange={(e)=>
-                updateField(
-                  "invoice_number",
-                  e.target.value
-                )
-              }
-
-              placeholder="Enter invoice number"
-
+            <div
               className="
-              h-12
-              flex-1
-              rounded-xl
-              bg-[#fff]
-              px-4
-              outline-none
-              focus:ring-4
-              focus:ring-blue-100
-              "
-            />
-
-
-            <button
-              type="button"
-              onClick={handleFetchInvoice}
-              disabled={loadingInvoice}
-
-              className="
-              rounded-xl
-              bg-black
-              px-6
-              text-white
-              font-medium
-              "
+    flex
+    flex-col
+    sm:flex-row
+    gap-3
+    w-full
+  "
             >
-              {
-                loadingInvoice
-                ?
-                "Fetching..."
-                :
-                "Fetch"
-              }
-            </button>
 
 
-          </div>
+              <input
+                value={form.invoice_number}
+                onChange={(e) =>
+                  updateField(
+                    "invoice_number",
+                    e.target.value
+                  )
+                }
+
+                placeholder="Enter invoice number"
+
+                className="
+h-12
+w-full
+min-w-0
+rounded-xl
+border
+px-4
+"
+              />
+
+
+              <button
+                type="button"
+                onClick={handleFetchInvoice}
+                disabled={loadingInvoice}
+
+                className="
+h-12
+w-full
+sm:w-auto
+rounded-xl
+bg-black
+px-6
+text-white
+font-medium
+"
+              >
+                {
+                  loadingInvoice
+                    ?
+                    "Fetching..."
+                    :
+                    "Fetch"
+                }
+              </button>
+
+
+            </div>
 
 
 
-          {
-            invoiceItems.length > 0 &&
-            (
+            {
+              invoiceItems.length > 0 &&
+              (
 
-            <div className="mt-6">
+                <div className="mt-6">
 
 
-              <div className="
+                  <div className="
               mb-3
               flex
               justify-between
               "
-              >
+                  >
 
-                <h3 className="font-semibold">
-                  Choose item
-                </h3>
+                    <h3 className="font-semibold">
+                      Choose item
+                    </h3>
 
 
-                <span className="
+                    <span className="
                 text-xs
                 text-slate-500
                 ">
-                  {invoiceItems.length} products
-                </span>
+                      {invoiceItems.length} products
+                    </span>
 
-              </div>
+                  </div>
 
 
 
-              <div className="
+                  <div className="
               grid
-              gap-3
-              md:grid-cols-2
+grid-cols-1
+lg:grid-cols-2
+gap-3
               "
-              >
+                  >
 
-              {
-              invoiceItems.map((item)=>(
+                    {
+                      invoiceItems.map((item) => (
 
-              <button
-              key={item.invoice_id}
-              type="button"
-              onClick={()=>selectOldProduct(item)}
+                        <button
+                          key={item.invoice_id}
+                          type="button"
+                          onClick={() => selectOldProduct(item)}
 
-              className={`
+                          className={`
               rounded-2xl
               border
               p-4
               text-left
               transition
 
-              ${
-              selectedOldItem===String(item.invoice_id)
-              ?
-              "border-[#FF0000] bg-blue-50"
-              :
-              "border-slate-200 hover:border-blue-300"
-              }
+              ${selectedOldItem === String(item.invoice_id)
+                              ?
+                              "border-[#FF0000] bg-blue-50"
+                              :
+                              "border-slate-200 hover:border-blue-300"
+                            }
               `}
-              >
+                        >
 
-                <div className="flex justify-between">
+                          <div className="flex justify-between">
 
-                  <span className="font-semibold">
-                    {item.product_code}
-                  </span>
+                            <span className="font-semibold">
+                              {item.product_code}
+                            </span>
 
 
-                  {
-                  selectedOldItem===String(item.invoice_id)
-                  &&
-                  <span className="
+                            {
+                              selectedOldItem === String(item.invoice_id)
+                              &&
+                              <span className="
                   rounded-full
                   bg-[#FF0000]
                   px-2
@@ -558,30 +567,30 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
                   text-white
                   p-2
                   ">
-                    Selected
-                  </span>
-                  }
+                                Selected
+                              </span>
+                            }
 
-                </div>
-
-
-                <p className="mt-2 text-sm">
-                  {item.product_name}
-                </p>
+                          </div>
 
 
-                <p className="
+                          <p className="mt-2 text-sm">
+                            {item.product_name}
+                          </p>
+
+
+                          <p className="
                 mt-2
                 text-xs
                 text-slate-500
                 ">
-                  {item.metal_type}
-                  {" • "}
-                  {item.purity}
-                </p>
+                            {item.metal_type}
+                            {" • "}
+                            {item.purity}
+                          </p>
 
 
-                <div className="
+                          <div className="
                 mt-3
                 flex
                 justify-between
@@ -589,34 +598,34 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
                 text-slate-600
                 ">
 
-                  <span>
-                    Gross {item.gross_weight}g
-                  </span>
+                            <span>
+                              Gross {item.gross_weight}g
+                            </span>
 
-                  <span>
-                    ₹{item.value}
-                  </span>
+                            <span>
+                              ₹{item.value}
+                            </span>
+
+                          </div>
+
+
+                        </button>
+
+                      ))
+                    }
+
+
+                  </div>
 
                 </div>
 
-
-              </button>
-
-              ))
-              }
-
-
-              </div>
-
-            </div>
-
-            )
-          }
+              )
+            }
 
 
 
 
-          <div className="
+            <div className="
           mt-6
           grid
           grid-cols-1
@@ -624,134 +633,145 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
           md:grid-cols-3
           ">
 
-            <Field
-              label="Product Code"
-              value={form.old_product_code}
-              readOnly
-              onChange={()=>{}}
-            />
+              <Field
+                label="Product Code"
+                value={form.old_product_code}
+                readOnly
+                onChange={() => { }}
+              />
 
-            <Field
-              label="Product Name"
-              value={form.old_product_name}
-              readOnly
-              onChange={()=>{}}
-            />
+              <Field
+                label="Product Name"
+                value={form.old_product_name}
+                readOnly
+                onChange={() => { }}
+              />
 
-            <Field
-              label="Metal"
-              value={form.old_metal}
-              readOnly
-              onChange={()=>{}}
-            />
+              <Field
+                label="Metal"
+                value={form.old_metal}
+                readOnly
+                onChange={() => { }}
+              />
 
-            <Field
-              label="Purity"
-              value={form.old_purity}
-              readOnly
-              onChange={()=>{}}
-            />
+              <Field
+                label="Purity"
+                value={form.old_purity}
+                readOnly
+                onChange={() => { }}
+              />
 
-            <Field
-              label="Gross Weight"
-              value={form.old_gross_weight}
-              readOnly
-              onChange={()=>{}}
-            />
+              <Field
+                label="Gross Weight"
+                value={form.old_gross_weight}
+                readOnly
+                onChange={() => { }}
+              />
 
-            <Field
-              label="Net Weight"
-              value={form.old_net_weight}
-              readOnly
-              onChange={()=>{}}
-            />
+              <Field
+                label="Net Weight"
+                value={form.old_net_weight}
+                readOnly
+                onChange={() => { }}
+              />
 
-            <Field
-              label="Stone Weight"
-              value={form.old_stone_weight}
-              readOnly
-              onChange={()=>{}}
-            />
+              <Field
+                label="Stone Weight"
+                value={form.old_stone_weight}
+                readOnly
+                onChange={() => { }}
+              />
 
-            <Field
-              label="Value"
-              value={form.old_value}
-              readOnly
-              onChange={()=>{}}
-            />
+              <Field
+                label="Value"
+                value={form.old_value}
+                readOnly
+                onChange={() => { }}
+              />
 
-          </div>
-
-
-        </ProductSection>
+            </div>
 
 
+          </ProductSection>
 
 
 
-        {/* NEW PRODUCT */}
-
-        <ProductSection
-          variant="new"
-          title="New Product"
-          subtitle="Scan replacement item"
-        >
 
 
-          <div className="flex gap-3">
+          {/* NEW PRODUCT */}
+
+          <ProductSection
+            variant="new"
+            title="New Product"
+            subtitle="Scan replacement item"
+          >
 
 
-            <input
-              value={form.new_product_code}
-
-              onChange={(e)=>
-                updateField(
-                  "new_product_code",
-                  e.target.value
-                )
-              }
-
-              placeholder="Enter product code"
-
+            <div
               className="
-              h-12
-              flex-1
-              rounded-xl
-              border
-              px-4
-              "
-            />
+flex
+flex-col
+sm:flex-row
+gap-3
+bg-white
+p-4
+sm:p-5
+"
+            >
 
 
-            <button
-            type="button"
-            onClick={handleFetchNewProduct}
-            disabled={loadingNewProduct}
+              <input
+                value={form.new_product_code}
 
-            className="
+                onChange={(e) =>
+                  updateField(
+                    "new_product_code",
+                    e.target.value
+                  )
+                }
+
+                placeholder="Enter product code"
+
+                className="
+h-12
+w-full
+min-w-0
+rounded-xl
+border
+px-4
+"
+              />
+
+
+              <button
+                type="button"
+                onClick={handleFetchNewProduct}
+                disabled={loadingNewProduct}
+
+                className="
             rounded-xl
             bg-black
             px-6
             text-white
             "
-            >
+              >
 
-              {
-              loadingNewProduct
-              ?
-              "Loading..."
-              :
-              "Fetch"
-              }
+                {
+                  loadingNewProduct
+                    ?
+                    "Loading..."
+                    :
+                    "Fetch"
+                }
 
-            </button>
-
-
-          </div>
+              </button>
 
 
+            </div>
 
-          <div className="
+
+
+            <div className="
           mt-6
           grid
           gap-4
@@ -759,96 +779,96 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
           ">
 
 
-            <Field label="Item ID"
-            value={form.new_item_id}
-            readOnly
-            onChange={()=>{}}
-            />
+              <Field label="Item ID"
+                value={form.new_item_id}
+                readOnly
+                onChange={() => { }}
+              />
 
 
-            <Field label="Product Name"
-            value={form.new_product_name}
-            readOnly
-            onChange={()=>{}}
-            />
+              <Field label="Product Name"
+                value={form.new_product_name}
+                readOnly
+                onChange={() => { }}
+              />
 
 
-            <Field label="Metal"
-            value={form.new_metal}
-            readOnly
-            onChange={()=>{}}
-            />
+              <Field label="Metal"
+                value={form.new_metal}
+                readOnly
+                onChange={() => { }}
+              />
 
 
-            <Field label="Purity"
-            value={form.new_purity}
-            readOnly
-            onChange={()=>{}}
-            />
+              <Field label="Purity"
+                value={form.new_purity}
+                readOnly
+                onChange={() => { }}
+              />
 
 
-            <Field label="Gross Weight"
-            value={form.new_gross_weight}
-            readOnly
-            onChange={()=>{}}
-            />
+              <Field label="Gross Weight"
+                value={form.new_gross_weight}
+                readOnly
+                onChange={() => { }}
+              />
 
 
-            <Field label="Net Weight"
-            value={form.new_net_weight}
-            readOnly
-            onChange={()=>{}}
-            />
+              <Field label="Net Weight"
+                value={form.new_net_weight}
+                readOnly
+                onChange={() => { }}
+              />
 
 
-            <Field label="Stone Weight"
-            value={form.new_stone_weight}
-            readOnly
-            onChange={()=>{}}
-            />
+              <Field label="Stone Weight"
+                value={form.new_stone_weight}
+                readOnly
+                onChange={() => { }}
+              />
 
 
-            <Field label="Value"
-            value={form.new_value}
-            readOnly
-            onChange={()=>{}}
-            />
+              <Field label="Value"
+                value={form.new_value}
+                readOnly
+                onChange={() => { }}
+              />
 
 
-            <Field
-            label="Making Charge"
-            value={form.making_charge}
-            onChange={(v)=>
-              updateField(
-                "making_charge",
-                v
-              )
-            }
-            />
+              <Field
+                label="Making Charge"
+                value={form.making_charge}
+                onChange={(v) =>
+                  updateField(
+                    "making_charge",
+                    v
+                  )
+                }
+              />
 
 
-            <Field
-            label="Stone Amount"
-            value={form.stone_amount}
-            onChange={(v)=>
-              updateField(
-                "stone_amount",
-                v
-              )
-            }
-            />
+              <Field
+                label="Stone Amount"
+                value={form.stone_amount}
+                onChange={(v) =>
+                  updateField(
+                    "stone_amount",
+                    v
+                  )
+                }
+              />
 
-          </div>
-
-
-        </ProductSection>
+            </div>
 
 
+          </ProductSection>
 
 
-        {
-        error &&
-        <div className="
+
+
+          {
+            error &&
+            <div className="
         rounded-xl
         border
         border-red-200
@@ -857,69 +877,69 @@ export default function CreateRefundModal({ open, onClose, onSuccess }: Props) {
         text-sm
         text-red-600
         ">
-          {error}
+              {error}
+            </div>
+          }
+
+
         </div>
-        }
-
-
-      </div>
 
 
 
 
 
-      <div className="
+        <div className="
       flex
       gap-3
       bg-white
       p-5
       "
-      >
+        >
 
-        <button
-        type="button"
-        onClick={onClose}
-        className="
+          <button
+            type="button"
+            onClick={onClose}
+            className="
         h-12
         flex-1
         rounded-xl
         border
         "
-        >
-          Cancel
-        </button>
+          >
+            Cancel
+          </button>
 
 
-        <button
-        type="submit"
-        disabled={submitting}
+          <button
+            type="submit"
+            disabled={submitting}
 
-        className="
+            className="
         h-12
         flex-1
         rounded-xl
         bg-black
         text-white
         "
-        >
+          >
 
-          {
-          submitting &&
-          <Loader2 className="mr-2 inline animate-spin"/>
-          }
+            {
+              submitting &&
+              <Loader2 className="mr-2 inline animate-spin" />
+            }
 
-          Create Exchange
+            Create Exchange
 
-        </button>
-
-
-      </div>
+          </button>
 
 
-    </form>
+        </div>
 
-  </div>
-);
+
+      </form>
+
+    </div>
+  );
 }
 
 function ProductSection({
@@ -946,7 +966,7 @@ function ProductSection({
     
     max-[768px]:p-3
     shadow-erp-sm
-    ${isOld ? "mb-6 border-[#FF0000] border-[1px] bg-[#FEF2F2]" : "border-[1px] border-[#00A63E] bg-[#F0FDF4]" }
+    ${isOld ? "mb-6 border-[#FF0000] border-[1px] bg-[#FEF2F2]" : "border-[1px] border-[#00A63E] bg-[#F0FDF4]"}
     ${borderClass}
     ${bgClass}
   `}
@@ -982,7 +1002,15 @@ function Field({
 }) {
   return (
     <label className={className}>
-      <span className="mb-2 block text-sm sm:text-[15px] font-normal leading-5 whitespace-nowrap text-[#020617]">
+      <span className="
+mb-2
+block
+text-sm
+font-medium
+leading-5
+text-[#020617]
+break-words
+">
         {label}
       </span>
 

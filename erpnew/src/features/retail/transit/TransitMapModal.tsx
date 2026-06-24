@@ -19,7 +19,7 @@ export default function TransitMapModal({ open, transferId, onClose }: Props) {
       <div className="relative h-[92vh] w-full max-w-[1180px] overflow-hidden rounded-[28px] bg-white shadow-2xl">
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg transition hover:bg-slate-100"
+          className="absolute right-6 top-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg transition hover:bg-slate-100"
         >
           <X size={20} />
         </button>

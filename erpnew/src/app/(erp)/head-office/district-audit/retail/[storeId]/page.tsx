@@ -68,6 +68,32 @@ export default function RetailStoreAuditPage() {
       retailStoreId,
     ]);
 
+  const districtRetailStores =
+    useMemo(() => {
+      if (!currentStore?.district_id) {
+        return retailStores;
+      }
+
+      return retailStores.filter(
+        (store) =>
+          String(store.district_id) ===
+          String(currentStore.district_id)
+      );
+    }, [
+      retailStores,
+      currentStore,
+    ]);
+  console.log("retailStoreId", retailStoreId);
+
+  console.log("currentStore", currentStore);
+
+  console.log("retailStores", retailStores);
+
+  console.log(
+    "districtRetailStores",
+    districtRetailStores
+  );
+
   useEffect(() => {
     const loadRetailAudits =
       async () => {
@@ -113,33 +139,65 @@ export default function RetailStoreAuditPage() {
   };
 
   const handleViewAudit = async (
-  audit: RetailAudit
-) => {
-  try {
-    const districtStoreCode =
-      getDistrictStoreCode(audit);
+    audit: RetailAudit
+  ) => {
+    try {
+      const districtStoreCode =
+        getDistrictStoreCode(audit);
 
-    if (!districtStoreCode) {
-      console.error(
-        "District store code not found",
-        audit.district_id
+      if (!districtStoreCode) {
+        console.error(
+          "District store code not found",
+          audit.district_id
+        );
+        return;
+      }
+
+      await downloadRetailAudit(
+        districtStoreCode,
+        audit.id
       );
-      return;
+    } catch (error) {
+      console.error(
+        "Download failed:",
+        error
+      );
     }
+  };
 
-    await downloadRetailAudit(
-      districtStoreCode,
-      audit.id
-    );
-  } catch (error) {
-    console.error(
-      "Download failed:",
-      error
-    );
-  }
-};
+  console.log("ROUTE ID", retailStoreId);
 
+  console.log(
+    "FOUND IN RETAIL",
+    retailStores.find(
+      (s) => Number(s.id) === retailStoreId
+    )
+  );
 
+  console.log(
+    "FOUND IN DISTRICT",
+    districtStores.find(
+      (s) => Number(s.id) === retailStoreId
+    )
+  );
+  console.log(
+  "ROUTE STORE ID:",
+  retailStoreId
+);
+
+console.log(
+  "CURRENT RETAIL STORE:",
+  currentStore
+);
+
+console.log(
+  "DISTRICT STORE MATCH:",
+  districtStores.find(
+    (store) =>
+      Number(store.id) ===
+      retailStoreId
+  )
+);
 
   return (
     <div className="min-h-screen">
@@ -213,7 +271,7 @@ export default function RetailStoreAuditPage() {
               filters.date
             }
             stores={
-              retailStores
+              districtRetailStores
             }
             onSearchChange={
               updateSearch
@@ -242,29 +300,29 @@ export default function RetailStoreAuditPage() {
             handleViewAudit
           }
           onDownload={(auditId) => {
-  const audit =
-    filteredAudits.find(
-      (a) => a.id === auditId
-    );
+            const audit =
+              filteredAudits.find(
+                (a) => a.id === auditId
+              );
 
-  if (!audit) return;
+            if (!audit) return;
 
-  const districtStoreCode =
-    getDistrictStoreCode(audit);
+            const districtStoreCode =
+              getDistrictStoreCode(audit);
 
-  if (!districtStoreCode) {
-    console.error(
-      "District store code not found",
-      audit.district_id
-    );
-    return;
-  }
+            if (!districtStoreCode) {
+              console.error(
+                "District store code not found",
+                audit.district_id
+              );
+              return;
+            }
 
-  return downloadRetailAudit(
-    districtStoreCode,
-    auditId
-  );
-}}
+            return downloadRetailAudit(
+              districtStoreCode,
+              auditId
+            );
+          }}
           onClearFilters={
             clearFilters
           }
