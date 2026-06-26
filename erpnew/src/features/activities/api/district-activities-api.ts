@@ -204,15 +204,19 @@ function getAuthHeaders() {
 }
 
 export async function getOwnRecentActivities(
-  level?: ActivityLevel,
-  limit = 500
+  page = 2,
+  limit = 20,
+  level?: ActivityLevel
 ) {
   const finalLevel = level || getActivityLevelByRole();
 
   const response = await axios.get<RecentActivitiesResponse>(
     `${API_BASE_URL}/Activity/${finalLevel}/own`,
     {
-      params: { limit },
+      params: {
+        page,
+        limit,
+      },
       headers: getAuthHeaders(),
     }
   );
@@ -225,11 +229,12 @@ export async function getOwnRecentActivities(
  * Important: do NOT force district here, because common page may use this
  * while user is logged in as head/retail.
  */
+
 export const getDistrictOwnRecentActivities = (limit = 500) =>
-  getOwnRecentActivities(undefined, limit);
+  getOwnRecentActivities(1, limit);
 
 export const getRetailOwnRecentActivities = (limit = 500) =>
-  getOwnRecentActivities("retail", limit);
+  getOwnRecentActivities(1, limit, "retail");
 
 export const getHeadOwnRecentActivities = (limit = 500) =>
-  getOwnRecentActivities("head", limit);
+  getOwnRecentActivities(1, limit, "head");

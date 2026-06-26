@@ -135,29 +135,6 @@ function MonthlySalesProfitChart({ data }: { data: ChartRow[] }) {
             paddingTop: 12,
           }}
         />
-
-        <Area
-          type="monotone"
-          dataKey="sales"
-          name="Sales"
-          stroke="none"
-          fill="url(#erpMonthlySalesGradient)"
-          fillOpacity={1}
-          isAnimationActive={false}
-        />
-
-        {hasProfit ? (
-          <Area
-            type="monotone"
-            dataKey="profit"
-            name="Profit"
-            stroke="none"
-            fill="url(#erpMonthlyProfitGradient)"
-            fillOpacity={1}
-            isAnimationActive={false}
-          />
-        ) : null}
-
         <Line
           type="monotone"
           dataKey="sales"
@@ -197,11 +174,45 @@ function MonthlySalesProfitChart({ data }: { data: ChartRow[] }) {
 }
 
 function CategoryPieChart({ data }: { data: ChartRow[] }) {
-  if (!data.length) return <EmptyChart message="No category sales found." />;
+  if (!data.length) {
+    return (
+      <EmptyChart message="No category sales found." />
+    );
+  }
+
+
+  const top5Data =
+    [...data]
+      .sort(
+        (a, b) =>
+          Number(b.value) -
+          Number(a.value)
+      )
+      .slice(0, 5);
+
+
+
+  const top5Labels =
+    top5Data.map(
+      (item) => item.label
+    );
+
+
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+    <ResponsiveContainer
+      width="100%"
+      height="100%"
+    >
+      <PieChart
+        margin={{
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10,
+        }}
+      >
+
         <Pie
           data={data}
           dataKey="value"
@@ -211,21 +222,44 @@ function CategoryPieChart({ data }: { data: ChartRow[] }) {
           outerRadius="72%"
           innerRadius={0}
           paddingAngle={1}
-          label={({ name, percent }) =>
-            `${name} ${((percent || 0) * 100).toFixed(0)}%`
-          }
+          label={({ name, percent }) => {
+
+            if (
+              !top5Labels.includes(name)
+            ) {
+              return "";
+            }
+
+            return `${name} ${(
+              (percent || 0) * 100
+            ).toFixed(0)}%`;
+
+          }}
           labelLine={false}
           fontSize={12}
         >
+
           {data.map((_, index) => (
             <Cell
               key={`category-${index}`}
-              fill={PIE_COLORS[index % PIE_COLORS.length]}
+              fill={
+                PIE_COLORS[
+                index %
+                PIE_COLORS.length
+                ]
+              }
             />
           ))}
+
         </Pie>
 
-        <Tooltip content={<ReportChartTooltip />} />
+
+        <Tooltip
+          content={
+            <ReportChartTooltip />
+          }
+        />
+
       </PieChart>
     </ResponsiveContainer>
   );
@@ -246,14 +280,7 @@ function MetalBarChart({ data }: { data: ChartRow[] }) {
           vertical={false}
         />
 
-        <XAxis
-          dataKey="label"
-          axisLine={false}
-          tickLine={false}
-          tick={AXIS_TICK}
-          dy={10}
-          interval={0}
-        />
+
 
         <YAxis
           axisLine={false}
@@ -263,18 +290,14 @@ function MetalBarChart({ data }: { data: ChartRow[] }) {
           width={58}
         />
 
-        <Tooltip content={<ReportChartTooltip />} />
-
-        <Legend
-          verticalAlign="bottom"
-          iconType="square"
-          wrapperStyle={{
-            fontSize: 13,
-            color: "var(--color-erp-text-soft)",
-            paddingTop: 12,
+        <Tooltip
+          cursor={{
+            fill: "rgba(37,99,235,0.08)",
           }}
+          content={
+            <ReportChartTooltip />
+          }
         />
-
         <Bar
           dataKey="value"
           name="Revenue"

@@ -37,11 +37,11 @@ function ReportsSkeleton() {
 function ReportsHeader() {
   return (
     <div className="mb-5">
-      <h1 className="text-[26px] font-semibold leading-[32px] tracking-[-0.04em] text-erp-heading sm:text-[30px] sm:leading-[38px] lg:text-[34px] lg:leading-[42px]">
+      <h1 className="text-[26px] font-semibold leading-[36px] tracking-[-0.04em] text-erp-heading sm:text-[30px] lg:text-[30px]">
         Reports &amp; Analytics
       </h1>
 
-      <p className="mt-[2px] text-[14px] font-normal leading-[20px] tracking-[-0.02em] text-erp-muted sm:text-[16px] lg:text-[18px] lg:leading-[24px]">
+      <p className="mt-[2px] text-[16px] font-normal leading-[100%] tracking-[-0.02em] text-erp-muted  lg:leading-[24px]">
         Comprehensive business insights and performance metrics
       </p>
     </div>

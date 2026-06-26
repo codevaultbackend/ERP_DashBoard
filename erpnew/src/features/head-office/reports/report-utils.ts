@@ -34,13 +34,26 @@ export const ERP_CHART = {
 };
 
 export const PIE_COLORS = [
-  "var(--color-erp-primary)",
-  "var(--color-erp-purple)",
-  "var(--color-erp-success)",
-  "var(--color-erp-yellow)",
-  "var(--color-erp-danger)",
-  "#14B8A6",
-  "var(--color-erp-muted)",
+  "#2563EB", // Blue
+  "#22C55E", // Green
+  "#F59E0B", // Amber
+  "#EF4444", // Red
+  "#8B5CF6", // Purple
+  "#06B6D4", // Cyan
+  "#EC4899", // Pink
+  "#14B8A6", // Teal
+  "#F97316", // Orange
+  "#84CC16", // Lime
+  "#6366F1", // Indigo
+  "#A855F7", // Violet
+  "#0EA5E9", // Sky
+  "#10B981", // Emerald
+  "#D946EF", // Fuchsia
+  "#EAB308", // Yellow
+  "#64748B", // Slate
+  "#DC2626", // Dark Red
+  "#0891B2", 
+  "#65A30D", 
 ];
 
 export const METAL_COLORS = [

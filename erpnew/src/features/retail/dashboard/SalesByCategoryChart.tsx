@@ -201,6 +201,7 @@ export default function SalesByCategoryChart({
                         y,
                         cx,
                       }: any) => {
+                        if (percentage < 5) return null;
                         const safeY = Math.max(
                           20,
                           Math.min(y, 235)

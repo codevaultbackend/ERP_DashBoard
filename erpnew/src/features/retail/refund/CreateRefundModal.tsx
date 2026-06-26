@@ -713,9 +713,6 @@ flex
 flex-col
 sm:flex-row
 gap-3
-bg-white
-p-4
-sm:p-5
 "
             >
 

@@ -161,24 +161,8 @@ export default function ManualBillingEntryModal({
   }, [open]);
 
   const computedTotal = useMemo(() => {
-    const netWeight =
-      Number(form.net_weight || 0);
-
-    const rate =
-      Number(form.rate || 0);
-
-    const makingCharge =
-      Number(form.making_charge_value || 0);
-
-    const metalValue =
-      netWeight * rate;
-
-    return metalValue + makingCharge;
-  }, [
-    form.net_weight,
-    form.rate,
-    form.making_charge_value,
-  ]);
+    return Number(form.total_amount || 0);
+  }, [form.total_amount]);
 
   async function handleSearchProduct() {
 
@@ -496,7 +480,7 @@ export default function ManualBillingEntryModal({
           null,
       };
 
-      
+
       onBillCreated?.(
         response
       );

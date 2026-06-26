@@ -19,6 +19,7 @@ import {
   getApiError,
   getStaffList,
 } from "../api/staff-management-api";
+import Pagination from "./Pagination";
 
 const tableColumns = [
   { label: "Staff Name", width: 170, align: "left" },
@@ -777,20 +778,29 @@ function Info({
 
 export default function StaffManagementScreen() {
   type StaffStats = {
-  total_staff: number;
-  active: number;
-  on_leave: number;
-  departments: number;
-};
+    total_staff: number;
+    active: number;
+    on_leave: number;
+    departments: number;
+  };
 
-const [stats, setStats] = useState<StaffStats>({
-  total_staff: 0,
-  active: 0,
-  on_leave: 0,
-  departments: 0,
-});
+  const [stats, setStats] = useState<StaffStats>({
+    total_staff: 0,
+    active: 0,
+    on_leave: 0,
+    departments: 0,
+  });
   const [rows, setRows] = useState<StaffRow[]>([]);
-  
+  const [page, setPage] = useState(1);
+  const [limit] = useState(100);
+
+  const [pagination, setPagination] = useState({
+    total: 0,
+    totalPages: 1,
+    page: 1,
+    limit: 100,
+  });
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -801,48 +811,70 @@ const [stats, setStats] = useState<StaffStats>({
   const [selectedBranch, setSelectedBranch] = useState("All");
 
   async function fetchEmployees(keepOldData = false) {
-  try {
-    keepOldData
-      ? setRefreshing(true)
-      : setLoading(true);
+    try {
+      keepOldData
+        ? setRefreshing(true)
+        : setLoading(true);
 
-    const res = await getStaffList({
-      page: 1,
-      limit: 100,
-    });
+      const res = await getStaffList({
+        page,
+        limit,
+      });
 
-    setStats({
-      total_staff: Number(res?.stats?.total_staff || 0),
-      active: Number(res?.stats?.active || 0),
-      on_leave: Number(res?.stats?.on_leave || 0),
-      departments: Number(res?.stats?.departments || 0),
-    });
+      setStats({
+        total_staff: Number(res?.stats?.total_staff || 0),
+        active: Number(res?.stats?.active || 0),
+        on_leave: Number(res?.stats?.on_leave || 0),
+        departments: Number(res?.stats?.departments || 0),
+      });
+      setPagination({
+        total: Number(
+          res?.pagination?.total ??
+          res?.meta?.total ??
+          0
+        ),
+        totalPages: Number(
+          res?.pagination?.totalPages ??
+          res?.meta?.totalPages ??
+          1
+        ),
+        page: Number(
+          res?.pagination?.page ??
+          res?.meta?.page ??
+          page
+        ),
+        limit: Number(
+          res?.pagination?.limit ??
+          res?.meta?.limit ??
+          limit
+        ),
+      });
 
-    const list = extractStaffList(res);
+      const list = extractStaffList(res);
 
-    setRows(
-      list
-        .map(normalizeEmployee)
-        .filter((item) => item.id)
-    );
-  } catch (err) {
-    console.error(
-      "STAFF LIST ERROR:",
-      getApiError(err)
-    );
+      setRows(
+        list
+          .map(normalizeEmployee)
+          .filter((item) => item.id)
+      );
+    } catch (err) {
+      console.error(
+        "STAFF LIST ERROR:",
+        getApiError(err)
+      );
 
-    if (!keepOldData) {
-      setRows([]);
+      if (!keepOldData) {
+        setRows([]);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
   }
-}
 
   useEffect(() => {
     fetchEmployees(false);
-  }, []);
+  }, [page]);
 
   async function handleDelete(id: string) {
     if (!confirm("Delete employee?")) return;
@@ -934,6 +966,15 @@ const [stats, setStats] = useState<StaffStats>({
             }}
             onDelete={handleDelete}
           />
+
+          <div className="mt-6">
+            <Pagination
+            currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              pageSize={pagination.limit}
+              onPageChange={setPage} />
+          </div>
         </section>
       </main>
 

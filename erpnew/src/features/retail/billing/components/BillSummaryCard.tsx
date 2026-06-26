@@ -47,6 +47,8 @@ export default function BillSummaryCard({
   items,
   metalValue,
   makingCharges,
+  editableMakingCharges,
+  onMakingChargesChange,
   gst,
   grandTotal,
   totalItems,
@@ -80,10 +82,27 @@ export default function BillSummaryCard({
           value={formatCurrency(metalValue)}
         />
 
-        <SummaryRow
-          label="Making Charges"
-          value={formatCurrency(makingCharges)}
-        />
+        <div className="flex min-h-[68px] items-center justify-between gap-4 border-b border-[#E5E7EB]">
+          <span className="text-[#4B5563]">
+            Making Charges
+          </span>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[#6B7280]">₹</span>
+
+            <input
+              type="number"
+              min={0}
+              value={editableMakingCharges ?? makingCharges}
+              onChange={(e) =>
+                onMakingChargesChange?.(
+                  Number(e.target.value) || 0
+                )
+              }
+              className="w-[120px] rounded-md border border-[#D1D5DB] px-3 py-2 text-right text-[18px] font-semibold text-[#111827] outline-none focus:border-[#A855F7] focus:ring-2 focus:ring-[#A855F7]/20"
+            />
+          </div>
+        </div>
 
         <SummaryRow
           label="GST (3%)"

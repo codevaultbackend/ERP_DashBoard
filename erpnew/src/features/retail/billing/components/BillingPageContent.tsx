@@ -95,6 +95,15 @@ export type BillingCartItem = {
   metalValue: number;
 
   makingCharges: number;
+  editableMakingCharges?: number;
+
+  onMakingChargesChange?: (
+    value: number
+  ) => void;
+
+  gstAmount: number;
+
+  totalAmount: number;
 
   weight: number;
 
@@ -166,125 +175,61 @@ function mapProductToCartItem(
 function mapScannedItemToCartItem(
   item: LiveScannedBillingItem
 ): BillingCartItem {
-  const code =
-    getScannedCode(item);
-
-  const netWeight =
-    toNumber(
-      item.net_weight ??
-      item.weight,
-      0
-    );
-
-  const grossWeight =
-    toNumber(
-      item.gross_weight,
-      netWeight
-    );
-
-  const rate = toNumber(
-    item.rate ??
-    item.sale_rate,
-    0
-  );
-
-  const metalValue =
-    item.metal_value !== undefined
-      ? toNumber(
-        item.metal_value
-      )
-      : rate * netWeight;
-
-  const makingCharges =
-    item.making_charge_value !==
-      undefined
-      ? toNumber(
-        item.making_charge_value
-      )
-      : (metalValue *
-        toNumber(
-          item.making_charge_percent,
-          0
-        )) /
-      100;
+  const code = getScannedCode(item);
 
   return {
-    id: toNumber(
-      item.item_id ||
-      item.id,
-      Date.now()
-    ),
+    id: Number(item.item_id ?? item.id ?? Date.now()),
 
-    item_id:
-      item.item_id ||
-      item.id ||
-      null,
+    item_id: item.item_id ?? item.id ?? null,
 
-    code:
-      code ||
-      `QR-${Date.now()}`,
+    code: code || `QR-${Date.now()}`,
 
     name:
       item.item_name ||
       item.description ||
       item.details ||
       item.name ||
-      code ||
       "Scanned Item",
 
-    metalValue,
+    metalValue: Number(item.taxable_amount ?? 0),
 
-    makingCharges,
+    makingCharges: Number(item.making_charge_value ?? 0),
 
-    weight: netWeight,
+    gstAmount: Number(item.gst_amount ?? 0),
 
-    qty: Math.max(
-      1,
-      toNumber(item.qty, 1)
-    ),
+    totalAmount: Number(item.total_amount ?? 0),
 
-    raw_qr_value:
-      item.raw_qr_value,
+    weight: Number(item.net_weight ?? item.weight ?? 0),
+
+    qty: Number(item.qty ?? 1),
+
+    raw_qr_value: item.raw_qr_value,
 
     scanned_raw: item,
 
-    available_qty:
-      toNumber(
-        item.available_qty,
-        1
-      ),
+    available_qty: Number(item.available_qty ?? 1),
 
-    purity:
-      item.purity || null,
+    purity: item.purity ?? null,
 
-    metal_type:
-      item.metal_type || null,
+    metal_type: item.metal_type ?? null,
 
-    gross_weight:
-      grossWeight,
+    gross_weight: Number(item.gross_weight ?? 0),
 
-    net_weight:
-      netWeight,
+    net_weight: Number(item.net_weight ?? 0),
 
-    stone_weight:
-      toNumber(
-        item.stone_weight,
-        0
-      ),
+    stone_weight: Number(item.stone_weight ?? 0),
 
-    rate,
+    rate: Number(item.rate ?? 0),
 
-    making_charge_percent:
-      toNumber(
-        item.making_charge_percent,
-        0
-      ),
+    making_charge_percent: Number(
+      item.making_charge_percent ??
+      item.old_making_charge ??
+      0
+    ),
 
-    hsn_code:
-      item.hsn_code || null,
+    hsn_code: item.hsn_code ?? null,
 
-    unit:
-      item.unit || null,
+    unit: item.unit ?? "gram",
   };
 }
 
@@ -379,6 +324,7 @@ export default function BillingPageContent() {
     customerName,
     setCustomerName,
   ] = useState("");
+  const [editableMakingCharges, setEditableMakingCharges] = useState(0);
 
   const [
     customerPhone,
@@ -703,32 +649,20 @@ export default function BillingPageContent() {
     }, [scannerItems]);
 
   const gst = useMemo(() => {
-
-    return (
-      (metalValue +
-        makingCharges) *
-      0.03
+    return scannerItems.reduce(
+      (sum, item) =>
+        sum + (item.gstAmount || 0) * item.qty,
+      0
     );
+  }, [scannerItems]);
 
-  }, [
-    metalValue,
-    makingCharges,
-  ]);
-
-  const grandTotal =
-    useMemo(() => {
-
-      return (
-        metalValue +
-        makingCharges +
-        gst
-      );
-
-    }, [
-      metalValue,
-      makingCharges,
-      gst,
-    ]);
+  const grandTotal = useMemo(() => {
+    return scannerItems.reduce(
+      (sum, item) =>
+        sum + (item.totalAmount || 0) * item.qty,
+      0
+    );
+  }, [scannerItems]);
 
   function addProduct(
     product: Product
@@ -1031,29 +965,27 @@ export default function BillingPageContent() {
   }
 
   function endBillingSession() {
+  scannedCodesRef.current.clear();
+  scannedEventIdsRef.current.clear();
 
-    scannedCodesRef.current.clear();
+  setScannerItems([]);
+  setManualItems([]);
 
-    scannedEventIdsRef.current.clear();
+  setCustomerName("");
+  setCustomerPhone("");
 
-    setScannerItems([]);
-    setManualItems([]);
+  setLastScannedItem(null);
 
-    setCustomerName("");
+  setScanError("");
+  setBillSuccess("");
 
-    setCustomerPhone("");
+  clearStoredBillingSession();
+}
 
-    setLastScannedItem(
-      null
-    );
-
-    setScanError("");
-
-    setBillSuccess("");
-
-    clearStoredBillingSession();
-  }
-  const handleManualBillCreated = () => {
+const handleManualBillCreated = () => {
+  endBillingSession();
+};
+ const handleClearAll = () => {
   endBillingSession();
 };
 
@@ -1164,13 +1096,19 @@ export default function BillingPageContent() {
           <BillSummaryCard
             items={scannerItems}
             metalValue={metalValue}
+
             makingCharges={makingCharges}
+
+            editableMakingCharges={editableMakingCharges}
+
+            onMakingChargesChange={setEditableMakingCharges}
+
             gst={gst}
             grandTotal={grandTotal}
             totalItems={totalItems}
             totalWeight={totalWeight}
             onCreateBill={handleCreateBill}
-            onClearAll={endBillingSession}
+            onClearAll={handleClearAll}
           />
           <CreateInvoiceModal
             open={showInvoiceModal}

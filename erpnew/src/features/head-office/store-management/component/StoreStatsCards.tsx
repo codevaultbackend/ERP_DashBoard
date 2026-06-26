@@ -30,7 +30,7 @@ export default function StoreStatsCards() {
               </p>
 
               <div className="mt-1 flex items-end justify-between gap-2">
-                <h3 className="truncate text-[24px] font-bold leading-none tracking-[-0.04em] text-erp-text sm:text-[30px]">
+                <h3 className="truncate text-[24px] font-[600] leading-[100%] tracking-[-0.04em] text-erp-text sm:text-[28px]">
                   {card.value}
                 </h3>
 

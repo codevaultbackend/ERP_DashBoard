@@ -45,8 +45,6 @@ type UiActivity = {
   searchableText: string;
 };
 
-const INITIAL_VISIBLE_COUNT = 40;
-const LOAD_MORE_COUNT = 30;
 const API_FETCH_LIMIT = 500;
 const CARD_HEIGHT = 132;
 
@@ -314,7 +312,15 @@ export default function RecentActivitiesPage() {
   const isMobile = useIsMobile();
 
   const [activities, setActivities] = useState<DistrictActivity[]>([]);
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  const [totalCount, setTotalCount] = useState(0);
+
+
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -334,84 +340,82 @@ export default function RecentActivitiesPage() {
       item.searchableText.includes(debouncedSearch)
     );
   }, [normalizedActivities, debouncedSearch]);
-
-  const visibleActivities = useMemo(
-    () => filteredActivities.slice(0, visibleCount),
-    [filteredActivities, visibleCount]
-  );
-
-  const hasMore = visibleCount < filteredActivities.length;
-
   const rowVirtualizer = useVirtualizer({
-    count: isMobile ? 0 : visibleActivities.length,
+    count: isMobile ? 0 : filteredActivities.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => CARD_HEIGHT,
     overscan: 8,
   });
 
-  const fetchActivities = useCallback(async (isRefresh = false) => {
-    try {
-      setError("");
+  const fetchActivities = useCallback(
+    async (
+      pageNumber = 1,
+      isRefresh = false,
+      append = false
+    ) => {
+      try {
+        setError("");
 
-      if (isRefresh) setRefreshing(true);
-      else setLoading(true);
+        if (append) {
+          setLoadingMore(true);
+        } else if (isRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
 
-      const response = await getOwnRecentActivities(undefined, API_FETCH_LIMIT);
+        const response = await getOwnRecentActivities(
+          pageNumber,
+          PAGE_SIZE
+        );
 
-      if (!response.success) {
-        throw new Error(response.message || "Failed to fetch activities");
-      }
+        if (!response.success) {
+          throw new Error(response.message);
+        }
 
-      setActivities(Array.isArray(response.data) ? response.data : []);
-      setVisibleCount(INITIAL_VISIBLE_COUNT);
-    } catch (err: any) {
-      setActivities([]);
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
+        const rows = Array.isArray(response.data)
+          ? response.data
+          : [];
+
+        setActivities(prev =>
+          append ? [...prev, ...rows] : rows
+        );
+
+        setTotalCount(response.count || 0);
+
+        setHasMore(
+          pageNumber * PAGE_SIZE < (response.count || 0)
+        );
+
+        setPage(pageNumber);
+      } catch (err: any) {
+        setError(
+          err?.response?.data?.message ||
           err?.message ||
-          "Unable to load recent activities"
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+          "Unable to load activities"
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     fetchActivities();
   }, [fetchActivities]);
 
-  useEffect(() => {
-    setVisibleCount(INITIAL_VISIBLE_COUNT);
-    parentRef.current?.scrollTo({ top: 0 });
-  }, [debouncedSearch]);
+  const loadMore = useCallback(() => {
+  console.log("LOAD MORE", page);
 
-  useEffect(() => {
-    if (isMobile) return;
+  if (loadingMore || !hasMore) return;
 
-    const virtualItems = rowVirtualizer.getVirtualItems();
-    const lastItem = virtualItems[virtualItems.length - 1];
+  fetchActivities(page + 1, false, true);
+}, [page, hasMore, loadingMore, fetchActivities]);
 
-    if (!lastItem) return;
-
-    if (
-      lastItem.index >= visibleActivities.length - 6 &&
-      hasMore &&
-      !loading
-    ) {
-      setVisibleCount((current) =>
-        Math.min(current + LOAD_MORE_COUNT, filteredActivities.length)
-      );
-    }
-  }, [
-    isMobile,
-    rowVirtualizer,
-    visibleActivities.length,
-    filteredActivities.length,
-    hasMore,
-    loading,
-  ]);
+  console.log(hasMore)
 
   return (
     <main className="min-w-0 flex-1 bg-erp-page font-erp">
@@ -426,18 +430,6 @@ export default function RecentActivitiesPage() {
               All updates regarding recent entries, updates, login and logout
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => fetchActivities(true)}
-            disabled={loading || refreshing}
-            className="inline-flex h-[40px] shrink-0 items-center justify-center gap-2 rounded-erp-sm border border-erp-border bg-white px-4 text-[14px] font-semibold text-erp-primary shadow-erp-sm transition hover:bg-erp-primary-soft disabled:cursor-not-allowed disabled:opacity-60 max-md:w-full"
-          >
-            <RefreshCw
-              className={cn("h-4 w-4", refreshing && "animate-spin")}
-            />
-            Refresh
-          </button>
         </div>
 
         <div className="mt-[22px] flex items-center justify-between gap-4 max-md:flex-col max-md:items-stretch">
@@ -463,7 +455,7 @@ export default function RecentActivitiesPage() {
           </div>
 
           <p className="text-[13px] font-semibold leading-[18px] tracking-[-0.02em] text-erp-muted max-md:text-right">
-            Showing {visibleActivities.length} of {filteredActivities.length}
+            Showing {activities.length} of {totalCount}
           </p>
         </div>
 
@@ -490,21 +482,16 @@ export default function RecentActivitiesPage() {
             </div>
           ) : isMobile ? (
             <div className="space-y-4">
-              {visibleActivities.map((item) => (
+              {filteredActivities.map((item) => (
                 <ActivityCard key={item.id} item={item} />
               ))}
 
               {hasMore ? (
                 <button
                   type="button"
-                  onClick={() =>
-                    setVisibleCount((current) =>
-                      Math.min(
-                        current + LOAD_MORE_COUNT,
-                        filteredActivities.length
-                      )
-                    )
-                  }
+                  onClick={loadMore}
+
+
                   className="flex h-[44px] w-full items-center justify-center rounded-erp-sm bg-erp-primary text-[14px] font-semibold text-white"
                 >
                   Load More
@@ -527,7 +514,9 @@ export default function RecentActivitiesPage() {
                 }}
               >
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const item = visibleActivities[virtualRow.index];
+                  const item = filteredActivities[virtualRow.index];
+
+                  if (!item) return null;
 
                   return (
                     <div
