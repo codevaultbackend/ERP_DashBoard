@@ -149,30 +149,25 @@ export type CreateBillCustomerPayload =
     address?: string | null;
   };
 
-export type CreateBillItemPayload =
-  {
-    item_id:
-    | number
-    | string;
+export type CreateBillItemPayload = {
+    item_id:number|string;
 
-    product_code?:
-    | string
-    | null;
+    product_code?:string|null;
 
-    description?:
-    | string
-    | null;
+    description?:string|null;
 
-    qty: number;
+    qty:number;
 
-    net_weight: number;
+    net_weight:number;
 
-    rate: number;
+    rate:number;
 
-    making_charge_percent: number;
+    making_charge_percent:number;
 
-    unit?: string | null;
-  };
+    making_charge_deduction?:number;
+
+    unit?:string|null;
+}
 
 export type CreateBillPayload =
   {

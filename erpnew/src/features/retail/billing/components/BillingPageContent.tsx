@@ -442,45 +442,29 @@ export default function BillingPageContent() {
         },
 
         items: scannerItems.map(
-          (
-            item
-          ): CreateBillItemPayload => ({
-            item_id:
-              item.item_id ||
-              item.id,
+          (item): CreateBillItemPayload => ({
+            item_id: item.item_id || item.id,
 
-            product_code:
-              item.code,
+            product_code: item.code,
 
-            description:
-              item.name,
+            description: item.name,
 
-            qty:
-              Number(
-                item.qty || 1
-              ),
+            qty: Number(item.qty || 1),
 
-            net_weight:
-              Number(
-                item.net_weight ||
-                item.weight ||
-                0
-              ),
+            net_weight: Number(item.net_weight || item.weight || 0),
 
-            rate:
-              Number(
-                item.rate || 0
-              ),
+            rate: Number(item.rate || 0),
 
-            making_charge_percent:
-              Number(
-                item.making_charge_percent ||
-                0
-              ),
+            making_charge_percent: Number(
+              item.making_charge_percent || 0
+            ),
 
-            unit:
-              item.unit ||
-              "gram",
+            // NEW
+            making_charge_deduction: Number(
+              editableMakingCharges || 0
+            ),
+
+            unit: item.unit || "gram",
           })
         ),
       };
@@ -491,9 +475,43 @@ export default function BillingPageContent() {
       );
 
       const response =
-        await createBillingInvoice(
-          payload
-        );
+  await createBillingInvoice(payload);
+
+console.log(response);
+
+if (response?.data?.items) {
+  setScannerItems(
+    response.data.items.map((item: any) => ({
+      id: item.item_id,
+
+      item_id: item.item_id,
+
+      code: item.product_code,
+
+      name: item.item_name,
+
+      metalValue: item.taxable_amount,
+
+      makingCharges:
+        item.making_charge_after_deduction,
+
+      gstAmount:
+        item.gst_amount,
+
+      totalAmount:
+        item.total_amount,
+
+      editableMakingCharges:
+        item.making_charge_deduction,
+
+      qty: 1,
+    }))
+  );
+}
+
+setBillSuccess(response.message);
+
+setShowInvoiceModal(false);
 
       console.log(
         "CREATE BILL RESPONSE",
@@ -965,29 +983,29 @@ export default function BillingPageContent() {
   }
 
   function endBillingSession() {
-  scannedCodesRef.current.clear();
-  scannedEventIdsRef.current.clear();
+    scannedCodesRef.current.clear();
+    scannedEventIdsRef.current.clear();
 
-  setScannerItems([]);
-  setManualItems([]);
+    setScannerItems([]);
+    setManualItems([]);
 
-  setCustomerName("");
-  setCustomerPhone("");
+    setCustomerName("");
+    setCustomerPhone("");
 
-  setLastScannedItem(null);
+    setLastScannedItem(null);
 
-  setScanError("");
-  setBillSuccess("");
+    setScanError("");
+    setBillSuccess("");
 
-  clearStoredBillingSession();
-}
+    clearStoredBillingSession();
+  }
 
-const handleManualBillCreated = () => {
-  endBillingSession();
-};
- const handleClearAll = () => {
-  endBillingSession();
-};
+  const handleManualBillCreated = () => {
+    endBillingSession();
+  };
+  const handleClearAll = () => {
+    endBillingSession();
+  };
 
   return (
     <div className="min-h-screen overflow-x-hidden ">
