@@ -22,7 +22,7 @@ export default function RetailDashboardPage() {
   if (loading) {
     return (
       <div className="space-y-4 md:space-y-5">
-        <div className="grid grid-cols-2 gap-4 max-[768px]:grid-cols-2 lg:grid-cols-6 2xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-4  max-[768px]:grid-cols-2 lg:grid-cols-6 2xl:grid-cols-6 max-[768px]:gap-3">
           {Array.from({ length: 4 }).map((_, index) => (
             <div
               key={index}
@@ -64,7 +64,7 @@ export default function RetailDashboardPage() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="space-y-4 ">
       <StateCards cards={cards} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.02fr_1fr]">

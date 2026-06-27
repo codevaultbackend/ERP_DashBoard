@@ -121,6 +121,7 @@ export default function StateCards({ cards }: Props) {
             className="
   min-h-[132px]
   h-[153px]
+  mt-4 max-[768px]:mt-0 max-[768px]:h-[143px]
   rounded-erp-2xl
   border
   border-erp-border
@@ -141,7 +142,7 @@ export default function StateCards({ cards }: Props) {
               <Icon className={cn("h-4 w-4 xl:h-4 xl:w-4", tone.icon)} />
             </div>
 
-            <div className="mt-4 max-[768px]:!mt-8">
+            <div className="mt-4 max-[768px]:!mt-6">
               <p className="text-[14px] font-[400] leading-[100%] text-erp-muted ">
                 {item.title}
               </p>

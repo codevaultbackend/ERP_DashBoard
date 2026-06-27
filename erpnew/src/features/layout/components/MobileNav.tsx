@@ -59,7 +59,7 @@ export default function MobileNav({ items, pathname }: MobileNavProps) {
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-full bg-gradient-to-b from-[#F4F7FB] via-[#F4F7FB]/95 to-[#F4F7FB]/80" />
 
       <div className="overflow-hidden">
-        <div className="flex items-center gap-2 overflow-x-auto dashboard-hidden-scroll px-3 py-3 pb-2 scrollbar-hide">
+        <div className="flex items-center gap-2 overflow-x-auto dashboard-hidden-scroll px-3 max-[768px]:px-[16px]  pt-2 pb-2 scrollbar-hide">
           {items.map((item) => {
             const Icon = getIcon(item.label);
             const active =
@@ -72,8 +72,8 @@ export default function MobileNav({ items, pathname }: MobileNavProps) {
                   className={cn(
                     "group flex min-h-[46px] shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[14px] border px-4 py-[11px] transition-all duration-200",
                     active
-                      ? "border-[#D7E5FF] bg-white text-[#245DDB] shadow-[0px_4px_14px_rgba(36,93,219,0.10)]"
-                      : "border-[#EEF2F6] bg-white text-[#4B5565] shadow-[0px_2px_8px_rgba(17,24,39,0.03)]"
+                      ? "border-[#D7E5FF] bg-white text-[#245DDB] shadow-erp-card"
+                      : "border-[#EEF2F6] bg-white text-[#4B5565] shadow-erp-card"
                   )}
                 >
                   <span
@@ -97,9 +97,29 @@ export default function MobileNav({ items, pathname }: MobileNavProps) {
             );
           })}
           <div className="ml-auto shrink-0">
-            <button onClick={handleLogout}>
-              <LogOut size={20} />
-            </button>
+            <div
+                  onClick={handleLogout}
+                  className={cn(
+                    "group flex min-h-[46px] shrink-0 items-center gap-2.5 whitespace-nowrap rounded-[14px] shadow-erp-card bg-white px-4 py-[11px] transition-all duration-200",
+                    
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-[20px] w-[20px] shrink-0 items-center justify-center",
+                    )}
+                  >
+                    <LogOut size={17} strokeWidth={2} />
+                  </span>
+
+                  <span
+                    className={cn(
+                      "truncate text-[13px] font-semibold leading-none tracking-[-0.01em]",
+                    )}
+                  >
+                   LogOut 
+                  </span>
+                </div>
           </div>
         </div>
       </div>

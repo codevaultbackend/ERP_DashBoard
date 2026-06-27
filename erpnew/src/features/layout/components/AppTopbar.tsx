@@ -62,20 +62,18 @@ export default function AppTopbar({
 
   return (
     <header
-      className="fixed left-0 right-0 top-0 z-[999] px-3 pt-3 sm:px-4 sm:pt-4"
+      className="fixed left-0 right-0 top-0 z-[999] px-2 pt-3 sm:px-4 sm:pt-4"
       data-search-ignore="true"
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[80px] bg-[#F4F7FB]/85 backdrop-blur-[18px]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[82px] bg-[#F4F7FB]/85 backdrop-blur-[18px]" />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[92px] bg-gradient-to-b from-[#F4F7FB] via-[#F4F7FB]/95 to-[#F4F7FB]/80" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[86px] bg-gradient-to-b from-[#F4F7FB] via-[#F4F7FB]/95 to-[#F4F7FB]/80" />
 
-      <div className="h-[62px] rounded-[34px] border border-[#E7E9EE] bg-[#FCFCFD]/95 shadow-[0px_10px_30px_rgba(17,24,39,0.04),0px_2px_8px_rgba(17,24,39,0.03)] backdrop-blur-xl sm:h-[66px]">
+      <div className="h-[62px] rounded-[34px] border border-[#E7E9EE] bg-[#FCFCFD]/95 shadow-erp-card backdrop-blur-xl sm:h-[66px]">
         <div className="flex h-full items-center justify-between gap-2 px-[12px] sm:gap-3 sm:px-[18px] md:gap-4 md:px-[26px]">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3 md:gap-4">
             <div className="min-w-0 shrink">
-              <h1 className="truncate text-[15px] font-medium tracking-[-0.02em] text-[#1E63B5] sm:text-[18px] md:text-[19px]">
-                <Image src='https://res.cloudinary.com/ddcy9noqo/image/upload/v1781778408/Png_vibhushnam_logo_gfr2ee.png' alt="" height={120} width={120} className="h-[60px] w-auto object-cover" />
-              </h1>
+              <Image src='https://res.cloudinary.com/ddcy9noqo/image/upload/v1782556406/vibhushanam_logo_.._ixzedl.png' alt="Vibhushanam" height={90} width={90} className="h-[90px] w-auto object-contain" />
             </div>
 
             <button
@@ -137,8 +135,8 @@ export default function AppTopbar({
           </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          
-       
+
+
 
             <Link
               href={profileHref}
@@ -148,7 +146,7 @@ export default function AppTopbar({
                 <img
                   src={profileImage}
                   alt={profileName}
-                  className="h-[38px] w-[38px] shrink-0 rounded-full border border-[#E5E7EB] object-cover sm:h-[40px] sm:w-[40px]"
+                  className="h-[46px] w-[46px] shrink-0 rounded-full border border-[#E5E7EB] object-cover sm:h-[40px] sm:w-[40px]"
                 />
               ) : (
                 <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#DBEAFE] text-sm font-semibold text-[#1D4ED8] sm:h-[40px] sm:w-[40px]">

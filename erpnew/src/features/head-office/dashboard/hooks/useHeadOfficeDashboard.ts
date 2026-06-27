@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+const baseURL = process.env.NEXT_PUBLIC_API_URL
 
 const API_URL =
-  "https://erp-for-local.onrender.com/dash/dashboard/full";
+  `${baseURL}/dash/dashboard/full`;
 
 const CACHE_KEY = "head_office_dashboard_cache";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
