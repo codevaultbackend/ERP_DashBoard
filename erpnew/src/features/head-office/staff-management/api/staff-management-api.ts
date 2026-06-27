@@ -3,7 +3,7 @@ import axios, { AxiosError } from "axios";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 function getToken() {
   if (typeof window === "undefined") return null;

@@ -19,7 +19,7 @@ export type CreateDailyAuditPayload = {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 export async function createDailyAudit(payload: CreateDailyAuditPayload) {
   const token =

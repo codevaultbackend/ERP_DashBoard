@@ -96,7 +96,7 @@ const API_BASE =
     /\/$/,
     ""
   ) ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 const REQUEST_TIMEOUT = 30000;
 

@@ -4,7 +4,7 @@ import { normalizeRole } from "../../../core/auth/roles";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 export type ActivityLevel = "district" | "retail" | "head";
 

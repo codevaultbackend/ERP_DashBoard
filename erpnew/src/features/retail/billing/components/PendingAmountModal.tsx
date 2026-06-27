@@ -36,7 +36,7 @@ type Props = {
 };
 
 const API_BASE_URL =
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 export default function PendingAmountModal({
   open,

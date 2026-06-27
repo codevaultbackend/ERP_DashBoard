@@ -1,7 +1,7 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 const STORE_MANAGEMENT_BASE = `${API_BASE_URL}/headstore/manage`;
 

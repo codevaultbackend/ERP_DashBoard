@@ -3,7 +3,7 @@ import type { LiveScannedBillingItem } from "./live-scanner-types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 function getAuthToken() {
   if (typeof window === "undefined") {

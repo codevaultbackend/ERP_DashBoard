@@ -7,7 +7,7 @@ import axios from "axios";
 export const requestApi = axios.create({
   baseURL:
     process.env.NEXT_PUBLIC_API_URL ||
-    "https://erp-backend-w3pb.onrender.com",
+    "https://erp-for-local.onrender.com",
 
   headers: {
     "Content-Type": "application/json",

@@ -8,7 +8,7 @@ import { safePercent, toNumber } from "./utils";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 const DISTRICT_REPORT_PATH =
   process.env.NEXT_PUBLIC_DISTRICT_REPORT_PATH || "/dash/report";

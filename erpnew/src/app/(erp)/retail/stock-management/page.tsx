@@ -24,7 +24,7 @@ import DistrictAddStockPopup from "@/features/district/stock/component/DistrictA
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 const stockApi = axios.create({
   baseURL: API_URL,

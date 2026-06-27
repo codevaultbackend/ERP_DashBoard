@@ -3,7 +3,7 @@ import { getAuthToken } from "./utils";
 
 const REPORTS_API_URL =
   process.env.NEXT_PUBLIC_REPORTS_API_URL ||
-  "https://erp-backend-w3pb.onrender.com/dash/report";
+  "https://erp-for-local.onrender.com/dash/report";
 
 export async function fetchReportsAnalytics(): Promise<ReportsApiData> {
   const token = getAuthToken();

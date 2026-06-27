@@ -328,21 +328,19 @@ export default function DestinationCard({
 
                           <span
                             className="
-                              text-sm
-                              font-medium
+                              text-[12px]
+                              font-[600]
                               text-[#344054]
                             "
                           >
-                            {step?.handled_by ? (
-                              <span>
-                                Handler:
-                                {step.handled_by}
-                              </span>
-                            ) : (
-                              <span>
-                                Auto Processed
-                              </span>
-                            )}
+
+                            <span>
+                              Handler:
+                            </span>
+                            <span className="ml-[4px]">
+                              {step.handled_by ? step.handled_by : "Auto Processed"}
+                            </span>
+
                           </span>
                         </div>
                       </div>

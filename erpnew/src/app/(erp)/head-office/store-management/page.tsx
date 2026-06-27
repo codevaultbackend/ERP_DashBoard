@@ -167,7 +167,7 @@ export default function HeadOfficeStoreManagementPage() {
   return (
     <main className="min-h-screen bg-erp-bg text-erp-text">
       <section className="mx-auto w-full max-w-[1500px]">
-        <div className="mb-7">
+        <div className="mb-6 sm:mb-7">
           <h1 className="text-[28px] font-bold leading-tight tracking-[-0.03em] text-erp-text sm:text-[34px]">
             Store Management
           </h1>
@@ -240,7 +240,7 @@ export default function HeadOfficeStoreManagementPage() {
           })}
         </div>
 
-        <div className="mt-9 flex flex-row items-center justify-between gap-4">
+        <div className="mt-6 flex items-center justify-between gap-3 max-[768px]:flex-col max-[768px]:items-start ">
           <h2 className="text-[24px] font-bold tracking-[-0.03em] text-erp-text sm:text-[28px]">
             All Stores
           </h2>
@@ -248,7 +248,10 @@ export default function HeadOfficeStoreManagementPage() {
           <button
             type="button"
             onClick={() => setOpenCreate(true)}
-            className="inline-flex h-[40px] shrink-0 items-center justify-center gap-2 rounded-erp-full bg-erp-dark px-4 text-[14px] font-semibold text-white shadow-erp-sm transition hover:brightness-110 sm:h-[44px] sm:px-6 sm:text-[15px]"
+            className=" inline-flex
+w-full
+sm:w-auto
+h-11 inline-flex h-[40px] shrink-0 items-center justify-center gap-2 rounded-erp-full bg-erp-dark px-4 text-[14px] font-semibold text-white shadow-erp-sm transition hover:brightness-110 sm:h-[44px] sm:px-6 sm:text-[15px]"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Create Store</span>
@@ -261,7 +264,21 @@ export default function HeadOfficeStoreManagementPage() {
             <Loader2 className="h-7 w-7 animate-spin text-erp-text" />
           </div>
         ) : (
-          <div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div
+            className="
+    mt-5
+    grid
+    grid-cols-1
+    gap-3
+    max-[768px]:grid-cols-2
+    max-[468px]:grid-cols-1
+    sm:mt-6
+    sm:gap-4
+
+    lg:grid-cols-2
+    xl:grid-cols-3
+  "
+          >
             {stores.map((store) => (
               <StoreCard key={store.id} {...store} />
             ))}
@@ -290,27 +307,74 @@ function StoreCard({ id, name, code }: DistrictStore) {
   return (
     <Link
       href={`/head-office/store-management/${encodeURIComponent(id)}`}
-      className="group flex min-h-[104px] items-center justify-between rounded-[24px] border border-erp-border bg-erp-card px-5 py-5 shadow-erp-card transition hover:-translate-y-[1px] hover:shadow-[0_8px_22px_rgba(15,23,42,0.09)] sm:min-h-[108px] sm:rounded-[26px] sm:px-6"
+      className="
+        group
+        flex
+        items-center
+        justify-between
+        rounded-2xl
+        border
+        border-[#E6EAF2]
+        bg-white
+        px-3
+        py-3
+        shadow-sm
+        transition-all
+        duration-200
+        hover:border-blue-200
+        hover:shadow-md
+
+        sm:px-5
+        sm:py-4
+      "
     >
-      <div className="flex min-w-0 items-center gap-4">
-        <div className="flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-[18px] bg-[#EFF6FF]">
-          <Store className="h-8 w-8 text-[#0667D8]" />
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div
+          className="
+            flex
+            h-10
+            w-10
+            shrink-0
+            items-center
+            justify-center
+            rounded-xl
+            bg-[#EEF5FF]
+
+            sm:h-12
+            sm:w-12
+          "
+        >
+          <Store className="h-5 w-5 text-[#0A6CFF]" />
         </div>
 
-        <div className="min-w-0">
-          <h3 className="truncate text-[18px] font-bold leading-tight tracking-[-0.02em] text-erp-text sm:text-[20px]">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <h3 className="truncate text-[14px] font-semibold text-[#111827] sm:text-[16px]">
             {name}
           </h3>
 
-          <p className="mt-1 truncate text-[14px] font-medium text-erp-muted sm:text-[15px]">
+          <p className="mt-0.5 text-[11px] text-[#6B7280] sm:text-[13px]">
             {code}
           </p>
         </div>
       </div>
 
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-erp-card-soft transition group-hover:bg-[#EAF2FF]">
-        <ArrowRight className="h-4 w-4 text-erp-text" />
-      </span>
+      <div
+        className="
+          ml-2
+          flex
+          h-8
+          w-8
+          shrink-0
+          items-center
+          justify-center
+          rounded-full
+          bg-[#F8FAFC]
+          transition
+          group-hover:bg-[#EEF5FF]
+        "
+      >
+        <ArrowRight className="h-3.5 w-3.5 text-gray-500" />
+      </div>
     </Link>
   );
 }

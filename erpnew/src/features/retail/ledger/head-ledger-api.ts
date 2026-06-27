@@ -8,7 +8,7 @@ import type {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 const HEAD_LEDGER_BASE =
   process.env.NEXT_PUBLIC_HEAD_LEDGER_BASE_PATH || "/headledger";

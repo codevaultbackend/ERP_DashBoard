@@ -16,6 +16,7 @@ import {
   getStoreInventory,
   type InventoryRow,
 } from "@/features/head-office/store-management/api/store-management-api";
+import { useDragScroll } from "@/shared/hooks/useDragScroll";
 
 type StockItem = {
   id: string;
@@ -249,6 +250,9 @@ export default function RetailStoreCategoryPage({
   const [childLoadingId, setChildLoadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+
+
+
   async function loadInventory(storeCode: string) {
     try {
       setLoading(true);
@@ -406,7 +410,7 @@ export default function RetailStoreCategoryPage({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search inventory..."
-                className="h-full w-full bg-transparent text-[14px] font-medium text-erp-text outline-none placeholder:text-erp-muted sm:text-[15px]"
+                className="max-[768px]:h-[36px] w-full bg-transparent text-[14px] font-medium text-erp-text outline-none placeholder:text-erp-muted sm:text-[15px]"
               />
             </div>
 
@@ -548,10 +552,25 @@ function DesktopInventoryTable({
     "Action",
   ];
   const router = useRouter();
+  const drag = useDragScroll<HTMLDivElement>();
 
   return (
     <div className="mt-6 hidden overflow-hidden rounded-[26px] border border-erp-border bg-erp-card shadow-erp-card lg:block xl:rounded-[30px]">
-      <div className="max-h-[calc(100vh-300px)] overflow-auto">
+      <div
+        className="
+    w-full
+    overflow-x-auto
+    overflow-y-auto
+    lg:max-h-[calc(100vh-300px)]
+    overflow-x-auto
+      cursor-grab
+      active:cursor-grabbing
+  "ref={drag.ref}
+        onPointerDown={drag.onPointerDown}
+        onPointerMove={drag.onPointerMove}
+        onPointerUp={drag.onPointerUp}
+        onPointerLeave={drag.onPointerLeave}
+      >
         <table className="w-full min-w-[1120px] border-separate border-spacing-0 text-left">
           <thead className="sticky top-0 z-20">
             <tr className="h-[58px] bg-black text-white xl:h-[62px]">
@@ -754,7 +773,7 @@ function DesktopInventoryTable({
                                 {item.grossWeight}
                               </td>
 
-                              
+
 
                               <td className="border-b border-l border-erp-border px-4 text-center xl:px-6">
                                 <button
@@ -769,7 +788,7 @@ function DesktopInventoryTable({
                                   Track
                                 </button>
                               </td>
-                              
+
                             </tr>
                           ))}
 
@@ -946,7 +965,7 @@ function MobileInventoryCards({
                         </div>
 
                         <div className="mt-3 flex items-center justify-between">
-                      
+
                           <button
                             type="button"
                             onClick={() => {

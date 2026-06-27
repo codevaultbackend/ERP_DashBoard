@@ -3,7 +3,7 @@ import type { ReportsApiResponse } from "./types";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://erp-backend-w3pb.onrender.com";
+  "https://erp-for-local.onrender.com";
 
 function joinUrl(base: string, path: string) {
   const cleanBase = String(base || "").replace(/\/+$/, "");

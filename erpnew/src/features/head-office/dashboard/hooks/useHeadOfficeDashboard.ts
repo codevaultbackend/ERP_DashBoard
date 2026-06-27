@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const API_URL =
-  "https://erp-backend-w3pb.onrender.com/dash/dashboard/full";
+  "https://erp-for-local.onrender.com/dash/dashboard/full";
 
 const CACHE_KEY = "head_office_dashboard_cache";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes

@@ -114,7 +114,7 @@ export default function DistrictStoreCategoriesPage() {
       </section>
 
       <section className="mb-[26px] rounded-erp-2xl border border-erp-border bg-white p-4 shadow-erp-card">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
           <SearchInput
             value={search}
             onChange={setSearch}

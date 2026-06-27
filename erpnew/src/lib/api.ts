@@ -3,7 +3,7 @@ import axios from "axios";
 const api = axios.create({
   baseURL:
     process.env.NEXT_PUBLIC_API_URL ||
-    "https://erp-backend-w3pb.onrender.com",
+    "https://erp-for-local.onrender.com",
   timeout: 120000,
 });
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   ChevronUp,
   ImageIcon,
@@ -175,48 +176,162 @@ export default function DistrictStoreStockPage() {
 
   return (
     <main className="min-h-screen bg-[#F4F7FB]">
-      <section className="mx-auto w-full max-w-[1500px]">
-        <div className="mb-5 flex items-center gap-4">
+      <section
+        className="
+    mx-auto
+    w-full
+    max-w-[1500px]
+  "
+      >
+        <div className="mb-5 flex items-center gap-3 sm:gap-5">
+
           <button
             type="button"
             onClick={() => router.push("/head-office/store-management")}
-            className="flex h-[54px] w-[54px] shrink-0 items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white shadow-[0_3px_10px_rgba(15,23,42,0.06)] transition hover:bg-[#F8FAFC]"
+            className="
+      flex
+      h-13
+      w-13
+      shrink-0
+      items-center
+      justify-center
+      rounded-2xl
+      border
+      border-[#E5E7EB]
+      bg-white
+      shadow-sm
+      transition
+      hover:bg-[#F8FAFC]
+
+      max-[768px]:h-13
+      max-[768px]:w-13
+    "
           >
-            <ChevronRight className="h-7 w-7 rotate-180 text-black" />
+            <ChevronLeft className="h-5 w-5 max-[768px]:h-6 max-[768px]:w-6 lg:h-6 lg:w-6" />
           </button>
 
-          <h1 className="text-[30px] font-bold leading-tight tracking-[-0.035em] text-[#111827] sm:text-[36px]">
-            {districtName}
-          </h1>
+          <div className="min-w-0 flex-1">
+
+            <h1
+              className="
+        text-[15px] sm:text-[17px] lg:text-[18px]
+      "
+            >
+              {districtName}
+            </h1>
+
+          </div>
+
         </div>
 
-        <div className="rounded-[30px] border border-[#E1E5EA] bg-white p-4 shadow-[0_2px_10px_rgba(15,23,42,0.04)]">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <div className="flex h-[42px] flex-1 items-center rounded-full bg-[#F4F4F5] px-4">
-              <Search className="mr-3 h-5 w-5 text-[#8A94A6]" />
+        <div
+          className="
+    rounded-3xl
+    border
+    border-[#E3E8EF]
+    bg-white
+    p-3
+    shadow-sm
+
+    sm:p-4
+  "
+        >
+          <div
+            className="
+flex
+flex-col
+gap-3
+
+md:flex-row
+md:items-center
+"
+          >
+
+            {/* Search */}
+            <div
+              className="
+    flex
+    h-11
+    w-full
+    items-center
+    rounded-full
+    bg-[#F4F6F9]
+    px-4
+
+    sm:h-12
+  "
+            >
+              <Search className="mr-2 h-5 w-5 shrink-0 text-[#94A3B8]" />
+
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search inventory..."
-                className="h-full w-full bg-transparent text-[15px] font-medium text-[#111827] outline-none placeholder:text-[#7C8495]"
+                className="
+h-full
+w-full
+bg-transparent
+text-[14px]
+font-medium
+text-[#111827]
+placeholder:text-[#94A3B8]
+outline-none
+
+sm:text-[15px]
+"
               />
             </div>
 
-            <div className="relative">
+
+            {/* Category Dropdown */}
+            <div className="relative w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setShowCategory((prev) => !prev)}
-                className="flex h-[42px] min-w-[160px] items-center justify-between rounded-full bg-white px-5 text-[15px] font-semibold text-[#222] shadow-[0_2px_8px_rgba(15,23,42,0.08)]"
+                className="
+flex
+h-11
+w-full
+items-center
+justify-between
+rounded-full
+border
+border-[#E5E7EB]
+bg-white
+px-4
+text-[14px]
+font-semibold
+text-[#111827]
+transition
+
+hover:border-[#CBD5E1]
+
+sm:h-12
+sm:min-w-[180px]
+"
               >
-                {category}
+                <span className="truncate">{category}</span>
+
                 <ChevronDown
-                  className={`h-4 w-4 transition ${showCategory ? "rotate-180" : ""
+                  className={`ml-2 h-4 w-4 shrink-0 transition ${showCategory ? "rotate-180" : ""
                     }`}
                 />
               </button>
 
+
               {showCategory && (
-                <div className="absolute right-0 top-[48px] z-30 w-[190px] overflow-hidden rounded-[18px] border border-[#E5E7EB] bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.12)]">
+                <div
+                  className="
+            absolute left-0 sm:left-auto sm:right-0
+            top-[48px] z-30
+            w-full sm:w-[190px]
+            overflow-hidden
+            rounded-[18px]
+            border border-[#E5E7EB]
+            bg-white p-2
+            shadow-[0_16px_40px_rgba(15,23,42,0.12)]
+          "
+                >
                   {categories.map((item) => (
                     <button
                       key={item}
@@ -225,10 +340,15 @@ export default function DistrictStoreStockPage() {
                         setCategory(item);
                         setShowCategory(false);
                       }}
-                      className={`block w-full rounded-[12px] px-4 py-2 text-left text-[14px] font-semibold transition ${category === item
-                        ? "bg-[#EEF5FF] text-[#0B63CE]"
-                        : "text-[#334155] hover:bg-[#F8FAFC]"
-                        }`}
+                      className={`
+                block w-full rounded-[12px]
+                px-4 py-2 text-left
+                text-[14px] font-semibold transition
+                ${category === item
+                          ? "bg-[#EEF5FF] text-[#0B63CE]"
+                          : "text-[#334155] hover:bg-[#F8FAFC]"
+                        }
+              `}
                     >
                       {item}
                     </button>
@@ -236,18 +356,64 @@ export default function DistrictStoreStockPage() {
                 </div>
               )}
             </div>
+
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[18px] font-medium text-[#334155]">
+        <div
+          className="
+mt-6
+flex
+flex-col
+gap-4
+
+lg:flex-row
+lg:items-center
+lg:justify-between
+"
+        >
+          <p
+            className="
+text-[16px]
+font-semibold
+text-[#334155]
+
+sm:text-[18px]
+"
+          >
             Main Warehouse / {districtName}
           </p>
 
-          <div className="flex flex-wrap gap-3">
+          <div
+            className="
+grid
+grid-cols-2
+gap-3
+
+sm:flex
+"
+          >
             <Link
               href="/head-office/store-management"
-              className="flex h-[44px] min-w-[132px] items-center justify-center rounded-full bg-[#020315] px-7 text-[15px] font-semibold text-white transition hover:bg-[#111827]"
+              className="
+flex
+h-11
+w-full
+items-center
+justify-center
+rounded-full
+bg-[#020315]
+px-5
+text-[14px]
+font-semibold
+text-white
+transition
+
+hover:bg-[#111827]
+
+sm:min-w-[145px]
+sm:w-auto
+"
             >
               Districts
             </Link>
@@ -269,11 +435,46 @@ export default function DistrictStoreStockPage() {
           </div>
         )}
 
-        <div className="mt-5 overflow-hidden rounded-[26px] border border-[#D7DEE8] bg-white shadow-[0_4px_14px_rgba(15,23,42,0.06)]">
-          <div className="max-h-[calc(100vh-300px)] overflow-auto">
-            <table className="w-full min-w-[1220px] border-collapse text-left">
+        <div
+          className="
+mt-5
+overflow-hidden
+rounded-3xl
+border
+border-[#E5E7EB]
+bg-white
+shadow-sm
+"
+        >
+          <div
+            className="
+    w-full
+    overflow-x-auto
+    overflow-y-auto
+
+    lg:max-h-[calc(100vh-300px)]
+  "
+          >
+            <table
+              className="
+    w-full
+    border-collapse
+    text-left
+
+    min-w-[980px]
+    lg:min-w-[1220px]
+  "
+            >
               <thead className="sticky top-0 z-20">
-                <tr className="h-[60px] bg-black text-white">
+                <tr
+                  className="
+h-12
+bg-[#111827]
+text-white
+
+lg:h-[60px]
+"
+                >
                   {[
                     "Category",
                     "Code",
@@ -288,7 +489,19 @@ export default function DistrictStoreStockPage() {
                   ].map((head) => (
                     <th
                       key={head}
-                      className="whitespace-nowrap px-6 text-[14px] font-bold first:rounded-tl-[26px] last:rounded-tr-[26px]"
+                      className="
+whitespace-nowrap
+px-3
+py-3
+text-[13px]
+font-bold
+
+lg:px-6
+lg:text-[14px]
+
+first:rounded-tl-[24px]
+last:rounded-tr-[24px]
+"
                     >
                       {head}
                     </th>
@@ -314,7 +527,21 @@ export default function DistrictStoreStockPage() {
 
                     return (
                       <Fragment key={item.id}>
-                        <tr className="h-[60px] border-b border-[#D7DEE8] bg-white text-[15px] font-medium text-[#020617] transition hover:bg-[#FAFCFF]">
+                        <tr className="
+h-[52px]
+lg:h-[60px]
+
+border-b
+border-[#D7DEE8]
+bg-white
+
+text-[13px]
+lg:text-[15px]
+
+font-medium
+transition
+hover:bg-[#FAFCFF]
+">
                           <td className="whitespace-nowrap px-6">
                             {item.category}
                           </td>
@@ -346,9 +573,15 @@ export default function DistrictStoreStockPage() {
                             <button
                               type="button"
                               onClick={() => handleToggle(item)}
-                              className={`inline-flex items-center gap-3 text-[15px] font-medium transition ${isOpen
-                                ? "text-[#111827]"
-                                : "text-[#5F6673] hover:text-[#111827]"
+                              className={`inline-flex
+items-center
+gap-2
+text-[13px]
+
+lg:gap-3
+lg:text-[15px] font-medium transition ${isOpen
+                                  ? "text-[#111827]"
+                                  : "text-[#5F6673] hover:text-[#111827]"
                                 }`}
                             >
                               View Details
@@ -363,7 +596,7 @@ export default function DistrictStoreStockPage() {
 
                         {isOpen && (
                           <>
-                            <tr className="h-[54px] border-b border-[#D7DEE8] bg-[#EDF4FA] text-[15px] font-bold text-black">
+                            <tr className="h-11 lg:h-[54px] border-b border-[#D7DEE8] bg-[#EDF4FA] text-[15px] font-bold text-black">
                               <td className="px-6">Image</td>
                               <td className="border-l border-[#D7DEE8] px-6">
                                 Article
@@ -417,7 +650,24 @@ export default function DistrictStoreStockPage() {
                                     <button
                                       type="button"
                                       onClick={() => setPreview(product)}
-                                      className="group flex h-[42px] w-[82px] items-center gap-2 rounded-[9px] bg-[#F3D8E8] px-2 text-left transition hover:bg-[#ECC6DB]"
+                                      className="
+group
+flex
+h-9
+w-[72px]
+
+items-center
+gap-2
+rounded-lg
+bg-[#F3D8E8]
+px-2
+transition
+
+hover:bg-[#ECC6DB]
+
+lg:h-[42px]
+lg:w-[82px]
+"
                                     >
                                       <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white">
                                         {product.image ? (
@@ -466,7 +716,7 @@ export default function DistrictStoreStockPage() {
                                     className="border-l border-[#D7DEE8] px-6"
                                   >
                                     <div className="flex items-center justify-center gap-3">
-                                    
+
                                       <button
                                         type="button"
                                         onClick={() => {

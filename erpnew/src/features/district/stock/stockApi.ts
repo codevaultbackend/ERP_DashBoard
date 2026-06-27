@@ -3,7 +3,7 @@ import axios from "axios";
 export const stockApi = axios.create({
   baseURL:
     process.env.NEXT_PUBLIC_API_BASE_URL ||
-    "https://erp-backend-w3pb.onrender.com",
+    "https://erp-for-local.onrender.com",
   withCredentials: false,
 });
 

@@ -354,90 +354,33 @@ export default function Tracking() {
               No destinations found
             </div>
           ) : (
-            <div
-              className="
-      grid
-      grid-cols-1
-      xl:grid-cols-[420px_1fr]
-      gap-6
-      items-start
-    "
-            >
-              {/* Expanded Card */}
+           <div className="columns-1 lg:columns-3 gap-5">
+                {filteredData.map((destination) => {
+                  const cardKey = `${destination.organization_id}-${destination.store_code}`;
 
-              <div className="xl:sticky xl:top-4">
-                {filteredData
-                  .filter(
-                    (destination) =>
-                      expandedCard ===
-                      `${destination.organization_id}-${destination.store_code}`
-                  )
-                  .map((destination) => {
-                    const cardKey =
-                      `${destination.organization_id}-${destination.store_code}`;
-
-                    const destinationMovements =
-                      (data?.movement_history ?? []).filter(
-                        (movement) =>
-                          movement.to_store_code === destination.store_code ||
-                          movement.from_store_code === destination.store_code
-                      );
-
-                    return (
-                      <DestinationCard
-                        key={cardKey}
-                        destination={destination}
-                        movementHistory={destinationMovements}
-                        expanded={true}
-                        onToggle={() =>
-                          setExpandedCard(null)
-                        }
-                      />
+                  const destinationMovements =
+                    (data?.movement_history ?? []).filter(
+                      (movement) =>
+                        movement.to_store_code === destination.store_code ||
+                        movement.from_store_code === destination.store_code
                     );
-                  })}
+
+                  return (
+                    <div className="mb-5 break-inside-avoid">
+                    <DestinationCard
+                      key={cardKey}
+                      destination={destination}
+                      movementHistory={destinationMovements}
+                      expanded={expandedCard === cardKey}
+                      onToggle={() =>
+                        setExpandedCard(
+                          expandedCard === cardKey ? null : cardKey
+                        )
+                      }
+                    /> </div>
+                  );
+                })}
               </div>
-
-              {/* Remaining Cards */}
-
-              <div
-                className="
-        grid
-        grid-cols-1
-        md:grid-cols-2
-        gap-5
-      "
-              >
-                {filteredData
-                  .filter(
-                    (destination) =>
-                      expandedCard !==
-                      `${destination.organization_id}-${destination.store_code}`
-                  )
-                  .map((destination) => {
-                    const cardKey =
-                      `${destination.organization_id}-${destination.store_code}`;
-
-                    const destinationMovements =
-                      (data?.movement_history ?? []).filter(
-                        (movement) =>
-                          movement.to_store_code === destination.store_code ||
-                          movement.from_store_code === destination.store_code
-                      );
-
-                    return (
-                      <DestinationCard
-                        key={cardKey}
-                        destination={destination}
-                        movementHistory={destinationMovements}
-                        expanded={false}
-                        onToggle={() =>
-                          setExpandedCard(cardKey)
-                        }
-                      />
-                    );
-                  })}
-              </div>
-            </div>
           )}
         </div>
       </div>

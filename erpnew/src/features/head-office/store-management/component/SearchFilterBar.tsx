@@ -49,7 +49,7 @@ export default function SearchFilterBar({
             value={search}
             onChange={(event) => setSearch?.(event.target.value)}
             placeholder={placeholder}
-            className="h-full w-full bg-transparent text-[14px] font-medium text-erp-text outline-none placeholder:text-erp-muted sm:text-[15px]"
+            className="h-full max-[768px]:h-[36px] w-full bg-transparent text-[14px] font-medium text-erp-text outline-none placeholder:text-erp-muted sm:text-[15px]"
           />
         </div>
 
