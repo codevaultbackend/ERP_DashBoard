@@ -7,8 +7,13 @@ import {
   User,
   MapPin,
   Calendar,
+  Camera,
+  Upload,
+  Trash2,
+  Video,
 } from "lucide-react";
 import stockTransferApi from "@/features/head-office/transit/stockTransferApi";
+
 import { useEffect, useState } from "react";
 import { startTransferLiveTracking } from "@/features/retail/request/api/live-tracking-manager";
 
@@ -42,8 +47,11 @@ export default function ApproveStockRequestModal({
 
   const [notes, setNotes] = useState("");
 
-  const [driverPhoto, setDriverPhoto] =
-    useState<File | null>(null);
+const [driverPhoto, setDriverPhoto] =
+  useState<File | null>(null);
+
+const [driverPreview, setDriverPreview] =
+  useState<string | null>(null);
 
   const [dispatchImages, setDispatchImages] =
     useState<File[]>([]);
@@ -58,6 +66,31 @@ export default function ApproveStockRequestModal({
 
   const [approvedItems, setApprovedItems] =
     useState<any[]>([]);
+
+    const createPreview = (
+  file: File
+) => {
+  return URL.createObjectURL(file);
+};
+
+
+const handleDriverPhoto = (
+  file?: File
+) => {
+
+  if (!file) return;
+
+  setDriverPhoto(file);
+  setDriverPreview(
+    createPreview(file)
+  );
+};
+
+
+const removeDriverPhoto = () => {
+  setDriverPhoto(null);
+  setDriverPreview(null);
+};
 
   useEffect(() => {
     if (transferData?.items) {
@@ -245,11 +278,11 @@ export default function ApproveStockRequestModal({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 pb-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-[768px]:p-2 space-y-5 pb-8">
 
           {/* REQUEST DETAILS */}
 
-          <section className="rounded-3xl bg-[#F5F7FC] p-4 sm:p-6">
+          <section className="rounded-3xl bg-[#F5F7FC] p-4 sm:p-6 max-[768px]:p-2">
             <h3 className="mb-5 text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-900">
               Request Details
             </h3>
@@ -456,36 +489,59 @@ export default function ApproveStockRequestModal({
               "
             >
               <UploadCard
-                title="Upload Images"
-                subtitle="Click to browse"
-                uploaded={
-                  dispatchImages.length > 0
-                }
-                fileName={`${dispatchImages.length} file(s) selected`}
-                multiple
-                onChange={(e) =>
-                  setDispatchImages(
-                    Array.from(
-                      e.target.files || []
-                    )
-                  )
-                }
-              />
+
+title="Dispatch Images"
+
+subtitle="Camera or Gallery"
+
+uploaded={
+dispatchImages.length > 0
+}
+
+fileName={
+`${dispatchImages.length} images selected`
+}
+
+camera
+
+multiple
+
+onChange={(e)=>
+setDispatchImages(
+Array.from(
+e.target.files || []
+)
+)
+}
+
+/>
 
               <UploadCard
-                title="Upload Video"
-                subtitle="Click to browse"
-                uploaded={!!dispatchVideo}
-                fileName={
-                  dispatchVideo?.name
-                }
-                onChange={(e) =>
-                  setDispatchVideo(
-                    e.target.files?.[0] ||
-                      null
-                  )
-                }
-              />
+
+title="Dispatch Video"
+
+subtitle="Record or Upload"
+
+uploaded={
+!!dispatchVideo
+}
+
+fileName={
+dispatchVideo?.name
+}
+
+camera
+
+video
+
+onChange={(e)=>
+setDispatchVideo(
+e.target.files?.[0] ||
+null
+)
+}
+
+/>
 
               <UploadCard
                 title="Upload E-Way Bill"
@@ -631,48 +687,156 @@ export default function ApproveStockRequestModal({
               {/* DRIVER PHOTO */}
 
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Driver Photo
-                </label>
 
-                <label
-                  className={`
-                    h-[52px]
-                    flex
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-dashed
-                    cursor-pointer
-                    text-sm
-                    px-3
-                    text-center
-                    transition
-                    ${
-                      driverPhoto
-                        ? "border-green-500 bg-green-50 text-green-700"
-                        : "border-slate-300 bg-white text-slate-600"
-                    }
-                  `}
-                >
-                  {driverPhoto
-                    ? driverPhoto.name
-                    : "Upload Driver Photo"}
+<label className="mb-2 block text-sm font-medium">
+ Driver Photo
+</label>
 
-                  <input
-                    hidden
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) =>
-                      setDriverPhoto(
-                        e.target.files?.[0] ||
-                          null
-                      )
-                    }
-                  />
-                </label>
-              </div>
+
+<div className="
+ rounded-2xl
+ bg-white
+ border
+ border-slate-200
+ p-4
+">
+
+
+{
+driverPreview ? (
+
+<div className="relative">
+
+<img
+src={driverPreview}
+className="
+h-32
+w-full
+rounded-xl
+object-cover
+"
+/>
+
+
+<button
+type="button"
+onClick={removeDriverPhoto}
+className="
+absolute
+right-2
+top-2
+rounded-full
+bg-red-500
+p-2
+text-white
+"
+>
+
+<Trash2 size={16}/>
+
+</button>
+
+
+</div>
+
+
+):(
+
+
+<div className="
+grid
+grid-cols-2
+gap-3
+">
+
+
+<label
+className="
+flex
+h-12
+items-center
+justify-center
+gap-2
+rounded-xl
+bg-green-600
+text-white
+cursor-pointer
+text-sm
+font-medium
+"
+>
+
+<Camera size={18}/>
+
+Camera
+
+
+<input
+hidden
+type="file"
+accept="image/*"
+capture="environment"
+
+onChange={(e)=>
+handleDriverPhoto(
+e.target.files?.[0]
+)
+}
+
+/>
+
+</label>
+
+
+
+<label
+className="
+flex
+h-12
+items-center
+justify-center
+gap-2
+rounded-xl
+border
+cursor-pointer
+text-sm
+font-medium
+"
+>
+
+<Upload size={18}/>
+
+Gallery
+
+
+<input
+hidden
+type="file"
+accept="image/*"
+
+onChange={(e)=>
+handleDriverPhoto(
+e.target.files?.[0]
+)
+}
+
+/>
+
+
+</label>
+
+
+</div>
+
+
+)
+
+}
+
+
+</div>
+
+</div>
             </div>
           </section>
 
@@ -881,111 +1045,221 @@ export default function ApproveStockRequestModal({
 ===================================================== */
 
 function UploadCard({
-  title,
-  subtitle,
-  uploaded,
-  fileName,
-  multiple = false,
-  onChange,
-}: {
-  title: string;
-  subtitle: string;
-  uploaded?: boolean;
-  fileName?: string;
-  multiple?: boolean;
 
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => void;
-}) {
+title,
+subtitle,
+uploaded,
+fileName,
+multiple=false,
+camera=false,
+video=false,
+onChange,
 
-  return (
-    <label
-      className={`
-        min-h-[120px]
-        rounded-2xl
-        border-2
-        border-dashed
-        flex
-        flex-col
-        items-center
-        justify-center
-        cursor-pointer
-        transition
-        px-3
-        text-center
+}:{
 
-        ${
-          uploaded
-            ? "border-green-500 bg-green-50"
-            : "border-slate-300 bg-white hover:border-violet-400"
-        }
-      `}
-    >
+title:string;
+subtitle:string;
+uploaded?:boolean;
+fileName?:string;
+multiple?:boolean;
+camera?:boolean;
+video?:boolean;
 
-      {
-        uploaded ? (
-          <>
-            <CheckCircle2
-              className="
-                h-7
-                w-7
-                text-green-600
-                mb-2
-              "
-            />
+onChange:
+(
+e:React.ChangeEvent<HTMLInputElement>
+)=>void;
 
-            <span
-              className="
-                font-semibold
-                text-green-700
-              "
-            >
-              Uploaded
-            </span>
+}){
 
 
-            <span
-              className="
-                mt-1
-                text-xs
-                text-slate-600
-                break-all
-              "
-            >
-              {fileName}
-            </span>
-          </>
-        ) : (
+return (
 
-          <>
-            <span className="font-medium">
-              {title}
-            </span>
+<div
+className={`
+rounded-2xl
+border-2
+border-dashed
+p-4
+bg-white
 
-            <span
-              className="
-                mt-1
-                text-xs
-                text-slate-500
-              "
-            >
-              {subtitle}
-            </span>
-          </>
-        )
-      }
+${uploaded
+?
+"border-green-500 bg-green-50"
+:
+"border-slate-300"
+}
+
+`}
+>
 
 
-      <input
-        hidden
-        type="file"
-        multiple={multiple}
-        onChange={onChange}
-      />
+{
+uploaded ?
 
-    </label>
-  );
+
+<div className="
+flex
+flex-col
+items-center
+gap-2
+">
+
+
+<CheckCircle2
+className="
+text-green-600
+h-8
+w-8
+"
+/>
+
+
+<p
+className="
+font-semibold
+text-green-700
+text-center
+break-all
+"
+>
+{fileName}
+</p>
+
+
+</div>
+
+
+:
+
+<>
+
+<p className="
+text-center
+font-semibold
+mb-3
+">
+
+{title}
+
+</p>
+
+
+<div className="
+grid
+grid-cols-2
+gap-3
+">
+
+
+{
+camera &&
+
+<label
+className="
+h-11
+flex
+items-center
+justify-center
+gap-2
+rounded-xl
+bg-indigo-600
+text-white
+cursor-pointer
+text-sm
+"
+>
+
+<Camera size={16}/>
+
+Camera
+
+
+<input
+hidden
+type="file"
+
+accept={
+video
+?
+"video/*"
+:
+"image/*"
+}
+
+capture="environment"
+
+multiple={multiple}
+
+onChange={onChange}
+
+/>
+
+</label>
+
+}
+
+
+
+
+<label
+className="
+h-11
+flex
+items-center
+justify-center
+gap-2
+rounded-xl
+border
+cursor-pointer
+text-sm
+"
+>
+
+
+<Upload size={16}/>
+
+Upload
+
+
+<input
+
+hidden
+
+type="file"
+
+accept={
+video
+?
+"video/*"
+:
+"image/*"
+}
+
+multiple={multiple}
+
+onChange={onChange}
+
+/>
+
+
+</label>
+
+
+
+</div>
+
+</>
+
+
+}
+
+
+
+</div>
+
+)
+
 }
 
 

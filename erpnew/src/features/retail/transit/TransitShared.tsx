@@ -18,7 +18,9 @@ export function cn(...classes: Array<string | false | null | undefined>) {
 export function TransitPageHeader() {
   return (
     <div>
-      <h1 className="erp-page-title">In Transit / Tracking</h1>
+      <h1 className="text-[28px] sm:text-[34px] lg:text-[40px] font-bold tracking-[-0.04em] text-erp-heading">
+        In Transit / Tracking
+      </h1>
       <p className="mt-[4px] erp-page-subtitle">
         Monitor stock shipments across all locations
       </p>
@@ -44,7 +46,7 @@ export function StatCard({
       <div className="flex items-center gap-[16px]">
         <div
           className={cn(
-            "flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px]",
+            "flex h-[46px] w-[46px] sm:h-[52px] sm:w-[52px] shrink-0 items-center justify-center rounded-[12px] sm:rounded-[14px]",
             iconWrapClass
           )}
         >
@@ -54,10 +56,10 @@ export function StatCard({
         </div>
 
         <div className="min-w-0">
-          <p className="text-[15px] font-medium leading-[20px] tracking-[-0.02em] text-erp-muted">
+          <p className="text-[13px] sm:text-[15px] font-medium text-erp-muted">
             {title}
           </p>
-          <p className="mt-[6px] text-[28px] font-semibold leading-[30px] tracking-[-0.045em] text-erp-heading">
+          <p className="mt-1 text-[22px] sm:text-[28px] font-semibold leading-none text-erp-heading">
             {value}
           </p>
         </div>
@@ -82,13 +84,25 @@ export function TransitDirectionToggle({
     label: string;
     count: number;
   }> = [
-    { value: "incoming", label: "Arriving Stock", count: incomingCount },
-    { value: "outgoing", label: "Dispatched Stock", count: outgoingCount },
-  ];
+      { value: "incoming", label: "Arriving Stock", count: incomingCount },
+      { value: "outgoing", label: "Dispatched Stock", count: outgoingCount },
+    ];
 
   return (
     <div className="flex w-full justify-start lg:w-auto lg:justify-end">
-      <div className="grid h-[52px] w-full max-w-[420px] grid-cols-2 rounded-full bg-erp-dark p-[6px] shadow-erp-card">
+      <div
+        className="
+grid
+w-full
+grid-cols-2
+rounded-[18px]
+sm:rounded-full
+bg-erp-dark
+p-[4px]
+sm:p-[6px]
+shadow-erp-card
+"
+      >
         {options.map((option) => {
           const active = value === option.value;
 
@@ -132,7 +146,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex h-[24px] items-center rounded-full px-[12px] text-[13px] font-semibold leading-[18px]",
+        "inline-flex h-[24px] items-center rounded-full px-[12px] text-[13px] max-[768px]:text-[11px] mfont-semibold leading-[18px]",
         delivered
           ? "bg-erp-success-soft text-erp-success"
           : "bg-erp-purple-soft text-erp-purple"
@@ -171,7 +185,7 @@ export function DirectionPill({
 
 export function RoutePill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex h-[24px] items-center rounded-full bg-erp-yellow-soft px-[12px] text-[13px] font-semibold leading-[18px] text-erp-yellow">
+    <span className="inline-flex h-[24px] items-center rounded-full bg-erp-yellow-soft px-[12px] text-[13px] max-[768px]:text-[11px] font-semibold leading-[18px] text-erp-yellow">
       {children}
     </span>
   );
@@ -196,10 +210,10 @@ function LocationText({ label, value }: { label: string; value: string }) {
     <div className="flex min-w-0 items-start gap-[9px]">
       <MapPin className="mt-[2px] h-[18px] w-[18px] shrink-0 text-erp-muted" />
       <div className="min-w-0">
-        <p className="text-[14px] font-normal leading-[18px] tracking-[-0.02em] text-erp-muted">
+        <p className="text-[14px] max-[768px]:text-[12px] font-normal leading-[18px] tracking-[-0.02em] text-erp-muted">
           {label}
         </p>
-        <p className="mt-[2px] truncate text-[16px] font-semibold leading-[20px] tracking-[-0.02em] text-erp-heading">
+        <p className="mt-[2px] truncate text-[16px] max-[768px]:text-[14px] font-semibold leading-[20px] tracking-[-0.02em] text-erp-heading">
           {value}
         </p>
       </div>
@@ -257,7 +271,7 @@ export function DeliveryPartnerDetails({ item }: { item: TransitTransfer }) {
       >
         <UserRound className="h-[19px] w-[19px] text-erp-success" />
 
-        <span className="text-[18px] font-semibold leading-[24px] tracking-[-0.03em] text-erp-heading">
+        <span className="text-[18px] max-[768px]:text-[15px] font-semibold leading-[24px] tracking-[-0.03em] text-erp-heading">
           Delivery Partner Details
         </span>
 

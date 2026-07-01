@@ -28,7 +28,7 @@ const HEAD_STORE_BASE =
  * set NEXT_PUBLIC_HEAD_INVOICE_BASE_PATH=
  */
 const HEAD_INVOICE_BASE =
-  process.env.NEXT_PUBLIC_HEAD_INVOICE_BASE_PATH ?? HEAD_STORE_BASE;
+  HEAD_LEDGER_BASE;
 
 function joinUrl(base: string, path: string) {
   const cleanBase = String(base || "").replace(/\/+$/, "");
@@ -326,8 +326,8 @@ export function downloadHeadInvoicePdf(invoiceId: string | number) {
 
 export function exportHeadCompleteLedgerExcel() {
   return exportExcel(
-    `${HEAD_LEDGER_BASE}/dashboard/export-complete`,
-    `head-ledger-complete-${new Date().toISOString().slice(0, 10)}.xlsx`
+    `${HEAD_STORE_BASE}/ledger/download-excel`,
+    `head-ledger-${new Date().toISOString().slice(0, 10)}.xlsx`
   );
 }
 

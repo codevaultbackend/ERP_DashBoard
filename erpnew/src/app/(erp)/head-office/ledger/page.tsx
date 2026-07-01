@@ -9,9 +9,10 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FinanceMetricCard from "../../../../features/retail/ledger/FinanceMetricCard";
 import HeadLedgerStoreTable from "../../../../features/retail/ledger/HeadLedgerStoreTable";
+import { ChevronDown, Check } from "lucide-react";
 import {
   exportHeadCompleteLedgerExcel,
   fetchHeadLedgerStores,
@@ -19,14 +20,23 @@ import {
 import { mapHeadStoresToLedgerRows } from "../../../../features/retail/ledger/head-ledger-utils";
 import type { HeadLedgerStoreRow } from "../../../../features/retail/ledger/types";
 import {
-  getRetailStores,
-  getStoreDashboard,
-} from "../../../../features/head-office/store-management/api/store-management-api";
+  getOrganizationsByLevel,
+} from "../../../../features/head-office/staff-management/api/staff-management-api";
+
+import type {
+  Organization,
+} from "../../../../features/head-office/staff-management/api/staff-management-api";
 import type { DashboardStore } from "../../../../features/head-office/store-management/api/store-management-api";
 
 export default function HeadOfficeLedgerPage() {
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<HeadLedgerStoreRow[]>([]);
+  const [districtOpen, setDistrictOpen] = useState(false);
+  const [retailOpen, setRetailOpen] = useState(false);
+
+  const districtRef = useRef<HTMLDivElement>(null);
+  const retailRef = useRef<HTMLDivElement>(null);
+
   const [summary, setSummary] = useState({
     totalSales: "₹0",
     loss: "₹0",
@@ -35,8 +45,9 @@ export default function HeadOfficeLedgerPage() {
     collectableAmount: "₹0",
   });
 
-  const [districts, setDistricts] = useState<DashboardStore[]>([]);
-  const [retailStores, setRetailStores] = useState<DashboardStore[]>([]);
+  const [districts, setDistricts] = useState<Organization[]>([]);
+  const [allRetailStores, setAllRetailStores] = useState<Organization[]>([]);
+  const [retailStores, setRetailStores] = useState<Organization[]>([]);
 
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedRetailStore, setSelectedRetailStore] = useState("");
@@ -68,17 +79,17 @@ export default function HeadOfficeLedgerPage() {
           collectableAmount: mapped.summary?.collectableAmount || "₹0",
         });
 
-        const dashboard = await getStoreDashboard();
+        const districtList = await getOrganizationsByLevel("district");
 
         if (!active) return;
 
-        const districtList =
-          dashboard.data?.districtStores ||
-          dashboard.data?.district_stores ||
-          dashboard.data?.districts ||
-          [];
-
         setDistricts(districtList);
+
+        const retailList = await getOrganizationsByLevel("retail");
+
+        setAllRetailStores(retailList);
+        // keep retail empty initially
+        setRetailStores([]);
       } catch (err) {
         if (!active) return;
 
@@ -101,82 +112,71 @@ export default function HeadOfficeLedgerPage() {
     };
   }, []);
 
- useEffect(() => {
-  async function loadRetailStores() {
-    try {
-      console.log("Selected District", selectedDistrict);
-
-      if (!selectedDistrict) {
-        setRetailStores([]);
-        setSelectedRetailStore("");
-        return;
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (
+        districtRef.current &&
+        !districtRef.current.contains(e.target as Node)
+      ) {
+        setDistrictOpen(false);
       }
 
-      const response = await getRetailStores(selectedDistrict);
-
-      console.log("Retail API Response", response);
-
-      setRetailStores(response.data || []);
-    } catch (error) {
-      console.error("Retail Store Error", error);
-      setRetailStores([]);
+      if (
+        retailRef.current &&
+        !retailRef.current.contains(e.target as Node)
+      ) {
+        setRetailOpen(false);
+      }
     }
-  }
 
-  loadRetailStores();
-}, [selectedDistrict]);
+    document.addEventListener("mousedown", handleClick);
+
+    return () =>
+      document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+
 
   const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
+  const q = search.trim().toLowerCase();
 
-    return rows.filter((item: any) => {
-      const matchesSearch =
-        !q ||
-        String(item.storeCode || "")
-          .toLowerCase()
-          .includes(q) ||
-        String(item.storeName || "")
-          .toLowerCase()
-          .includes(q) ||
-        String(item.storeManager || "")
-          .toLowerCase()
-          .includes(q) ||
-        String(item.organizationLevel || "")
-          .toLowerCase()
-          .includes(q);
+  return rows.filter((item: any) => {
+    const matchesSearch =
+      !q ||
+      String(item.storeCode || "").toLowerCase().includes(q) ||
+      String(item.storeName || "").toLowerCase().includes(q) ||
+      String(item.storeManager || "").toLowerCase().includes(q);
 
-      const rowDistrictCode =
-        item.districtStoreCode ||
-        item.district_code ||
-        item.parentStoreCode ||
-        item.parent_store_code ||
-        "";
+    // If a retail store is selected, show ONLY that retail ledger
+    if (selectedRetailStore) {
+      return (
+        matchesSearch &&
+        String(item.storeCode) === selectedRetailStore
+      );
+    }
 
-      const matchesDistrict =
-        !selectedDistrict ||
-        String(rowDistrictCode).toUpperCase() ===
-        selectedDistrict.toUpperCase();
-
-      const matchesRetail =
-        !selectedRetailStore ||
-        String(item.storeCode || "").toUpperCase() ===
-        selectedRetailStore.toUpperCase();
-      console.log("FIRST LEDGER ROW", rows[0]);
-      console.log("ALL ROWS", rows);
-      console.log("RETAIL STORES", retailStores);
+    // Otherwise, if a district is selected, show ONLY district ledger
+    if (selectedDistrict) {
+      const district = districts.find(
+        d => String(d.id) === selectedDistrict
+      );
 
       return (
         matchesSearch &&
-        matchesDistrict &&
-        matchesRetail
+        String(item.storeCode) === String(district?.store_code)
       );
-    });
-  }, [
-    rows,
-    search,
-    selectedDistrict,
-    selectedRetailStore,
-  ]);
+    }
+
+    // Nothing selected
+    return matchesSearch;
+  });
+}, [
+  rows,
+  search,
+  selectedDistrict,
+  selectedRetailStore,
+  districts,
+]);
 
   async function handleExport() {
     try {
@@ -188,6 +188,22 @@ export default function HeadOfficeLedgerPage() {
       setExporting(false);
     }
   }
+
+  const handleDistrictChange = (districtId: string) => {
+    setSelectedDistrict(districtId);
+    setSelectedRetailStore("");
+
+    if (!districtId) {
+      setRetailStores([]);
+      return;
+    }
+
+    const filtered = allRetailStores.filter(
+      store => String(store.district_id) === String(districtId)
+    );
+
+    setRetailStores(filtered);
+  };
 
   return (
     <main className="min-h-screen w-full bg-[#F5F6F8] font-erp text-[#111827]">
@@ -266,53 +282,238 @@ export default function HeadOfficeLedgerPage() {
             </div>
 
             {/* District Filter */}
-            <select
-              value={selectedDistrict}
-              onChange={(e) => {
-                setSelectedDistrict(e.target.value);
-                setSelectedRetailStore("");
-              }}
-              className="h-[48px] min-w-[220px] rounded-full border border-[#E5E7EB] bg-white px-4 text-sm outline-none sm:h-[54px]"
-            >
-              <option value="">All District Stores</option>
+            <div ref={districtRef} className="relative z-[9999]">
 
-              {districts.map((district) => {
-                const code = district.store_code || district.code || "";
-                const name = district.store_name || district.name || code;
+              <button
+                type="button"
+                onClick={() => setDistrictOpen(!districtOpen)}
+                className="
+      flex
+      h-[54px]
+      w-[260px]
+      items-center
+      justify-between
+      rounded-full
+      border
+      border-[#E5E7EB]
+      bg-white
+      px-5
+      text-[15px]
+      font-medium
+      text-[#111827]
+      shadow-sm
+      transition
+      hover:border-[#D0D5DD]
+    "
+              >
+                <span className="truncate">
+                  {selectedDistrict
+                    ? districts.find(
+                      x => String(x.id) === selectedDistrict
+                    )?.store_name
+                    : "All District Stores"}
+                </span>
 
-                return (
-                  <option
-                    key={code}
-                    value={code}
-                  >
-                    {name} ({code})
-                  </option>
-                );
-              })}
-            </select>
+                <ChevronDown
+                  className={`h-5 w-5 transition ${districtOpen ? "rotate-180" : ""
+                    }`}
+                />
+              </button>
+
+              {districtOpen && (
+                <div
+                  className="
+        absolute
+        right-0
+        top-[calc(100%+10px)]
+        z-[9999]
+        w-[320px]
+        overflow-hidden
+        rounded-[24px]
+        border
+        border-[#E5E7EB]
+        bg-white
+        shadow-[0_20px_50px_rgba(15,23,42,0.18)]
+      "
+                >
+                  <div className="max-h-[280px] overflow-y-auto py-2">
+
+                    <button
+                      onClick={() => {
+                        setSelectedDistrict("");
+                        setSelectedRetailStore("");
+                        setRetailStores([]);
+                        setRetailOpen(false);
+                        setDistrictOpen(false);
+                      }}
+                      className="
+            flex
+            h-12
+            w-full
+            items-center
+            justify-between
+            px-5
+            text-left
+            hover:bg-[#F4F4F5]
+          "
+                    >
+                      All District Stores
+
+                      {!selectedDistrict && (
+                        <Check className="h-4 w-4 text-black" />
+                      )}
+                    </button>
+
+                    {districts.map((district) => (
+                      <button
+                        key={district.id}
+                        onClick={() => {
+                          handleDistrictChange(String(district.id));
+                          setDistrictOpen(false);
+                        }}
+                        className={`
+              flex
+              h-12
+              w-full
+              items-center
+              justify-between
+              px-5
+              text-left
+              transition
+              ${selectedDistrict === String(district.id)
+                            ? "bg-[#02031A] text-white"
+                            : "hover:bg-[#F4F4F5]"
+                          }
+            `}
+                      >
+                        <span className="truncate">
+                          {district.store_name} ({district.store_code})
+                        </span>
+
+                        {selectedDistrict === String(district.id) && (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </button>
+                    ))}
+
+                  </div>
+                </div>
+              )}
+
+            </div>
 
             {/* Retail Filter */}
-            <select
-              value={selectedRetailStore}
-              onChange={(e) => setSelectedRetailStore(e.target.value)}
-              className="h-[48px] min-w-[220px] rounded-full border border-[#E5E7EB] bg-white px-4 text-sm outline-none sm:h-[54px]"
-            >
-              <option value="">All Retail Stores</option>
+            <div ref={retailRef} className="relative z-[9999]">
 
-              {retailStores.map((store) => {
-                const code = store.store_code || store.code || "";
-                const name = store.store_name || store.name || code;
+              <button
+                type="button"
+                onClick={() => {
+                  if (!selectedDistrict) return;
+                  setRetailOpen(!retailOpen);
+                }}
+                className="
+      flex
+      h-[54px]
+      w-[260px]
+      items-center
+      justify-between
+      rounded-full
+      border
+      border-[#E5E7EB]
+      bg-white
+      px-5
+      text-[15px]
+      font-medium
+      text-[#111827]
+      shadow-sm
+      transition
+      hover:border-[#D0D5DD]
+disabled:cursor-not-allowed
+disabled:bg-[#F1F2F4]
+disabled:text-[#98A2B3]
+disabled:border-[#E5E7EB]
+    "
+              >
+                <span className="truncate">
+                  {selectedRetailStore
+                    ? retailStores.find(x => x.store_code === selectedRetailStore)?.store_name
+                    : "All Retail Stores"}
+                </span>
 
-                return (
-                  <option
-                    key={code}
-                    value={code}
-                  >
-                    {name} ({code})
-                  </option>
-                );
-              })}
-            </select>
+                <ChevronDown
+                  className={`h-5 w-5 transition ${retailOpen ? "rotate-180" : ""
+                    }`}
+                />
+              </button>
+
+              {retailOpen && (
+                <div
+                  className="
+        absolute
+        right-0
+        top-[calc(100%+10px)]
+        z-[9999]
+        w-[320px]
+        overflow-hidden
+        rounded-[24px]
+        border
+        border-[#E5E7EB]
+        bg-white
+        shadow-[0_20px_50px_rgba(15,23,42,0.18)]
+      "
+                >
+                  <div className="max-h-[280px] overflow-y-auto py-2">
+
+                    <button
+                      onClick={() => {
+                        setSelectedRetailStore("");
+                        setRetailOpen(false);
+                      }}
+                      className="
+            flex
+            h-12
+            w-full
+            items-center
+            justify-between
+            px-5
+            text-left
+            hover:bg-[#F4F4F5]
+          "
+                    >
+                      All Retail Stores
+
+                      {!selectedRetailStore && (
+                        <Check className="h-4 w-4 text-black" />
+                      )}
+                    </button>
+
+                    {retailStores.map((store) => (
+                      <button
+                        key={store.id}
+                        onClick={() => {
+                          setSelectedRetailStore(store.store_code);
+                          setRetailOpen(false);
+                        }}
+                        className="
+            flex
+            h-12
+            w-full
+            items-center
+            justify-between
+            px-5
+            text-left
+            hover:bg-[#F4F4F5]
+          "
+                      >
+                        {store.store_name} ({store.store_code})
+                      </button>
+                    ))}
+
+                  </div>
+                </div>
+              )}
+
+            </div>
           </div>
         </div>
 

@@ -64,9 +64,9 @@ export default function HeadOfficeCustomerLedgerPage() {
         setRows(mapped.data);
         setCustomerName(
           mapped.customer?.name ||
-            mapped.customer?.client_name ||
-            mapped.customer?.customer_name ||
-            "Customer Ledger"
+          mapped.customer?.client_name ||
+          mapped.customer?.customer_name ||
+          "Customer Ledger"
         );
       } catch (err) {
         if (!active) return;
@@ -127,36 +127,36 @@ export default function HeadOfficeCustomerLedgerPage() {
     }
   }
 
- const handleDownloadInvoice = async (
-  invoice: ClientInvoiceRow
-) => {
-  try {
-    const invoiceId = getInvoiceId(invoice);
+  const handleDownloadInvoice = async (
+    invoice: ClientInvoiceRow
+  ) => {
+    try {
+      const invoiceId = getInvoiceId(invoice);
 
-    if (!invoiceId) {
-      alert("Invoice ID not found.");
-      return;
+      if (!invoiceId) {
+        alert("Invoice ID not found.");
+        return;
+      }
+
+      await downloadHeadOfficeInvoicePdf(invoiceId);
+    } catch (error: any) {
+      console.error("Invoice download failed:", error);
+
+      alert(
+        error?.message ||
+        "Failed to download invoice."
+      );
     }
-
-    await downloadHeadOfficeInvoicePdf(invoiceId);
-  } catch (error: any) {
-    console.error("Invoice download failed:", error);
-
-    alert(
-      error?.message ||
-      "Failed to download invoice."
-    );
-  }
-};
+  };
 
   return (
     <div className="w-full pb-8">
       <div className="mb-6 flex items-center gap-5">
         <Link
           href={`/head-office/ledger/${encodeURIComponent(storeCode)}`}
-          className="flex h-[58px] w-[58px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)]"
+          className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)]"
         >
-          <ChevronLeft className="h-7 w-7" />
+          <ChevronLeft className="h-6 w-6" />
         </Link>
 
         <h1 className="text-[34px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[42px]">
@@ -183,7 +183,6 @@ export default function HeadOfficeCustomerLedgerPage() {
       ) : (
         <ClientLedgerTable
           rows={rows}
-          onViewInvoice={handleViewInvoice}
           onFetchPayments={handleFetchHeadInvoicePayments}
           onDownloadInvoice={handleDownloadInvoice}
         />

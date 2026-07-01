@@ -475,7 +475,7 @@ export function mapExchangeStatsToRefundStats(
   ];
 }
 
-function mapExchangeToRefundRequest(
+ export function mapExchangeToRefundRequest(
   item: ExchangeDashboardItem,
   index = 0
 ): RefundRequest {

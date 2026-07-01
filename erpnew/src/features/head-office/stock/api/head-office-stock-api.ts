@@ -12,6 +12,71 @@ export const headOfficeStockApi = axios.create({
   withCredentials: true,
 });
 
+export type HeadOfficeInventoryResponse = {
+  success: boolean;
+
+  summary: {
+    total_stock_items: number;
+    dead_stock_items: number;
+    low_stock_items: number;
+    transit_goods: number;
+  };
+
+  pagination: {
+    page: number;
+    limit: number;
+  };
+
+  count: number;
+
+  data: HeadOfficeInventoryItem[];
+}
+
+export type HeadOfficeInventoryItem = {
+  id: number;
+
+  item_name: string;
+
+  article_code: string;
+
+  sku_code: string;
+
+  category: string;
+
+  purity: string;
+
+  available_qty: number;
+
+  quantity: number;
+
+  net_weight: number;
+
+  gross_weight: number;
+
+  stone_weight: number;
+
+  selling_price: number;
+
+  making_charge: number;
+
+  current_status: string;
+
+  store_code: string;
+
+  organization_id: string;
+
+  stocks: {
+    id: number;
+    item_id: number;
+    store_code: string;
+
+    available_qty: number;
+    reserved_qty: number;
+    transit_qty: number;
+    dead_qty: number;
+  }[];
+}
+
 headOfficeStockApi.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token =
@@ -46,6 +111,8 @@ export type HeadOfficeCategoryItem = {
   id?: number | string;
   item_id?: number | string;
   itemId?: number | string;
+  image?: string | null;
+  image_url?: string | null;
 
   article?: string;
   item?: string;
@@ -106,12 +173,51 @@ export type HeadOfficeCategoryResponse = {
   data?: HeadOfficeCategoryItem[];
 };
 
-export async function getHeadOfficeStockDashboard() {
-  const res = await headOfficeStockApi.get<HeadOfficeDashboardResponse>(
-    "/stock/inventory/dashboard"
+export async function getHeadOfficeStockDashboard(
+  storeCode?: string,
+  ownStock = false
+): Promise<HeadOfficeInventoryResponse | HeadOfficeDashboardResponse> {
+
+  // User explicitly selected "Own"
+  if (ownStock) {
+    const res = await headOfficeStockApi.get("/stock/headoffice");
+    return res.data;
+  }
+
+  // Initial page load (all stores merged)
+  if (!storeCode) {
+    const res = await headOfficeStockApi.get(
+      "/stock/inventory/dashboard"
+    );
+
+    return res.data;
+  }
+
+  // District / Retail
+  const res = await headOfficeStockApi.get(
+    "/stock/inventory/dashboard",
+    {
+      params: {
+        store_code: storeCode,
+      },
+    }
   );
 
   return res.data;
+}
+
+
+export async function uploadStockInFile(file: File) {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  const response = await headOfficeStockApi.post(
+    "/stock/stock-in/upload",
+    formData
+  );
+
+  return response.data;
 }
 
 export async function getHeadOfficeItemsByCategory(category: string) {

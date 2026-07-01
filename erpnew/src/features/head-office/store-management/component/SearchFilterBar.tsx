@@ -71,7 +71,7 @@ export default function SearchFilterBar({
             </button>
 
             {open ? (
-              <div className="absolute right-0 top-[50px] z-40 w-full min-w-[190px] overflow-hidden rounded-[18px] border border-erp-border bg-white p-2 shadow-erp-card">
+              <div className="absolute right-0 top-[50px] z-30 w-full min-w-[190px] overflow-hidden rounded-[18px] border border-erp-border bg-white p-2 shadow-erp-card">
                 {categories.map((item) => {
                   const active = item === category;
 

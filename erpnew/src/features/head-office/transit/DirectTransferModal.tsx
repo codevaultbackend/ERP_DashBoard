@@ -359,9 +359,9 @@ export default function DirectTransferModal({
                             type="button"
                             onClick={handleAddItem}
 
-                            className="flex h-[36px] flex-1 items-center justify-center gap-2 rounded-[8px] bg-[#020617] text-[14px] font-[500] text-white transition hover:opacity-90"
+                            className="flex h-[42px] flex-1 items-center justify-center gap-2 rounded-[8px] bg-[#020617] text-[12px] font-[500] text-white transition hover:opacity-90"
                         >
-                            <Plus className="h-5 w-5" />
+                            <Plus className="h-4 w-4" />
                             Add Item
                         </button>
 
@@ -369,7 +369,7 @@ export default function DirectTransferModal({
                         <button
                             type="button"
                             onClick={handleContinue}
-                            className="h-[36px] flex-1 rounded-[8px] bg-[#16A34A] text-[14px] font-[500] text-white transition hover:opacity-90"
+                            className="h-[42px] flex-1 whitespace-nowrap rounded-[8px] bg-[#16A34A] text-[12px] font-[500] text-white transition hover:opacity-90"
                         >
                             Add Driver Details
                         </button>

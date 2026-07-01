@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, ChevronLeft, Download } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -94,13 +94,13 @@ export default function HeadOfficeStoreLedgerPage() {
         <div className="flex items-center gap-5">
           <Link
             href="/head-office/ledger"
-            className="flex h-[56px] w-[56px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)]"
+            className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] border border-[#E5E7EB] bg-white text-[#111827] shadow-[0px_3px_10px_rgba(15,23,42,0.03)]"
           >
-            <ArrowLeft className="h-7 w-7" />
+            <ChevronLeft className="h-6 w-6" />
           </Link>
 
           <div>
-            <h1 className="text-[32px] font-semibold tracking-[-0.04em] text-[#111827] sm:text-[40px]">
+            <h1 className="text-[30px] font-semibold tracking-[-0.04em] text-[#101828] leading-[36px]">
               {storeName}
             </h1>
             <p className="mt-1 text-[15px] font-medium text-[#667085]">

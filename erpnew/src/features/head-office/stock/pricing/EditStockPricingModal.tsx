@@ -305,7 +305,7 @@ export default function EditStockPricingModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-8 font-erp backdrop-blur-[1px] sm:items-center">
+    <div className="fixed inset-0 !z-0 flex items-start justify-center overflow-y-auto bg-black/35 px-4 py-8 font-erp backdrop-blur-[1px] sm:items-center">
       <div className="w-full max-w-[610px] rounded-[32px] border border-erp-border bg-erp-card shadow-erp-bg">
         <div className="flex items-center justify-between px-[28px] pb-[18px] pt-[26px] max-sm:px-[20px] max-sm:pt-[20px]">
           <div className="min-w-0">

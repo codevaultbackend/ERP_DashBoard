@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { DashboardCards } from "../hooks/useHeadOfficeDashboard";
+import Link from "next/link";
 
 type StatTone = "gold" | "green" | "red" | "purple";
 
@@ -19,6 +20,7 @@ type StatItem = {
   trend?: "green" | "red";
   icon: LucideIcon;
   tone: StatTone;
+  navigateLink?: string;
 };
 
 type Props = {
@@ -62,6 +64,7 @@ export default function StateCards({ cards }: Props) {
       value: formatNumber(cards?.totalStock || 0),
       icon: Box,
       tone: "gold",
+      navigateLink: "/head-office/stock-management"
     },
     {
       title: "Total Stocks Value",
@@ -115,23 +118,26 @@ export default function StateCards({ cards }: Props) {
         const Icon = item.icon;
         const tone = getToneClasses(item.tone);
 
-        return (
+        const Card = (
           <div
             key={item.title}
-            className="
-  min-h-[132px]
-  h-[153px]
-  mt-4 max-[768px]:mt-0 max-[768px]:h-[143px]
-  rounded-erp-2xl
-  border
-  border-erp-border
-  bg-erp-card
-  px-4
-  py-4
-  shadow-erp-card
-  sm:px-5
-  sm:py-5
-"
+            className={cn(
+              `
+    min-h-[132px]
+    h-[153px]
+    mt-4 max-[768px]:mt-0 max-[768px]:h-[143px]
+    rounded-erp-2xl
+    border
+    border-erp-border
+    bg-erp-card
+    px-4
+    py-4
+    shadow-erp-card
+    sm:px-5
+    sm:py-5
+  `,
+              item.navigateLink && "cursor-pointer hover:border-[0.5px]  hover:border-green-800"
+            )}
           >
             <div
               className={cn(
@@ -143,39 +149,39 @@ export default function StateCards({ cards }: Props) {
             </div>
 
             <div className="mt-4 max-[768px]:!mt-6">
-              <p className="text-[14px] font-[400] leading-[100%] text-erp-muted ">
+              <p className="text-[14px] font-[400] leading-[100%] text-erp-muted">
                 {item.title}
               </p>
 
               <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
-                <h3
-                  className="
-    truncate
-    text-[28px]
-    font-semibold
-    leading-tight
-    text-erp-heading
-    max-[768px]:text-[22px]
-    xl:text-[28px]
-  "
-                >
+                <h3 className="truncate text-[28px] font-semibold leading-tight text-erp-heading max-[768px]:text-[22px] xl:text-[28px]">
                   {item.value}
                 </h3>
 
-                {item.change ? (
+                {item.change && (
                   <div
                     className={cn(
                       "flex shrink-0 items-center gap-1 text-[12px] font-semibold leading-none sm:text-[13px]",
-                      item.trend === "red" ? "text-erp-danger" : "text-erp-success"
+                      item.trend === "red"
+                        ? "text-erp-danger"
+                        : "text-erp-success"
                     )}
                   >
                     <span>↗</span>
                     <span>{item.change}</span>
                   </div>
-                ) : null}
+                )}
               </div>
             </div>
           </div>
+        );
+
+        return item.navigateLink ? (
+          <Link key={item.title} href={item.navigateLink}>
+            {Card}
+          </Link>
+        ) : (
+          <div key={item.title}>{Card}</div>
         );
       })}
     </div>

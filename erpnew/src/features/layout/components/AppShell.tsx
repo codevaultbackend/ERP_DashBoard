@@ -107,7 +107,7 @@ export default function AppShell({
 
           <main
             className={cn(
-              "px-4  pb-6 pt-2  md:pt-0 transition-all duration-300",
+              "px-4  pb-6 pt-2  md:pt-0 transition-all duration-300 max-[768px]:!px-3",
               isSidebarCollapsed ? "md:ml-[102px]" : "md:ml-[277px]"
             )}
           >

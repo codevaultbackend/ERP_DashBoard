@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import DistrictAddStockPopup from "@/features/district/stock/component/DistrictAddStockPopup";
+import type { CategoryRow, ArticleRow } from "./types";
 import {
   ArrowUpRight,
   BadgeAlert,
@@ -16,16 +18,30 @@ import {
   Search,
   Truck,
   Upload,
+  UploadCloud,
 } from "lucide-react";
 import {
   getHeadOfficeItemsByCategory,
   getHeadOfficeStockDashboard,
   type HeadOfficeCategoryItem,
   type HeadOfficeDashboardTableItem,
+  type HeadOfficeInventoryItem,
 } from "./api/head-office-stock-api";
+import {
+  addStockItem,
+  uploadStockInFile,
+  getStockApiErrorMessage,
+} from "../../retail/StockManagement/api/stock-management-api";
 import EditStockPricingModal, {
   type EditableStockPricingItem,
 } from "./pricing/EditStockPricingModal";
+import {
+  getOrganizationsByLevel,
+  type Organization,
+} from "@/features/head-office/staff-management/api/staff-management-api";
+import { DistrictRetailStoreApi, DistrictStoreApi } from "../request/request/api/district-request-api";
+import { AddStockFormPayload } from "@/features/retail/StockManagement/components/AddStockPopup";
+import StockTable from "./components/StockTable";
 
 type StockCards = {
   totalStocksItems: number;
@@ -34,33 +50,6 @@ type StockCards = {
   transitGoods: number;
 };
 
-type CategoryRow = {
-  id: string;
-  category: string;
-  quantity: number;
-  purchasePrice: string;
-  sellingPrice: string;
-  makingCharge: string;
-  purity: string;
-  netWeight: string;
-  stoneWeight: string;
-  grossWeight: string;
-  articles?: ArticleRow[];
-};
-
-type ArticleRow = EditableStockPricingItem & {
-  id: string;
-  article: string;
-  code: string;
-  quantity: number;
-  purchasePrice: string;
-  sellingPrice: string;
-  makingCharge: string;
-  purity: string;
-  netWeight: string;
-  stoneWeight: string;
-  grossWeight: string;
-};
 
 const CATEGORY_KEYWORDS = [
   "Nose Pin",
@@ -79,45 +68,13 @@ const CATEGORY_KEYWORDS = [
   "Coin",
 ];
 
-const parentColumns = [
-  { label: "Item", width: 150, align: "left" },
-  { label: "Quantity", width: 112, align: "center" },
-  { label: "Purchase Price", width: 162, align: "center" },
-  { label: "Selling Price", width: 158, align: "center" },
-  { label: "Making Chg.", width: 148, align: "center" },
-  { label: "Purity", width: 120, align: "center" },
-  { label: "Net Wt.", width: 136, align: "center" },
-  { label: "Stone Wt.", width: 136, align: "center" },
-  { label: "Gross Wt.", width: 136, align: "center" },
-  { label: "Action", width: 130, align: "center" },
-];
+function formatCompactNumber(value: unknown, maxDecimals = 2) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "0";
 
-const childColumns = [
-  { label: "Article", width: 220, align: "left" },
-  { label: "Code", width: 240, align: "left" },
-  { label: "Quantity", width: 112, align: "center" },
-  { label: "Purchase Price", width: 160, align: "center" },
-  { label: "Selling Price", width: 160, align: "center" },
-  { label: "Making Chg.", width: 150, align: "center" },
-  { label: "Purity", width: 120, align: "center" },
-  { label: "Net Wt.", width: 132, align: "center" },
-  { label: "Stone Wt.", width: 132, align: "center" },
-  { label: "Gross Wt.", width: 132, align: "center" },
-  { label: "Action", width: 110, align: "center" },
-];
-
-const parentMinWidth = parentColumns.reduce(
-  (sum, column) => sum + column.width,
-  0
-);
-
-const childMinWidth = childColumns.reduce(
-  (sum, column) => sum + column.width,
-  0
-);
-
-function cn(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(" ");
+  return new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: maxDecimals,
+  }).format(Number(num.toFixed(maxDecimals)));
 }
 
 function toNumber(value: unknown) {
@@ -130,14 +87,7 @@ function safeText(value: unknown, fallback = "--") {
   return String(value);
 }
 
-function formatCompactNumber(value: unknown, maxDecimals = 2) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return "0";
 
-  return new Intl.NumberFormat("en-IN", {
-    maximumFractionDigits: maxDecimals,
-  }).format(Number(num.toFixed(maxDecimals)));
-}
 
 function formatPrice(value: unknown) {
   const num = Number(value);
@@ -156,7 +106,9 @@ function formatWeight(value: unknown) {
 
   return `${formatCompactNumber(num, 2)}g`;
 }
-
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
 function normalizeCategoryName(name: string) {
   const cleanName = safeText(name, "Others").trim();
 
@@ -230,6 +182,52 @@ function mapDashboardRowsToCategoryRows(
   });
 }
 
+function mapHeadOfficeResponse(
+  rows: HeadOfficeInventoryItem[]
+): CategoryRow[] {
+  const grouped = new Map<string, HeadOfficeInventoryItem[]>();
+
+  rows.forEach((row) => {
+    const category = normalizeCategoryName(
+      safeText(row.category || row.item_name, "Others")
+    );
+
+    grouped.set(category, [...(grouped.get(category) || []), row]);
+  });
+
+  return Array.from(grouped.entries()).map(([category, items], index) => ({
+    id: `${category}-${index}`,
+    category,
+
+    quantity: items.reduce(
+      (sum, item) => sum + Number(item.available_qty ?? item.quantity ?? 0),
+      0
+    ),
+
+    purchasePrice: "--",
+
+    sellingPrice: formatPrice(items[0]?.selling_price),
+
+    makingCharge: formatPrice(items[0]?.making_charge),
+
+    purity: items[0]?.purity ?? "--",
+
+    netWeight: formatWeight(
+      items.reduce((sum, item) => sum + Number(item.net_weight ?? 0), 0)
+    ),
+
+    stoneWeight: formatWeight(
+      items.reduce((sum, item) => sum + Number(item.stone_weight ?? 0), 0)
+    ),
+
+    grossWeight: formatWeight(
+      items.reduce((sum, item) => sum + Number(item.gross_weight ?? 0), 0)
+    ),
+
+    articles: [],
+  }));
+}
+
 function getStrictNumericId(...values: unknown[]) {
   for (const value of values) {
     if (value === null || value === undefined || value === "") continue;
@@ -276,6 +274,8 @@ function mapCategoryItemsToArticleRows(rows: HeadOfficeCategoryItem[]) {
        * But backend item_id ke liye SKU fallback nahi karna.
        */
       id: numericItemId ? String(numericItemId) : `missing-db-id-${code}-${index}`,
+      image: row.image ?? null,
+      image_url: row.image_url ?? row.image ?? null,
 
       /**
        * Modal/backend ke liye ye required hai.
@@ -319,30 +319,6 @@ function mapCategoryItemsToArticleRows(rows: HeadOfficeCategoryItem[]) {
   });
 }
 
-function TableText({
-  children,
-  center = false,
-  bold = false,
-  title,
-}: {
-  children: React.ReactNode;
-  center?: boolean;
-  bold?: boolean;
-  title?: string;
-}) {
-  return (
-    <div
-      title={title || (typeof children === "string" ? children : undefined)}
-      className={cn(
-        "max-w-full truncate text-[15px] leading-[20px] tracking-[-0.02em] text-erp-text",
-        center && "text-center",
-        bold && "font-semibold"
-      )}
-    >
-      {children}
-    </div>
-  );
-}
 
 function StockStatCards({ cards }: { cards: StockCards }) {
   const stats = [
@@ -426,583 +402,314 @@ function StockStatCards({ cards }: { cards: StockCards }) {
   );
 }
 
-function StockToolbar({
+
+function StockToolBar({
   searchValue,
   onSearchChange,
+
   categories,
   selectedCategory,
   onCategoryChange,
+
+  districtStores,
+  selectedDistrict,
+  onDistrictChange,
+
+  retailStores,
+  selectedRetailStore,
+  onRetailStoreChange,
+
+  onAddStock,
+  onUploadStock,
 }: {
   searchValue: string;
   onSearchChange: (value: string) => void;
+
   categories: string[];
   selectedCategory: string;
   onCategoryChange: (value: string) => void;
+
+  districtStores: DistrictStoreApi[];
+  selectedDistrict: string;
+  onDistrictChange: (value: string) => void;
+  retailStores: DistrictRetailStoreApi[];
+  selectedRetailStore: string;
+  onRetailStoreChange: (value: string) => void;
+
+  onAddStock: () => void;
+  onUploadStock: (file: File) => void;
 }) {
   const [openCategory, setOpenCategory] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [openDistrict, setOpenDistrict] = useState(false);
+  const [openRetail, setOpenRetail] = useState(false);
+
+  const categoryRef = useRef<HTMLDivElement | null>(null);
+  const districtRef = useRef<HTMLDivElement | null>(null);
+  const retailRef = useRef<HTMLDivElement | null>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const closeDropdown = (event: MouseEvent) => {
-      if (!dropdownRef.current) return;
-
-      if (!dropdownRef.current.contains(event.target as Node)) {
+    const close = (event: MouseEvent) => {
+      if (
+        categoryRef.current &&
+        !categoryRef.current.contains(event.target as Node)
+      ) {
         setOpenCategory(false);
+      }
+
+      if (
+        districtRef.current &&
+        !districtRef.current.contains(event.target as Node)
+      ) {
+        setOpenDistrict(false);
+      }
+
+      if (
+        retailRef.current &&
+        !retailRef.current.contains(event.target as Node)
+      ) {
+        setOpenRetail(false);
       }
     };
 
-    document.addEventListener("mousedown", closeDropdown);
-    return () => document.removeEventListener("mousedown", closeDropdown);
+    document.addEventListener("mousedown", close);
+
+    return () => document.removeEventListener("mousedown", close);
   }, []);
 
   return (
     <div className="rounded-[30px] border border-erp-border bg-erp-card px-[18px] py-[17px] shadow-erp-card">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div className="relative w-full xl:max-w-[540px] 2xl:max-w-[650px]">
-          <Search className="pointer-events-none absolute left-[18px] top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#8C96A6]" />
+      <div className="flex flex-col gap-5">
+        {/* First Row */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          {/* Search */}
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
 
-          <input
-            type="text"
-            value={searchValue}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search inventory..."
-            className="h-[40px] w-full rounded-erp-full border-0 bg-[#F4F4F5] pl-[50px] pr-4 text-[15px] font-normal leading-[20px] tracking-[-0.02em] text-erp-text outline-none transition placeholder:text-erp-placeholder focus:ring-2 focus:ring-erp-primary/10"
-          />
-        </div>
+            <input
+              type="text"
+              value={searchValue}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search inventory..."
+              className="h-11 w-full rounded-full border border-gray-200 bg-gray-50 pl-12 pr-4 text-[15px] outline-none focus:border-black"
+            />
+          </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap xl:flex-nowrap xl:items-center xl:justify-end">
-          <div ref={dropdownRef} className="relative">
+          {/* Right Side Buttons */}
+          <div className="flex flex-col gap-3 lg:w-[220px]">
             <button
-              type="button"
-              onClick={() => setOpenCategory((prev) => !prev)}
-              className="flex h-[40px] min-w-[148px] items-center justify-between rounded-erp-full border border-erp-border bg-white px-[20px] text-[15px] font-medium leading-[20px] tracking-[-0.02em] text-[#111111] shadow-erp-sm transition hover:bg-erp-card-soft"
+              onClick={() => uploadRef.current?.click()}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-black px-6 text-sm font-semibold text-white transition hover:bg-gray-900"
             >
-              <span className="truncate">
-                {selectedCategory === "All" ? "Category" : selectedCategory}
-              </span>
-
-              <ChevronDown
-                className={cn(
-                  "h-[18px] w-[18px] stroke-[2.2] transition-transform",
-                  openCategory && "rotate-180"
-                )}
-              />
+              <UploadCloud size={18} />
+              Upload Stock
             </button>
 
-            {openCategory && (
-              <div className="absolute right-0 z-30 mt-2 max-h-[280px] w-[220px] overflow-y-auto rounded-erp-md border border-erp-border bg-white shadow-erp-card">
-                {categories.map((category) => {
-                  const active = category === selectedCategory;
 
-                  return (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => {
-                        onCategoryChange(category);
-                        setOpenCategory(false);
-                      }}
-                      className={cn(
-                        "flex w-full items-center justify-start px-4 py-3 text-left text-[14px] font-medium leading-[18px] tracking-[-0.02em] transition",
-                        active
-                          ? "bg-erp-dark text-white"
-                          : "bg-white text-erp-text hover:bg-erp-card-soft"
-                      )}
-                    >
-                      {category === "All" ? "Category" : category}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+
+            <input
+              ref={uploadRef}
+              type="file"
+              hidden
+              accept=".xlsx,.xls,.csv,.pdf"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+
+                if (file) {
+                  onUploadStock(file);
+                }
+
+                e.currentTarget.value = "";
+              }}
+            />
           </div>
+        </div>
+
+        {/* Second Row */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div ref={districtRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setOpenDistrict((v) => !v)}
+                className="flex h-[40px] w-full min-w-[180px] sm:w-[180px] items-center justify-between rounded-full border border-erp-border bg-white px-5 shadow-erp-sm"
+              >
+                <span className="truncate">
+                  {selectedDistrict === "head_office"
+                    ? "Head Office Stock"
+                    : districtStores.find(
+                      (x) => String(x.id) === selectedDistrict
+                    )?.store_name ?? "District"}
+                </span>
+
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition",
+                    openDistrict && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {openDistrict && (
+                <div className="absolute left-0 top-full z-30 mt-2 w-[260px] rounded-2xl border border-erp-border bg-white shadow-lg">
+                  <div className="max-h-64 overflow-y-auto py-1">
+                    <button
+                      onClick={() => {
+                        onDistrictChange("own");
+                        onRetailStoreChange("own");
+                        setOpenDistrict(false);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-100"
+                    >
+                      Head Office Stock
+                    </button>
+
+                    {districtStores.map((store) => (
+                      <button
+                        key={store.id}
+                        onClick={() => {
+                          onDistrictChange(String(store.id));
+                          onRetailStoreChange("own");
+                          setOpenDistrict(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-100"
+                      >
+                        {store.store_name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Retail Filter */}
+            <div ref={retailRef} className="relative">
+              <button
+                type="button"
+                disabled={selectedDistrict === "own"}
+                onClick={() => {
+                  if (selectedDistrict === "own") return;
+                  setOpenRetail((v) => !v);
+                }}
+                className={cn(
+                  "flex h-[40px] w-full min-w-[180px] sm:w-[180px] items-center justify-between rounded-full border px-5 shadow-erp-sm",
+                  selectedDistrict === "head_office"
+                    ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                    : "border-erp-border bg-white text-gray-900"
+                )}
+              >
+                <span className="truncate">
+                  {selectedDistrict === "own"
+                    ? "Select District First"
+                    : selectedRetailStore === "own"
+                      ? "Retail Store"
+                      : retailStores.find(
+                        (x) => String(x.id) === selectedRetailStore
+                      )?.store_name ?? "Retail Store"}
+                </span>
+
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 transition",
+                    openRetail && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {openRetail && (
+                <div className="absolute left-0 top-full z-30 mt-2 w-[280px] rounded-2xl bg-white shadow-lg">
+                  <div className="max-h-72 overflow-y-auto py-2">
+                    <button
+                      onClick={() => {
+                        onRetailStoreChange("own");
+                        setOpenRetail(false);
+                      }}
+                      className="flex h-12 w-full items-center px-5 text-left hover:bg-gray-100"
+                    >
+                      Head Office
+                    </button>
+
+                    {retailStores.map((store) => (
+                      <button
+                        key={store.id}
+                        onClick={() => {
+                          onRetailStoreChange(String(store.id));
+                          setOpenRetail(false);
+                        }}
+                        className="flex h-12 w-full items-center px-5 text-left hover:bg-gray-100"
+                      >
+                        {store.store_name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Category Filter */}
+            <div className="">
+              <div ref={categoryRef} className="relative">
+                <button
+                  type="button"
+                  onClick={() => setOpenCategory((prev) => !prev)}
+                  className="flex h-[40px] min-w-[160px] items-center justify-between rounded-full border border-erp-border bg-white px-5 shadow-erp-sm"
+                >
+                  <span className="truncate">
+                    {selectedCategory === "All"
+                      ? "Category"
+                      : selectedCategory}
+                  </span>
+
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 transition",
+                      openCategory && "rotate-180"
+                    )}
+                  />
+                </button>
+
+                {openCategory && (
+                  <div className="absolute left-0 z-30 mt-2 max-h-[280px] w-[220px] overflow-y-auto rounded-2xl border border-erp-border bg-white shadow-lg">
+                    {categories.map((category) => {
+                      const active = category === selectedCategory;
+
+                      return (
+                        <button
+                          key={category}
+                          onClick={() => {
+                            onCategoryChange(category);
+                            setOpenCategory(false);
+                          }}
+                          className={cn(
+                            "w-full px-4 py-3 text-left transition",
+                            active
+                              ? "bg-black text-white"
+                              : "hover:bg-gray-100"
+                          )}
+                        >
+                          {category === "All"
+                            ? "Category"
+                            : category}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className=""></div>
+          </div>
+          <div className=""><button
+            onClick={onAddStock}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-black px-6 text-sm font-semibold text-white transition hover:bg-gray-900 whitespace-nowrap"
+          >
+            <Plus size={18} />
+            Add Stock
+          </button></div>
+
         </div>
       </div>
     </div>
-  );
-}
-
-function StockTable({
-  rows,
-  loading,
-  searchValue,
-  selectedCategory,
-  loadingCategory,
-  onLoadArticles,
-  onPricingUpdated,
-}: {
-  rows: CategoryRow[];
-  loading: boolean;
-  searchValue: string;
-  selectedCategory: string;
-  loadingCategory: string | null;
-  onLoadArticles: (category: string) => Promise<void>;
-  onPricingUpdated: () => Promise<void>;
-}) {
-  const [openRowId, setOpenRowId] = useState<string | null>(null);
-  const [parentViewportWidth, setParentViewportWidth] = useState(0);
-  const [pricingItem, setPricingItem] = useState<ArticleRow | null>(null);
-
-  const parentScrollRef = useRef<HTMLDivElement | null>(null);
-  const childScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const router = useRouter();
-
-  const dragState = useRef({
-    isDown: false,
-    startX: 0,
-    scrollLeft: 0,
-    activeEl: null as HTMLDivElement | null,
-    hasMoved: false,
-  });
-
-  useEffect(() => {
-    const element = parentScrollRef.current;
-    if (!element) return;
-
-    const updateWidth = () => setParentViewportWidth(element.clientWidth);
-    updateWidth();
-
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(element);
-    window.addEventListener("resize", updateWidth);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateWidth);
-    };
-  }, []);
-
-  const filteredRows = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
-
-    return rows.filter((row) => {
-      const categoryMatch =
-        selectedCategory === "All" || row.category === selectedCategory;
-
-      if (!categoryMatch) return false;
-      if (!query) return true;
-
-      return (
-        String(row.category ?? "")
-  .toLowerCase()
-  .includes(query) ||
-
-String(row.code ?? "")
-  .toLowerCase()
-  .includes(query) ||
-
-String(row.purity ?? "")
-  .toLowerCase()
-  .includes(query) ||
-        row.articles?.some(
-          (article) =>
-            article.article.toLowerCase().includes(query) ||
-            article.code.toLowerCase().includes(query) ||
-            article.purity.toLowerCase().includes(query)
-        )
-      );
-    });
-  }, [rows, searchValue, selectedCategory]);
-
-  const startDrag = (
-    event: React.MouseEvent<HTMLDivElement>,
-    element: HTMLDivElement | null
-  ) => {
-    if (!element) return;
-
-    const target = event.target as HTMLElement;
-
-    if (
-      target.closest("button") ||
-      target.closest("a") ||
-      target.closest("input") ||
-      target.closest("select") ||
-      target.closest("textarea")
-    ) {
-      return;
-    }
-
-    event.stopPropagation();
-
-    dragState.current = {
-      isDown: true,
-      startX: event.clientX,
-      scrollLeft: element.scrollLeft,
-      activeEl: element,
-      hasMoved: false,
-    };
-
-    element.classList.add("cursor-grabbing");
-    element.classList.remove("cursor-grab");
-  };
-
-  const moveDrag = (event: React.MouseEvent<HTMLDivElement>) => {
-    const state = dragState.current;
-    const element = state.activeEl;
-
-    if (!state.isDown || !element) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    const walk = event.clientX - state.startX;
-
-    if (Math.abs(walk) > 4) {
-      dragState.current.hasMoved = true;
-    }
-
-    element.scrollLeft = state.scrollLeft - walk;
-  };
-
-  const stopDrag = (event?: React.MouseEvent<HTMLDivElement>) => {
-    event?.stopPropagation();
-
-    const element = dragState.current.activeEl;
-
-    if (element) {
-      element.classList.remove("cursor-grabbing");
-      element.classList.add("cursor-grab");
-    }
-
-    setTimeout(() => {
-      dragState.current = {
-        isDown: false,
-        startX: 0,
-        scrollLeft: 0,
-        activeEl: null,
-        hasMoved: false,
-      };
-    }, 0);
-  };
-
-  const handleView = async (row: CategoryRow) => {
-    if (dragState.current.hasMoved) return;
-
-    const shouldOpen = openRowId !== row.id;
-    setOpenRowId(shouldOpen ? row.id : null);
-
-    if (shouldOpen && !row.articles?.length) {
-      await onLoadArticles(row.category);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="overflow-hidden rounded-[30px] border border-erp-border bg-erp-card shadow-erp-card">
-        <div className="p-6">
-          <div className="h-[360px] animate-pulse rounded-erp-lg bg-erp-border-soft" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className="overflow-hidden rounded-[30px] border border-erp-border bg-erp-card shadow-erp-card">
-        <div
-          ref={parentScrollRef}
-          className="table-drag-scroll max-w-full cursor-grab overflow-x-auto select-none active:cursor-grabbing"
-          onMouseDown={(event) => startDrag(event, parentScrollRef.current)}
-          onMouseMove={moveDrag}
-          onMouseUp={stopDrag}
-          onMouseLeave={stopDrag}
-        >
-          <table
-            className="w-full table-fixed border-separate border-spacing-0"
-            style={{ minWidth: `${parentMinWidth}px` }}
-          >
-            <colgroup>
-              {parentColumns.map((column) => (
-                <col
-                  key={column.label}
-                  style={{
-                    width: `${column.width}px`,
-                    minWidth: `${column.width}px`,
-                  }}
-                />
-              ))}
-            </colgroup>
-
-            <thead>
-              <tr className="bg-black">
-                {parentColumns.map((column, index) => (
-                  <th
-                    key={column.label}
-                    className={cn(
-                      "h-[56px] whitespace-nowrap border-r border-black px-5 text-[15px] font-semibold leading-none text-white",
-                      column.align === "center" ? "text-center" : "text-left",
-                      index === 0 && "rounded-tl-[30px]",
-                      index === parentColumns.length - 1 &&
-                        "rounded-tr-[30px] border-r-0"
-                    )}
-                  >
-                    {column.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {filteredRows.map((row) => {
-                const isOpen = openRowId === row.id;
-                const isRowLoading = loadingCategory === row.category;
-
-                return (
-                  <Fragment key={row.id}>
-                    <tr className="bg-white transition hover:bg-erp-card-soft">
-                      {[
-                        row.category,
-                        formatCompactNumber(row.quantity, 0),
-                        row.purchasePrice,
-                        row.sellingPrice,
-                        row.makingCharge,
-                        row.purity,
-                        row.netWeight,
-                        row.stoneWeight,
-                        row.grossWeight,
-                      ].map((value, index) => (
-                        <td
-                          key={`${row.id}-${index}`}
-                          className="h-[58px] border-b border-r border-erp-border px-5"
-                        >
-                          <TableText
-                            center={index !== 0}
-                            bold={index === 0 || index >= 3}
-                            title={String(value)}
-                          >
-                            {value}
-                          </TableText>
-                        </td>
-                      ))}
-
-                      <td className="h-[58px] border-b border-erp-border px-5">
-                        <div className="flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => handleView(row)}
-                            className={cn(
-                              "inline-flex h-[34px] items-center justify-center gap-1 rounded-erp-full border px-3 text-[13px] font-semibold leading-none transition",
-                              isOpen
-                                ? "border-erp-primary bg-erp-primary-soft text-erp-primary"
-                                : "border-erp-border bg-white text-erp-primary hover:bg-erp-primary-soft"
-                            )}
-                          >
-                            <Eye size={15} strokeWidth={2.2} />
-                            <span>View</span>
-                            {isOpen ? (
-                              <ChevronUp size={14} strokeWidth={2.4} />
-                            ) : (
-                              <ChevronDown size={14} strokeWidth={2.4} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {isOpen && (
-                      <tr>
-                        <td colSpan={11} className="bg-erp-bg p-0">
-                          <div
-                            className="sticky left-0 z-[2] bg-erp-bg px-3 py-4 sm:px-5"
-                            style={{
-                              width: parentViewportWidth
-                                ? `${parentViewportWidth}px`
-                                : "100%",
-                              maxWidth: parentViewportWidth
-                                ? `${parentViewportWidth}px`
-                                : "100%",
-                            }}
-                          >
-                            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <h4 className="text-[15px] font-semibold tracking-[-0.02em] text-erp-heading">
-                                  {row.category} Items
-                                </h4>
-                                <p className="mt-1 text-[13px] font-medium text-erp-muted">
-                                  Hold and drag horizontally to scroll item list
-                                </p>
-                              </div>
-
-                              <span className="w-fit rounded-erp-full bg-white px-3 py-1 text-[12px] font-semibold text-erp-primary shadow-erp-sm">
-                                {row.articles?.length || 0} items
-                              </span>
-                            </div>
-
-                            {isRowLoading ? (
-                              <div className="rounded-erp-md bg-white px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
-                                Loading category items...
-                              </div>
-                            ) : row.articles?.length ? (
-                              <div
-                                ref={(el) => {
-                                  childScrollRefs.current[row.id] = el;
-                                }}
-                                className="table-drag-scroll w-full max-w-full cursor-grab overflow-x-auto rounded-erp-lg border border-erp-border bg-white select-none active:cursor-grabbing"
-                                onMouseDown={(event) =>
-                                  startDrag(
-                                    event,
-                                    childScrollRefs.current[row.id]
-                                  )
-                                }
-                                onMouseMove={moveDrag}
-                                onMouseUp={stopDrag}
-                                onMouseLeave={stopDrag}
-                              >
-                                <table
-                                  className="table-fixed border-separate border-spacing-0"
-                                  style={{
-                                    width: `${childMinWidth}px`,
-                                    minWidth: `${childMinWidth}px`,
-                                  }}
-                                >
-                                  <colgroup>
-                                    {childColumns.map((column) => (
-                                      <col
-                                        key={column.label}
-                                        style={{
-                                          width: `${column.width}px`,
-                                          minWidth: `${column.width}px`,
-                                        }}
-                                      />
-                                    ))}
-                                  </colgroup>
-
-                                  <thead>
-                                    <tr className="bg-[#EEF3F7]">
-                                      {childColumns.map((column, index) => (
-                                        <th
-                                          key={column.label}
-                                          className={cn(
-                                            "h-[48px] whitespace-nowrap border-b border-r border-erp-border px-5 text-[14px] font-semibold text-erp-text",
-                                            column.align === "center"
-                                              ? "text-center"
-                                              : "text-left",
-                                            index === childColumns.length - 1 &&
-                                              "border-r-0"
-                                          )}
-                                        >
-                                          {column.label}
-                                        </th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-
-                                  <tbody>
-                                    {row.articles.map((article) => {
-                                      const values = [
-                                        article.article,
-                                        article.code,
-                                        formatCompactNumber(
-                                          article.quantity,
-                                          0
-                                        ),
-                                        article.purchasePrice,
-                                        article.sellingPrice,
-                                        article.makingCharge,
-                                        article.purity,
-                                        article.netWeight,
-                                        article.stoneWeight,
-                                        article.grossWeight,
-                                      ];
-
-                                      return (
-                                        <tr
-                                          key={article.id}
-                                          className="bg-white transition hover:bg-erp-card-soft"
-                                        >
-                                          {values.map((value, index) => (
-                                            <td
-                                              key={`${article.id}-${index}`}
-                                              className="h-[54px] border-b border-r border-erp-border px-5"
-                                            >
-                                              <TableText
-                                                center={index >= 2}
-                                                bold={
-                                                  index === 0 ||
-                                                  (index >= 3 && index <= 5)
-                                                }
-                                                title={String(value)}
-                                              >
-                                                {value}
-                                              </TableText>
-                                            </td>
-                                          ))}
-
-                                          <td className="h-[54px] border-b border-erp-border px-5">
-                                          
-  <div className="flex items-center justify-center gap-2">
-    <button
-      type="button"
-      onClick={() => setPricingItem(article)}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-erp-full text-erp-primary transition hover:bg-erp-primary-soft hover:text-erp-primary-hover"
-      title="Edit stock pricing"
-    >
-      <Pencil className="h-4 w-4" />
-    </button>
-
-    <button
-      type="button"
-      onClick={() => {
-        const itemId =
-          Number(article.item_id) ||
-          Number(article.itemId) ||
-          Number(article.id);
-
-        if (!itemId) return;
-
-        router.push(`/head-office/tracking/${itemId}`);
-      }}
-      className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-700"
-      title="Track Item"
-    >
-      Track
-    </button>
-  </div>
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            ) : (
-                              <div className="rounded-erp-md bg-white px-6 py-8 text-center text-[14px] font-medium text-erp-muted">
-                                No category items found.
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-
-              {filteredRows.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={11}
-                    className="px-6 py-10 text-center text-[15px] font-medium text-erp-muted"
-                  >
-                    No inventory items found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <EditStockPricingModal
-        open={!!pricingItem}
-        item={pricingItem}
-        onClose={() => setPricingItem(null)}
-        onUpdated={async () => {
-          setPricingItem(null);
-          await onPricingUpdated();
-        }}
-      />
-    </>
   );
 }
 
@@ -1019,39 +726,200 @@ export default function HeadOfficeStockManagement() {
   const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedDistrict, setSelectedDistrict] = useState("head_office");
+  const [selectedRetailStore, setSelectedRetailStore] = useState("head_office");
+  const [districtStores, setDistrictStores] = useState<Organization[]>([]);
+  const [retailStores, setRetailStores] = useState<Organization[]>([]);
+  const [addStockOpen, setAddStockOpen] = useState(false);
+  const [addStockLoading, setAddStockLoading] = useState(false);
+  const [addStockError, setAddStockError] = useState("");
+  const [uploadStockLoading, setUploadStockLoading] = useState(false);
+
+  const [uploadStockError, setUploadStockError] = useState("");
+
+
+  const filteredRetailStores = useMemo(() => {
+    if (selectedDistrict === "own") return [];
+
+    return retailStores.filter(
+      (store) =>
+        String(store.parent_id) === selectedDistrict ||
+        String(store.district_id) === selectedDistrict
+    );
+  }, [selectedDistrict, retailStores]);
 
   const categories = useMemo(() => {
     return ["All", ...rows.map((row) => row.category)];
   }, [rows]);
+  const loadStores = async () => {
+    try {
+      const [districts, retails] = await Promise.all([
+        getOrganizationsByLevel("district"),
+        getOrganizationsByLevel("retail"),
+      ]);
+
+      setDistrictStores(districts);
+      setRetailStores(retails);
+    } catch (err) {
+      console.error("Failed to load organizations", err);
+    }
+  };
+
+  const handleAddStockSubmit = async (payload: AddStockFormPayload[]) => {
+    try {
+      setAddStockLoading(true);
+      setAddStockError("");
+
+      for (const item of payload) {
+        const result = await addStockItem(item);
+
+        if (!result?.success) {
+          throw new Error(
+            result?.message || "Failed to add stock item"
+          );
+        }
+      }
+
+      setAddStockOpen(false);
+      setAddStockError("");
+
+      await fetchDashboard();
+    } catch (err) {
+      setAddStockError(getStockApiErrorMessage(err));
+    } finally {
+      setAddStockLoading(false);
+    }
+  };
+  const handleUploadStockFile = async (file: File) => {
+    try {
+      if (uploadStockLoading) return;
+
+      setUploadStockLoading(true);
+      setUploadStockError("");
+
+      const allowedExtensions = [".xlsx", ".xls", ".csv", ".pdf"];
+
+      const fileName = file.name.toLowerCase();
+
+      const isAllowed = allowedExtensions.some((ext) =>
+        fileName.endsWith(ext)
+      );
+
+      if (!isAllowed) {
+        throw new Error(
+          "Only Excel, CSV, or PDF files are allowed."
+        );
+      }
+
+      const maxSize = 15 * 1024 * 1024;
+
+      if (file.size > maxSize) {
+        throw new Error(
+          "File size should be less than 15MB."
+        );
+      }
+
+      const result = await uploadStockInFile(file);
+
+      if (!result?.success) {
+        throw new Error(
+          result?.message ||
+          "Failed to upload stock file"
+        );
+      }
+
+      await fetchDashboard();
+
+      alert(result.message || "Stock uploaded successfully");
+    } catch (error) {
+      const message = getStockApiErrorMessage(error);
+
+      setUploadStockError(message);
+
+      alert(message);
+    } finally {
+      setUploadStockLoading(false);
+    }
+  };
 
   const fetchDashboard = async () => {
     setLoading(true);
 
     try {
-      const response = await getHeadOfficeStockDashboard();
+      let storeCode: string | undefined;
 
-      const apiCards = response.data?.cards;
-      const apiTable = response.data?.table || [];
+      // Retail selected
+      if (selectedRetailStore !== "own") {
+        const retail = retailStores.find(
+          (x) => String(x.id) === selectedRetailStore
+        );
 
-      setCards({
-        totalStocksItems: Number(apiCards?.totalStocksItems || 0),
-        deadStockItems: Number(apiCards?.deadStockItems || 0),
-        lowStock: Number(apiCards?.lowStock || 0),
-        transitGoods: Number(apiCards?.transitGoods || 0),
-      });
+        storeCode = retail?.store_code;
+      }
 
-      setRows(mapDashboardRowsToCategoryRows(apiTable));
-    } catch (error) {
-      console.error("Head office stock dashboard error:", error);
+      // District selected
+      else if (selectedDistrict !== "own") {
+        const district = districtStores.find(
+          (x) => String(x.id) === selectedDistrict
+        );
 
-      setCards({
-        totalStocksItems: 0,
-        deadStockItems: 0,
-        lowStock: 0,
-        transitGoods: 0,
-      });
+        storeCode = district?.store_code;
+      }
 
-      setRows([]);
+      // Head Office
+      else {
+        storeCode = undefined;
+      }
+
+      let response;
+
+      if (selectedDistrict === "own" && selectedRetailStore === "own") {
+        // Head Office Stock
+        response = await getHeadOfficeStockDashboard(
+          undefined,
+          true
+        );
+      }
+      else {
+        // District / Retail
+        response = await getHeadOfficeStockDashboard(
+          storeCode
+        );
+      }
+
+      // Own Head Office API
+      if (response.summary) {
+        setCards({
+          totalStocksItems: response.summary.total_stock_items,
+          deadStockItems: response.summary.dead_stock_items,
+          lowStock: response.summary.low_stock_items,
+          transitGoods: response.summary.transit_goods,
+        });
+
+        setRows(mapHeadOfficeResponse(response.data));
+      }
+
+      // Old dashboard response (district / retail)
+      else {
+        setCards({
+          totalStocksItems:
+            Number(response.data?.cards?.totalStocksItems ?? 0),
+          deadStockItems:
+            Number(response.data?.cards?.deadStockItems ?? 0),
+          lowStock:
+            Number(response.data?.cards?.lowStock ?? 0),
+          transitGoods:
+            Number(response.data?.cards?.transitGoods ?? 0),
+        });
+
+        setRows(
+          mapDashboardRowsToCategoryRows(
+            response.data?.table ?? []
+          )
+        );
+      }
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -1082,31 +950,80 @@ export default function HeadOfficeStockManagement() {
     }
   };
 
+
+
   useEffect(() => {
-    fetchDashboard();
+    loadStores();
   }, []);
 
+
+  useEffect(() => {
+    if (districtStores.length || selectedDistrict === "own") {
+      fetchDashboard();
+    }
+  }, [
+    selectedDistrict,
+    selectedRetailStore,
+    districtStores,
+    retailStores,
+  ]);
+
   return (
-    <div className="w-full max-w-full space-y-4 overflow-hidden">
+    <div className="relative w-full max-w-full space-y-4 overflow-visible">
       <StockStatCards cards={cards} />
 
-      <StockToolbar
-        searchValue={searchValue}
-        onSearchChange={setSearchValue}
-        categories={categories}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+      <div className="relative !z-[50]">
+        <StockToolBar
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+
+          districtStores={districtStores}
+          selectedDistrict={selectedDistrict}
+          onDistrictChange={setSelectedDistrict}
+
+          retailStores={filteredRetailStores}
+
+          selectedRetailStore={selectedRetailStore}
+          onRetailStoreChange={setSelectedRetailStore}
+
+
+          onAddStock={() => {
+            setAddStockError("");
+            setAddStockOpen(true);
+          }}
+
+          onUploadStock={handleUploadStockFile}
+        />
+      </div>
+
+      <DistrictAddStockPopup
+        open={addStockOpen}
+        loading={addStockLoading}
+        error={addStockError}
+        onClose={() => {
+          if (addStockLoading) return;
+          setAddStockOpen(false);
+          setAddStockError("");
+        }}
+        onSubmit={handleAddStockSubmit}
       />
 
-      <StockTable
-        rows={rows}
-        loading={loading}
-        searchValue={searchValue}
-        selectedCategory={selectedCategory}
-        loadingCategory={loadingCategory}
-        onLoadArticles={loadArticles}
-        onPricingUpdated={fetchDashboard}
-      />
+      <div className="relative z-40">
+
+        <StockTable
+          rows={rows}
+          loading={loading}
+          searchValue={searchValue}
+          selectedCategory={selectedCategory}
+          loadingCategory={loadingCategory}
+          onLoadArticles={loadArticles}
+          onPricingUpdated={fetchDashboard}
+        />
+      </div>
     </div>
   );
 }

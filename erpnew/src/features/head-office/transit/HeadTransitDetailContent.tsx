@@ -172,7 +172,7 @@ export default function HeadTransitDetailContent({
     <>
       <div className="w-full min-w-0 font-erp">
         <div>
-          <h1 className="text-[30px] font-[600] leading-[36px] text-[#101828] tracking-[0.4px]">In Transit / Tracking</h1>
+          <h1 className="text-[30px] max-[768px]:text-[25px] font-[600] leading-[36px] text-[#101828] tracking-[0.4px]">In Transit / Tracking</h1>
           <p className="text-[16px] font-[400] text-[#4A5565] tracking-[-0.31px]">
             Monitor stock shipments across all locations
           </p>
@@ -241,7 +241,7 @@ export default function HeadTransitDetailContent({
                 className="mt-4 inline-flex items-center gap-3"
               >
                 <UserRound className="h-5 w-5 text-erp-success" />
-                <span className="text-[18px] font-semibold tracking-[-0.02em] text-erp-heading">
+                <span className="text-[18px] max-[768px]:text-[16px] font-semibold tracking-[-0.02em] text-erp-heading">
                   Delivery Partner Details
                 </span>
                 <ChevronDown

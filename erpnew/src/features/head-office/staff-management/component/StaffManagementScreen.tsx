@@ -346,7 +346,7 @@ function Toolbar({
             </button>
 
             {openBranch && (
-              <div className="absolute left-0 right-auto z-40 mt-2 max-h-[280px] w-[calc(100vw-32px)] overflow-y-auto rounded-erp-md border border-erp-border bg-white shadow-erp-card sm:right-0 sm:left-auto sm:w-[240px]">
+              <div className="absolute left-0 right-auto z-30 mt-2 max-h-[280px] w-[calc(100vw-32px)] overflow-y-auto rounded-erp-md border border-erp-border bg-white shadow-erp-card sm:right-0 sm:left-auto sm:w-[240px]">
                 {branches.map((branch) => {
                   const active = branch === selectedBranch;
 

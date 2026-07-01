@@ -2,7 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getExchangeRefundData } from "@/features/retail/refund/api/exchange-api";
+import { getExchangeRefundData, mapExchangeToRefundRequest } from "@/features/retail/refund/api/exchange-api";
 
 import RefundMetricCard from "../../../../features/retail/refund/RefundMetricCard";
 import RefundPolicyCard from "../../../../features/retail/refund/RefundPolicyCard";
@@ -50,6 +50,7 @@ export default function RefundReturnPage() {
       setStats(res?.stats || EMPTY_STATS);
       setRequests(
         Array.isArray(res?.data)
+        
           ? res.data.map(mapExchangeToRefundRequest)
           : []
       );

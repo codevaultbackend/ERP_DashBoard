@@ -302,7 +302,7 @@ export default function HeadOfficeTransitPage({
 
 
 
-        <section className="mt-[22px] grid  gap-[20px] grid-cols-2 xl:grid-cols-3 lg:grid-cols-3">
+        <section className="mt-[22px] grid  gap-[20px] grid-cols-1 xl:grid-cols-3 lg:grid-cols-3">
           <StatCard
             icon={
               <Truck className="h-[24px] w-[24px]" />
@@ -519,14 +519,14 @@ export default function HeadOfficeTransitPage({
                   return (
                     <article
                       key={item.id}
-                      className="rounded-[28px] border border-erp-border bg-white px-[26px] py-[24px] shadow-erp-card"
+                      className="rounded-[28px] border border-erp-border bg-white px-[26px] max-[768px]:px-[22px] py-[24px] shadow-erp-card"
                     >
                       <div className="grid grid-cols-1 gap-[24px] xl:grid-cols-[minmax(0,1fr)_390px]">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-[12px]">
                             <Link
                               href={`${basePath}/${item.id}`}
-                              className="break-all text-[20px] font-semibold leading-[26px] tracking-[-0.04em] text-erp-heading transition hover:text-erp-primary"
+                              className="break-all text-[20px] max-[768px]:text-[16px] font-semibold leading-[26px] tracking-[-0.04em] text-erp-heading transition hover:text-erp-primary"
                             >
                               Tracking:{" "}
                               {

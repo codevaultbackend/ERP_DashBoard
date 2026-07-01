@@ -103,7 +103,7 @@ export default function DistrictDashboardContent() {
   if (loading) {
     return (
       <main className="min-h-screen w-full bg-[#F5F6F8]">
-        <section className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+        <section className="grid grid-cols-2 gap-4 min-[1260px]:!grid-cols-6">
           {Array.from({ length: 6 }).map((_, index) => (
             <div
               key={index}
@@ -142,7 +142,7 @@ export default function DistrictDashboardContent() {
 
   return (
     <main className="min-h-screen w-full bg-[#F5F6F8]">
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-3 2xl:grid-cols-6">
+      <section className="grid grid-cols-2 gap-4 min-[1260px]:!grid-cols-6">
         {statCards.map((card) => (
           <StatCard key={card.title} {...card} />
         ))}

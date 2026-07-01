@@ -58,7 +58,7 @@ export default function AppSidebar({
     <aside
       data-search-ignore="true"
       className={cn(
-        "fixed left-4 top-[96px] z-40 h-[calc(100vh-112px)] transition-all duration-300 ease-out",
+        "fixed left-4 top-[96px] z-30 h-[calc(100vh-112px)] transition-all duration-300 ease-out",
         collapsed ? "w-[88px]" : "w-[260px]"
       )}
     >
