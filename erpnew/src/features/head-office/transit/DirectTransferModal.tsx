@@ -8,6 +8,9 @@ import {
     type DistrictStoreApi,
 } from "@/features/head-office/request/request/api/district-request-api";
 
+import { scanBillingItemByCode } from "@/features/retail/billing/billing-api";
+import stockTransferApi from "@/features/head-office/transit/stockTransferApi";
+
 type Props = {
     open: boolean;
     onClose: () => void;
@@ -17,23 +20,34 @@ type Props = {
         districtId: number
     ) => void;
 };
+
 type TransferItem = {
     item_id?: number;
-
-    item_name: string;
-    category: string;
-    metal_type: string;
+    sku_code?: string;
 
     qty: number;
+    weight: number;
+    rate: number;
 
-    weight?: number;
-    rate?: number;
-
+    item_name?: string;
+    article_code?: string;
+    category?: string;
+    metal_type?: string;
     purity?: string;
     hsn_code?: string;
 
-    article_code?: string;
-    sku_code?: string;
+    gross_weight?: number;
+    net_weight?: number;
+    stone_weight?: number;
+    stone_amount?: number;
+
+    making_charge?: number;
+    purchase_rate?: number;
+    sale_rate?: number;
+
+    subcategory?: string;
+    details?: string;
+    unit?: string;
 };
 
 export default function DirectTransferModal({
@@ -41,345 +55,363 @@ export default function DirectTransferModal({
     onClose,
     onSubmit,
 }: Props) {
+    const [districts, setDistricts] = useState<DistrictStoreApi[]>([]);
+    const [selectedDistrict, setSelectedDistrict] = useState("");
 
-    const [districts, setDistricts] =
-        useState<DistrictStoreApi[]>([]);
+    const [items, setItems] = useState<TransferItem[]>([]);
 
-    const [selectedDistrict, setSelectedDistrict] =
-        useState("");
+    const [form, setForm] = useState<TransferItem>({
+        item_name: "",
+        category: "",
+        article_code: "",
+        hsn_code: "",
+        qty: 0,
+        rate: 0,
+        purity: "",
+        weight: 0,
+        metal_type: "",
+    });
 
-    const [items, setItems] =
-        useState<TransferItem[]>([]);
+    const [searchCode, setSearchCode] = useState("");
+    const [loadingItem, setLoadingItem] = useState(false);
 
-    const [form, setForm] =
-        useState<TransferItem>({
-            item_name: "",
-            category: "",
-            article_code: "",
-            hsn_code: "",
+    const [itemFound, setItemFound] = useState(false);
 
-            qty: 0,
-
-            rate: 0,
-
-            purity: "",
-
-            weight: 0,
-
-            metal_type: "",
-        });
     useEffect(() => {
         const fetchDistricts = async () => {
             try {
-                const data =
-                    await getDistrictStores();
-
+                const data = await getDistrictStores();
                 setDistricts(data);
             } catch (error) {
                 console.error(error);
             }
         };
 
-        if (open) {
-            fetchDistricts();
-        }
+        if (open) fetchDistricts();
     }, [open]);
-    const handleAddItem = () => {
-        if (
-            !form.item_name ||
-            !form.category ||
-            !form.metal_type ||
-            !form.qty
-        ) {
-            alert(
-                "Please fill required fields"
-            );
 
+    const handleSearchItem = async () => {
+        if (!searchCode.trim()) return;
+
+        try {
+            setLoadingItem(true);
+
+            const data = await scanBillingItemByCode(searchCode);
+
+            setForm({
+                item_id: data.item_id,
+                sku_code: data.sku_code,
+
+                item_name: data.item_name,
+                article_code: data.article_code,
+                category: data.category,
+                metal_type: data.metal_type,
+                purity: data.purity,
+                hsn_code: data.hsn_code,
+
+                qty: 1,
+                weight:
+                    data.weight ??
+                    data.net_weight ??
+                    data.gross_weight ??
+                    0,
+
+                rate:
+                    data.sale_rate ??
+                    data.rate ??
+                    0,
+
+                gross_weight: data.gross_weight,
+                net_weight: data.net_weight,
+                stone_weight: data.stone_weight,
+                stone_amount: data.stone_amount,
+                making_charge: data.making_charge,
+                purchase_rate: data.purchase_rate,
+                sale_rate: data.sale_rate,
+                subcategory: data.subcategory,
+                details: data.details,
+                unit: data.unit,
+            });
+
+            setItemFound(true);
+        } catch {
+            setItemFound(false);
+
+            setForm((prev) => ({
+                ...prev,
+                item_id: undefined,
+                sku_code: searchCode, // keep whatever user entered
+            }));
+
+            alert(
+                "Item not found. You can continue by entering the item details manually."
+            );
+        }
+    };
+
+    const handleAddItem = () => {
+        const isManual = !itemFound;
+
+        // Common validation
+        if (!form.qty || Number(form.qty) <= 0) {
+            alert("Please enter quantity.");
             return;
         }
 
-        setItems((prev) => [
-            ...prev,
-            form,
-        ]);
+        // Manual item validation
+        if (isManual) {
+            if (
+                !form.item_name?.trim() ||
+                !form.category?.trim()
+            ) {
+                alert("Please fill all required item details.");
+                return;
+            }
+        }
 
+        const payloadItem: TransferItem = {
+            ...form,
+
+            // Only send item_id when fetched from inventory
+            item_id: itemFound ? form.item_id : undefined,
+
+            // Keep manual SKU/item code
+            sku_code: form.sku_code?.trim() || searchCode.trim(),
+
+            qty: Number(form.qty),
+            weight: Number(form.weight || 0),
+            rate: Number(form.rate || 0),
+        };
+
+        setItems((prev) => [...prev, payloadItem]);
+
+        // Reset form
         setForm({
+            item_id: undefined,
+            sku_code: "",
             item_name: "",
             category: "",
             article_code: "",
             hsn_code: "",
-
             qty: 0,
-
             rate: 0,
-
-            purity: "",
-
             weight: 0,
-
+            purity: "",
             metal_type: "",
+            gross_weight: undefined,
+            net_weight: undefined,
+            stone_weight: undefined,
+            stone_amount: undefined,
+            making_charge: undefined,
+            purchase_rate: undefined,
+            sale_rate: undefined,
+            subcategory: "",
+            details: "",
+            unit: "",
         });
+
+        setSearchCode("");
+        setItemFound(false);
     };
+
     const handleContinue = () => {
         if (!selectedDistrict) {
-            alert(
-                "Select destination district"
-            );
-
+            alert("Select district");
             return;
         }
 
         if (!items.length) {
-            alert(
-                "Add at least one item"
-            );
-
+            alert("Add items first");
             return;
         }
 
-        const district = districts.find(
-            (d) => String(d.id) === selectedDistrict
-        );
-
-        onSubmit(
-            items,
-            Number(selectedDistrict)
-        );
+        onSubmit(items, Number(selectedDistrict));
     };
 
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-[2px] p-4">
-            <div className="w-full max-w-[512px] max-h-[90vh] overflow-y-auto rounded-[32px] bg-white shadow-[0_20px_80px_rgba(0,0,0,0.18)]">
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-[#EEF2F7] px-5 py-3">
-                    <h2 className="text-[18px] font-semibold text-[#0A0A0A] leading-[18px] tracking-[-0.44px]">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-[512px] max-h-[90vh] overflow-y-auto rounded-[32px] bg-white">
+
+                {/* HEADER */}
+                <div className="flex items-center justify-between border-b px-5 py-3">
+                    <h2 className="text-[18px] font-semibold">
                         Direct Transfer
                     </h2>
 
-                    <button
-                        onClick={onClose}
-                        className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-gray-100"
-                    >
-                        <X className="h-5 w-5 text-[#475569]" />
+                    <button onClick={onClose}>
+                        <X />
                     </button>
                 </div>
 
                 <div className="p-4">
-                    {/* Item Details Card */}
-                    <div className="rounded-[24px] bg-[#F9FAFB] p-4 border-[1px] border-[#00000000]">
-                        <h3 className="mb-4 text-[16px] font-semibold text-[#000000]">
-                            Item Details
-                        </h3>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                    {/* SEARCH */}
+                    <div className="mb-5 flex gap-3">
+                        <input
+                            value={searchCode}
+                            onChange={(e) => setSearchCode(e.target.value)}
+                            placeholder="Enter SKU / Barcode"
+                            className="flex-1 h-10 rounded-xl border px-3"
+                        />
 
-                            <Field
-                                label="Item Name"
-                                value={form.item_name}
+                        <button
+                            onClick={handleSearchItem}
+                            className="px-5 bg-black text-white rounded-xl"
+                        >
+                            {loadingItem ? "..." : "Search"}
+                        </button>
+                    </div>
+
+                    {/* ITEM FORM */}
+                    <div className="rounded-[24px] bg-[#F9FAFB] p-4">
+                        <Field
+                            label="SKU Code / Item Code"
+                            value={form.sku_code ?? ""}
+                            onChange={(e) =>
+                                setForm((p) => ({
+                                    ...p,
+                                    sku_code: e.target.value,
+                                }))
+                            }
+                            readOnly={itemFound}
+                        />
+
+                        <Field
+                            label="Item Name"
+                            value={form.item_name}
+                            onChange={(e) =>
+                                setForm((p) => ({
+                                    ...p,
+                                    item_name: e.target.value,
+                                }))
+                            }
+                            readOnly={itemFound}
+                        />
+
+                        <Field
+                            label="Category"
+                            value={form.category}
+                            onChange={(e) =>
+                                setForm((p) => ({
+                                    ...p,
+                                    category: e.target.value,
+                                }))
+                            }
+                            readOnly={itemFound}
+                        />
+                        <div className="mb-3">
+                            <label className="text-sm">Metal Type *</label>
+
+                            <select
+                                value={form.metal_type ?? ""}
+                                disabled={itemFound}
                                 onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        item_name: e.target.value,
-                                    }))
-                                }
-                            />
-
-                            <Field
-                                label="Category"
-                                value={form.category}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        category: e.target.value,
-                                    }))
-                                }
-                            />
-
-                            <Field
-                                label="Item Code"
-                                value={form.article_code}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        article_code: e.target.value,
-                                    }))
-                                }
-                            />
-
-                            <Field
-                                label="HSN Code"
-                                value={form.hsn_code}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        hsn_code: e.target.value,
-                                    }))
-                                }
-                            />
-
-                            <Field
-                                label="Quantity"
-                                type="number"
-                                value={form.qty || ""}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        qty: Number(e.target.value),
-                                    }))
-                                }
-                            />
-
-                            <Field
-                                label="Purchase Price"
-                            />
-
-                            <Field
-                                label="Selling Price"
-                            />
-
-                            <Field
-                                label="Making Charge"
-                                type="number"
-                                value={form.rate || ""}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        rate: Number(e.target.value),
-                                    }))
-                                }
-                            />
-
-                            <Field
-                                label="Purity"
-                                value={form.purity}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        purity: e.target.value,
-                                    }))
-                                }
-                            />
-
-                            <Field
-                                label="Net Weight"
-                                type="number"
-                                value={form.weight || ""}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
-                                        weight: Number(e.target.value),
-                                    }))
-                                }
-                            />
-
-                            <Field
-                                label="Stone Weight"
-                            />
-
-                            <SelectField
-                                label="Metal Type"
-                                value={form.metal_type}
-                                onChange={(e) =>
-                                    setForm((prev) => ({
-                                        ...prev,
+                                    setForm((p) => ({
+                                        ...p,
                                         metal_type: e.target.value,
                                     }))
                                 }
-                            />
+                                className="w-full h-10 border rounded-xl px-3"
+                            >
+                                <option value="">Select Metal</option>
+                                <option value="Gold">Gold</option>
+                                <option value="Silver">Silver</option>
+                                <option value="Diamond">Diamond</option>
+                                <option value="Platinum">Platinum</option>
+                            </select>
                         </div>
+
+                        <Field
+                            label="Quantity"
+                            type="number"
+                            value={form.qty || ""}
+                            onChange={(e) =>
+                                setForm((p) => ({
+                                    ...p,
+                                    qty: Number(e.target.value),
+                                }))
+                            }
+                        />
+
+                        <Field
+                            label="Weight"
+                            type="number"
+                            value={form.weight || ""}
+                            onChange={(e) =>
+                                setForm((p) => ({
+                                    ...p,
+                                    weight: Number(e.target.value),
+                                }))
+                            }
+                        />
+
+                        <Field
+                            label="Rate"
+                            type="number"
+                            value={form.rate || ""}
+                            onChange={(e) =>
+                                setForm((p) => ({
+                                    ...p,
+                                    rate: Number(e.target.value),
+                                }))
+                            }
+                        />
                     </div>
 
-                    {/* District */}
-                    <div className="mt-6">
-                        <label className="mb-2 block text-sm font-[400] text-[#000000]">
-                            Destination District
-                        </label>
-
+                    {/* DISTRICT */}
+                    <div className="mt-5">
                         <select
                             value={selectedDistrict}
-                            onChange={(e) =>
-                                setSelectedDistrict(
-                                    e.target.value
-                                )
-                            }
-                            className="h-[36px] w-full rounded-[16px] border border-[#E2E8F0] bg-[#F3F3F5] px-4 text-[15px] outline-none focus:border-[#0F172A] text-[#000000]"
+                            onChange={(e) => setSelectedDistrict(e.target.value)}
+                            className="w-full h-10 rounded-xl border px-3"
                         >
-                            <option value="">
-                                Select District
-                            </option>
-
-                            {districts.map((district) => (
-                                <option
-                                    key={district.id}
-                                    value={district.id}
-                                >
-                                    {district.store_name}
+                            <option value="">Select District</option>
+                            {districts.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                    {d.store_name}
                                 </option>
                             ))}
                         </select>
                     </div>
+
+                    {/* ITEMS */}
                     {items.length > 0 && (
-                        <div className="mt-2 rounded-[20px]  bg-white p-4">
-                            <h4 className="mb-4 font-semibold">
-                                Added Items
-                            </h4>
-
-                            <div className="space-y-3">
-                                {items.map(
-                                    (item, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
-                                        >
-                                            <div>
-                                                <p className="font-medium">
-                                                    {item.item_name}
-                                                </p>
-
-                                                <p className="text-sm text-slate-500">
-                                                    Qty: {item.qty}
-                                                </p>
-                                            </div>
-
-                                            <div className="text-sm text-slate-500">
-                                                {item.category}
-                                            </div>
-                                        </div>
-                                    )
-                                )}
-                            </div>
+                        <div className="mt-4">
+                            {items.map((item, i) => (
+                                <div key={i} className="p-3 border rounded-xl">
+                                    <p>{item.item_name}</p>
+                                    <p>Qty: {item.qty}</p>
+                                </div>
+                            ))}
                         </div>
                     )}
 
-                    {/* Footer */}
-                    <div className="mt-6 flex gap-4">
+                    {/* FOOTER */}
+                    <div className="mt-6 flex gap-3">
                         <button
-                            type="button"
                             onClick={handleAddItem}
-
-                            className="flex h-[42px] flex-1 items-center justify-center gap-2 rounded-[8px] bg-[#020617] text-[12px] font-[500] text-white transition hover:opacity-90"
+                            className="flex-1 bg-black text-white h-10 rounded-xl"
                         >
-                            <Plus className="h-4 w-4" />
-                            Add Item
+                            <Plus size={16} /> Add Item
                         </button>
 
-
                         <button
-                            type="button"
                             onClick={handleContinue}
-                            className="h-[42px] flex-1 whitespace-nowrap rounded-[8px] bg-[#16A34A] text-[12px] font-[500] text-white transition hover:opacity-90"
+                            className="flex-1 bg-green-600 text-white h-10 rounded-xl"
                         >
-                            Add Driver Details
+                            Continue
                         </button>
                     </div>
+
                 </div>
             </div>
         </div>
     );
 }
 
+/* INPUT */
 function Field({
     label,
     ...props
@@ -387,52 +419,12 @@ function Field({
     label: string;
 }) {
     return (
-        <div>
-            <label className="mb-2 block text-sm font-[400] text-[#334155] !whitespace-nowrap">
-                {label}
-            </label>
-
+        <div className="mb-3">
+            <label className="text-sm">{label}</label>
             <input
                 {...props}
-                className="h-[36px] w-full rounded-[14px] bg-[#F3F3F5] px-4 outline-none focus:border-[#0F172A]"
-                placeholder=""
+                className="w-full h-10 border rounded-xl px-3"
             />
-        </div>
-    );
-}
-
-function SelectField({
-    label,
-    ...props
-}: React.SelectHTMLAttributes<HTMLSelectElement> & {
-    label: string;
-}) {
-    return (
-        <div>
-            <label className="mb-2 block text-sm font-medium text-[#334155] !whitespace-nowrap">
-                {label}
-            </label>
-
-            <select
-                {...props}
-                className="h-[36px] w-full rounded-[14px]  bg-[#F3F3F5] px-4 outline-none focus:border-[#0F172A]"
-            >
-                <option value="">
-                    Select
-                </option>
-
-                <option value="Gold">
-                    Gold
-                </option>
-
-                <option value="Silver">
-                    Silver
-                </option>
-
-                <option value="Diamond">
-                    Diamond
-                </option>
-            </select>
         </div>
     );
 }

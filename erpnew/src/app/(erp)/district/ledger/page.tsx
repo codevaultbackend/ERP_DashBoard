@@ -121,11 +121,11 @@ export default function LedgerPage() {
     <div className="w-full pb-8 font-erp">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h1 className="text-[34px] font-semibold leading-[42px] tracking-[-0.04em] text-[#111827] sm:text-[42px] sm:leading-[50px]">
+          <h1 className="text-[30px] font-semibold leading-[36px] tracking-[-0.04em] text-[#101828] ">
             Ledger &amp; Accounts
           </h1>
 
-          <p className="mt-2 text-[18px] font-normal leading-[24px] tracking-[-0.02em] text-[#5B6475]">
+          <p className="mt-[4px] text-[16px] font-normal leading-[24px] tracking-[-0.02em] text-[#4A5565]">
             Complete financial tracking and product-wise ledger
           </p>
         </div>

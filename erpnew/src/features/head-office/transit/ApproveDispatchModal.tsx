@@ -10,11 +10,11 @@ import {
   Camera,
   Upload,
   Trash2,
-  Video,
 } from "lucide-react";
-import stockTransferApi from "@/features/head-office/transit/stockTransferApi";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import stockTransferApi from "@/features/head-office/transit/stockTransferApi";
 import { startTransferLiveTracking } from "@/features/retail/request/api/live-tracking-manager";
 
 interface Props {
@@ -24,6 +24,11 @@ interface Props {
   transferData: {
     districtId: number;
     items: any[];
+    requestId?: string;
+    requesterName?: string;
+    notes?: string;
+    priority?: string;
+    createdAt?: string;
   } | null;
 }
 
@@ -32,6 +37,8 @@ export default function ApproveStockRequestModal({
   onClose,
   transferData,
 }: Props) {
+  const [loading, setLoading] = useState(false);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [driverName, setDriverName] = useState("");
@@ -47,11 +54,11 @@ export default function ApproveStockRequestModal({
 
   const [notes, setNotes] = useState("");
 
-const [driverPhoto, setDriverPhoto] =
-  useState<File | null>(null);
+  const [driverPhoto, setDriverPhoto] =
+    useState<File | null>(null);
 
-const [driverPreview, setDriverPreview] =
-  useState<string | null>(null);
+  const [driverPreview, setDriverPreview] =
+    useState<string | null>(null);
 
   const [dispatchImages, setDispatchImages] =
     useState<File[]>([]);
@@ -62,53 +69,127 @@ const [driverPreview, setDriverPreview] =
   const [ewayBill, setEwayBill] =
     useState<File | null>(null);
 
-  const [loading, setLoading] = useState(false);
-
   const [approvedItems, setApprovedItems] =
     useState<any[]>([]);
 
-    const createPreview = (
-  file: File
-) => {
-  return URL.createObjectURL(file);
-};
-
-
-const handleDriverPhoto = (
-  file?: File
-) => {
-
-  if (!file) return;
-
-  setDriverPhoto(file);
-  setDriverPreview(
-    createPreview(file)
-  );
-};
-
-
-const removeDriverPhoto = () => {
-  setDriverPhoto(null);
-  setDriverPreview(null);
-};
+  /**
+   * -----------------------
+   * LOAD ITEMS
+   * -----------------------
+   */
 
   useEffect(() => {
-    if (transferData?.items) {
-      setApprovedItems(
-        transferData.items.map((item) => ({
-          ...item,
-          approved_qty: item.qty,
-        }))
-      );
+    if (!transferData?.items) {
+      setApprovedItems([]);
+      return;
     }
+
+    setApprovedItems(
+      transferData.items.map((item) => ({
+        ...item,
+        approved_qty:
+          item.approved_qty ??
+          item.qty,
+      }))
+    );
   }, [transferData]);
 
-  const totalWeight =
-    transferData?.items?.reduce(
+  /**
+   * -----------------------
+   * RESET MODAL
+   * -----------------------
+   */
+
+  useEffect(() => {
+    if (!open) {
+      setErrors({});
+
+      setDriverName("");
+      setDriverPhone("");
+      setVehicleNumber("");
+      setTrackingNumber("");
+
+      setPickupAddress("");
+      setDeliveryAddress("");
+
+      setExpectedDate("");
+      setExpectedTime("");
+
+      setNotes("");
+
+      setDriverPhoto(null);
+
+      if (driverPreview) {
+        URL.revokeObjectURL(driverPreview);
+      }
+
+      setDriverPreview(null);
+
+      setDispatchImages([]);
+      setDispatchVideo(null);
+      setEwayBill(null);
+
+      setApprovedItems([]);
+    }
+  }, [open]);
+
+  /**
+   * -----------------------
+   * TOTAL WEIGHT
+   * -----------------------
+   */
+
+  const totalWeight = useMemo(() => {
+    return approvedItems.reduce(
       (sum, item) =>
-        sum + Number(item.weight || 0),
+        sum +
+        Number(item.weight || 0) *
+          Number(item.approved_qty || 0),
       0
-    ) || 0;
+    );
+  }, [approvedItems]);
+
+  /**
+   * -----------------------
+   * DRIVER PHOTO
+   * -----------------------
+   */
+
+  const handleDriverPhoto = (
+    file?: File
+  ) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Only image allowed");
+      return;
+    }
+
+    if (driverPreview) {
+      URL.revokeObjectURL(driverPreview);
+    }
+
+    setDriverPhoto(file);
+
+    setDriverPreview(
+      URL.createObjectURL(file)
+    );
+  };
+
+  const removeDriverPhoto = () => {
+    if (driverPreview) {
+      URL.revokeObjectURL(driverPreview);
+    }
+
+    setDriverPhoto(null);
+    setDriverPreview(null);
+  };
+
+  /**
+   * -----------------------
+   * FORM VALIDATION
+   * -----------------------
+   */
 
   const validateForm = () => {
     const newErrors: Record<string, string> =
@@ -119,82 +200,116 @@ const removeDriverPhoto = () => {
         "Driver name is required";
     }
 
-    if (!driverPhone.trim()) {
-      newErrors.driverPhone =
-        "Driver phone is required";
-    } else if (
-      !/^[6-9]\d{9}$/.test(driverPhone)
+    if (
+      !/^[6-9]\d{9}$/.test(
+        driverPhone.trim()
+      )
     ) {
       newErrors.driverPhone =
-        "Enter valid 10 digit mobile number";
+        "Enter valid mobile number";
     }
 
     if (!vehicleNumber.trim()) {
       newErrors.vehicleNumber =
-        "Vehicle number is required";
+        "Vehicle number required";
     }
 
     if (!trackingNumber.trim()) {
       newErrors.trackingNumber =
-        "Tracking number is required";
+        "Tracking number required";
     }
 
     if (!pickupAddress.trim()) {
       newErrors.pickupAddress =
-        "Pickup address is required";
+        "Pickup address required";
     }
 
     if (!deliveryAddress.trim()) {
       newErrors.deliveryAddress =
-        "Delivery address is required";
+        "Delivery address required";
     }
 
     if (!expectedDate) {
       newErrors.expectedDate =
-        "Expected delivery date required";
+        "Delivery date required";
+    } else {
+      const today = new Date();
+
+      today.setHours(0,0,0,0);
+
+      const selected =
+        new Date(expectedDate);
+
+      selected.setHours(0,0,0,0);
+
+      if (selected < today) {
+        newErrors.expectedDate =
+          "Past date not allowed";
+      }
     }
 
     if (!expectedTime) {
       newErrors.expectedTime =
-        "Expected delivery time required";
+        "Delivery time required";
     }
+
+    approvedItems.forEach(
+      (item, index) => {
+
+        const qty =
+          Number(item.approved_qty);
+
+        if (
+          qty <= 0 ||
+          qty > Number(item.qty)
+        ) {
+          newErrors[
+            `qty_${index}`
+          ] =
+            `Qty must be between 1 and ${item.qty}`;
+        }
+      }
+    );
 
     setErrors(newErrors);
 
     return (
-      Object.keys(newErrors).length === 0
+      Object.keys(newErrors)
+        .length === 0
     );
   };
 
+  /**
+   * -----------------------
+   * DISPATCH
+   * -----------------------
+   */
+
   const handleDispatch = async () => {
+
     if (!transferData) return;
 
     if (!validateForm()) return;
 
     try {
+
       setLoading(true);
 
       const response =
         await stockTransferApi.dispatchNewItemTransfer(
           {
+
             to_organization_id:
               transferData.districtId,
 
-            items: approvedItems.map(
-              (item) => ({
-                ...item,
-                qty: item.approved_qty,
-              })
-            ),
+            driver_name:
+              driverName,
 
-            driver_name: driverName,
-            driver_phone: driverPhone,
+            driver_phone:
+              driverPhone,
 
             vehicle_number:
               vehicleNumber,
-
-            tracking_number:
-              trackingNumber,
 
             pickup_address:
               pickupAddress,
@@ -208,7 +323,30 @@ const removeDriverPhoto = () => {
             expected_delivery_time:
               expectedTime,
 
-            additional_notes: notes,
+            additional_notes:
+              notes,
+
+            remarks:
+              `Tracking Number : ${trackingNumber}`,
+
+            /**
+             * IMPORTANT
+             * Preserve all backend fields.
+             */
+
+            items:
+              approvedItems.map(
+                (item) => ({
+
+                  ...item,
+
+                  qty:
+                    Number(
+                      item.approved_qty
+                    ),
+
+                })
+              ),
 
             driver_photo:
               driverPhoto,
@@ -219,508 +357,860 @@ const removeDriverPhoto = () => {
             dispatch_video:
               dispatchVideo,
 
-            e_way_bill: ewayBill,
+            e_way_bill:
+              ewayBill,
+
           }
         );
 
       const transferId =
-        response?.data?.transfer_id;
+        response.data?.transfer_id;
 
       if (transferId) {
+
         await startTransferLiveTracking(
           transferId
         );
+
       }
 
       onClose();
-    } catch (error) {
-      console.error(error);
+
+    } catch (error: any) {
+
+      alert(
+        error.message ||
+          "Dispatch Failed"
+      );
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
   if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
-      <div
-        className="
-          relative
-          w-full
-          max-w-7xl
-          h-[95vh]
-          sm:h-[92vh]
-          rounded-3xl
-          bg-white
-          shadow-2xl
-          flex
-          flex-col
-          overflow-hidden
-        "
-      >
-        {/* HEADER */}
+<div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
 
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 sm:px-8 py-4 sm:py-6">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 text-green-500" />
+<div
+className="
+relative
+w-full
+max-w-[1180px]
+h-[95vh]
+overflow-hidden
+rounded-[30px]
+bg-white
+shadow-[0_20px_60px_rgba(0,0,0,.18)]
+flex
+flex-col
+"
+>
 
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900">
-              Approve Stock Request
-            </h2>
-          </div>
+{/* ================= HEADER ================= */}
 
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 hover:bg-slate-100"
-          >
-            <X className="h-5 w-5 sm:h-6 sm:w-6" />
-          </button>
-        </div>
+<div
+className="
+flex
+items-center
+justify-between
+border-b
+border-slate-100
+px-8
+py-6
+"
+>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-[768px]:p-2 space-y-5 pb-8">
+<div className="flex items-center gap-4">
 
-          {/* REQUEST DETAILS */}
+<div
+className="
+flex
+h-11
+w-11
+items-center
+justify-center
+rounded-full
+bg-green-50
+"
+>
 
-          <section className="rounded-3xl bg-[#F5F7FC] p-4 sm:p-6 max-[768px]:p-2">
-            <h3 className="mb-5 text-xl sm:text-2xl lg:text-3xl font-semibold text-slate-900">
-              Request Details
-            </h3>
-
-            <div
-              className="
-                grid
-                grid-cols-1
-                sm:grid-cols-2
-                xl:grid-cols-4
-                gap-5
-              "
-            >
-              <div>
-                <p className="text-sm text-slate-500">
-                  Requester
-                </p>
-
-                <p className="font-semibold">
-                  District #
-                  {
-                    transferData?.districtId
-                  }
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-slate-500">
-                  Request ID
-                </p>
-
-                <p className="font-semibold">
-                  REQ-
-                  {
-                    transferData?.districtId
-                  }
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-slate-500">
-                  Priority
-                </p>
-
-                <p className="font-semibold text-orange-500">
-                  HIGH
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-slate-500">
-                  Created
-                </p>
-
-                <p className="font-semibold">
-                  {new Date().toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl bg-white p-4">
-              <span className="font-medium">
-                Notes:
-              </span>{" "}
-              Stock transfer request awaiting
-              approval.
-            </div>
-          </section>
-
-          {/* PRODUCTS */}
-
-          <section className="rounded-3xl bg-indigo-50 p-4 sm:p-6">
-            <div className="mb-5 flex items-center gap-2">
-              <Package className="text-violet-600" />
-
-              <h3 className="text-xl sm:text-2xl font-semibold">
-                Confirm Products &
-                Quantities
-              </h3>
-            </div>
-
-            <div
-              className="
-                grid
-                grid-cols-1
-                lg:grid-cols-2
-                gap-4
-              "
-            >
-              {approvedItems.map(
-                (item, index) => (
-                  <div
-                    key={index}
-                    className="
-                      rounded-3xl
-                      bg-white
-                      p-5
-                      shadow-sm
-                      border
-                      border-slate-100
-                    "
-                  >
-                    <h4
-                      className="
-                        mb-4
-                        text-lg
-                        font-semibold
-                        truncate
-                      "
-                      title={
-                        item.item_name
-                      }
-                    >
-                      {item.item_name}
-                    </h4>
-
-                    <div
-                      className="
-                        grid
-                        grid-cols-1
-                        sm:grid-cols-2
-                        gap-4
-                      "
-                    >
-                      <div>
-                        <label className="mb-2 block text-sm font-medium">
-                          Requested Quantity
-                        </label>
-
-                        <input
-                          value={item.qty}
-                          disabled
-                          className="
-                            h-12
-                            w-full
-                            rounded-xl
-                            bg-slate-100
-                            px-4
-                          "
-                        />
-                      </div>
-
-                      <div>
-                        <label className="mb-2 block text-sm font-medium">
-                          Approve Quantity *
-                        </label>
-
-                        <input
-                          type="number"
-                          min={0}
-                          value={
-                            item.approved_qty
-                          }
-                          onChange={(e) => {
-                            const value =
-                              Number(
-                                e.target
-                                  .value
-                              );
-
-                            setApprovedItems(
-                              (prev) =>
-                                prev.map(
-                                  (
-                                    p,
-                                    i
-                                  ) =>
-                                    i ===
-                                    index
-                                      ? {
-                                          ...p,
-                                          approved_qty:
-                                            value,
-                                        }
-                                      : p
-                                )
-                            );
-                          }}
-                          className="
-                            h-12
-                            w-full
-                            rounded-xl
-                            border
-                            border-slate-200
-                            px-4
-                          "
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )
-              )}
-            </div>
-            {/* UPLOADS */}
-
-            <div
-              className="
-                mt-6
-                grid
-                grid-cols-1
-                sm:grid-cols-2
-                xl:grid-cols-4
-                gap-4
-              "
-            >
-              <UploadCard
-
-title="Dispatch Images"
-
-subtitle="Camera or Gallery"
-
-uploaded={
-dispatchImages.length > 0
-}
-
-fileName={
-`${dispatchImages.length} images selected`
-}
-
-camera
-
-multiple
-
-onChange={(e)=>
-setDispatchImages(
-Array.from(
-e.target.files || []
-)
-)
-}
-
+<CheckCircle2
+className="h-7 w-7 text-green-600"
 />
 
-              <UploadCard
+</div>
 
-title="Dispatch Video"
+<div>
 
-subtitle="Record or Upload"
+<h2
+className="
+text-[22px]
+font-bold
+text-slate-900
+"
+>
 
-uploaded={
-!!dispatchVideo
-}
+Approve Stock Request
 
-fileName={
-dispatchVideo?.name
-}
+</h2>
 
-camera
+</div>
 
-video
+</div>
 
-onChange={(e)=>
-setDispatchVideo(
-e.target.files?.[0] ||
-null
-)
-}
+<button
+onClick={onClose}
+disabled={loading}
+className="
+rounded-full
+p-2
+transition
+hover:bg-slate-100
+"
+>
 
-/>
+<X className="h-6 w-6"/>
 
-              <UploadCard
-                title="Upload E-Way Bill"
-                subtitle="PDF or Image"
-                uploaded={!!ewayBill}
-                fileName={ewayBill?.name}
-                onChange={(e) =>
-                  setEwayBill(
-                    e.target.files?.[0] ||
-                      null
-                  )
-                }
-              />
+</button>
 
-              <div
-                className="
-                  flex
-                  flex-col
-                  justify-center
-                  rounded-2xl
-                  bg-white
-                  p-5
-                "
-              >
-                <p className="text-lg font-semibold">
-                  Total Weight:
-                </p>
+</div>
 
-                <p className="text-2xl xl:text-3xl text-violet-600">
-                  {totalWeight.toFixed(2)}
-                  g
-                </p>
-              </div>
-            </div>
-          </section>
+{/* ================= BODY ================= */}
 
-          {/* DELIVERY PARTNER */}
+<div
+className="
+flex-1
+overflow-y-auto
+px-6
+py-5
+space-y-6
+"
+>
 
-          <section className="rounded-3xl bg-[#ECF7F0] p-4 sm:p-6">
-            <div className="mb-5 flex items-center gap-2">
-              <User className="text-green-600" />
+{/* ================================================= */}
+{/* REQUEST DETAILS */}
+{/* ================================================= */}
 
-              <h3 className="text-xl sm:text-2xl font-semibold">
-                Delivery Partner Details
-              </h3>
-            </div>
+<section
+className="
+rounded-[28px]
+bg-gradient-to-r
+from-[#EEF4FF]
+to-[#F8F2FF]
+p-6
+"
+>
 
-            <div
-              className="
-                grid
-                grid-cols-1
-                md:grid-cols-2
-                xl:grid-cols-3
-                2xl:grid-cols-5
-                gap-4
-                items-start
-              "
-            >
-              {/* DRIVER NAME */}
+<h3
+className="
+mb-5
+text-[32px]
+font-semibold
+text-slate-900
+"
+>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Driver Name *
-                </label>
+Request Details
 
-                <Input
-                  value={driverName}
-                  onChange={(e) =>
-                    setDriverName(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Enter Driver Name"
-                  error={
-                    errors.driverName
-                  }
-                />
-              </div>
+</h3>
 
-              {/* DRIVER PHONE */}
+<div
+className="
+grid
+grid-cols-1
+md:grid-cols-2
+xl:grid-cols-4
+gap-8
+"
+>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Driver Number *
-                </label>
+<div>
 
-                <Input
-                  value={driverPhone}
-                  onChange={(e) =>
-                    setDriverPhone(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Driver Phone"
-                  error={
-                    errors.driverPhone
-                  }
-                />
-              </div>
+<p className="text-sm text-slate-500">
 
-              {/* VEHICLE */}
+Requester
 
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Vehicle Number *
-                </label>
+</p>
 
-                <Input
-                  value={vehicleNumber}
-                  onChange={(e) =>
-                    setVehicleNumber(
-                      e.target.value.toUpperCase()
-                    )
-                  }
-                  placeholder="DL01AB1234"
-                  error={
-                    errors.vehicleNumber
-                  }
-                />
-              </div>
-
-              {/* TRACKING */}
-
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Tracking Number *
-                </label>
-
-                <Input
-                  value={trackingNumber}
-                  onChange={(e) =>
-                    setTrackingNumber(
-                      e.target.value
-                    )
-                  }
-                  placeholder="TRK123456"
-                  error={
-                    errors.trackingNumber
-                  }
-                />
-              </div>
-
-              {/* DRIVER PHOTO */}
-
-              <div>
-
-<label className="mb-2 block text-sm font-medium">
- Driver Photo
-</label>
-
-
-<div className="
- rounded-2xl
- bg-white
- border
- border-slate-200
- p-4
-">
-
+<p
+className="
+mt-1
+font-semibold
+text-slate-900
+"
+>
 
 {
-driverPreview ? (
+transferData?.requesterName
+??
+`District #${transferData?.districtId}`
+}
+
+</p>
+
+</div>
+
+<div>
+
+<p className="text-sm text-slate-500">
+
+Request ID
+
+</p>
+
+<p className="mt-1 font-semibold">
+
+{
+transferData?.requestId
+??
+
+`REQ-${transferData?.districtId}`
+}
+
+</p>
+
+</div>
+
+<div>
+
+<p className="text-sm text-slate-500">
+
+Priority
+
+</p>
+
+<p
+className="
+mt-1
+font-semibold
+text-orange-500
+uppercase
+"
+>
+
+{
+transferData?.priority
+??
+
+"HIGH"
+}
+
+</p>
+
+</div>
+
+<div>
+
+<p className="text-sm text-slate-500">
+
+Created
+
+</p>
+
+<p className="mt-1 font-semibold">
+
+{
+transferData?.createdAt
+??
+
+new Date().toLocaleDateString()
+}
+
+</p>
+
+</div>
+
+</div>
+
+<div
+className="
+mt-6
+rounded-2xl
+bg-white
+px-5
+py-4
+"
+>
+
+<span
+className="
+font-semibold
+text-slate-900
+"
+>
+
+Notes:
+
+</span>
+
+{" "}
+
+{
+transferData?.notes
+??
+
+"Stock transfer request awaiting approval."
+}
+
+</div>
+
+</section>
+
+{/* ================================================= */}
+{/* PRODUCTS */}
+{/* ================================================= */}
+
+<section
+className="
+rounded-[28px]
+bg-gradient-to-r
+from-[#F6F0FF]
+to-[#EEF6FF]
+p-6
+"
+>
+
+<div
+className="
+mb-6
+flex
+items-center
+gap-3
+"
+>
+
+<div
+className="
+flex
+h-10
+w-10
+items-center
+justify-center
+rounded-full
+bg-violet-100
+"
+>
+
+<Package
+className="
+h-5
+w-5
+text-violet-700
+"
+/>
+
+</div>
+
+<h3
+className="
+text-[30px]
+font-semibold
+"
+>
+
+Confirm Products & Quantities
+
+</h3>
+
+</div>
+
+<div
+className="
+grid
+grid-cols-1
+xl:grid-cols-2
+gap-5
+"
+>
+
+{
+approvedItems.map(
+(item,index)=>(
+<div
+key={
+item.sku_code ??
+item.item_id ??
+index
+}
+className="
+rounded-[24px]
+bg-white
+border
+border-slate-100
+p-6
+shadow-sm
+"
+>
+
+<h4
+className="
+truncate
+text-[24px]
+font-semibold
+text-slate-900
+"
+>
+
+{item.item_name}
+
+</h4>
+
+<div
+className="
+mt-5
+grid
+grid-cols-2
+gap-5
+"
+>
+
+<div>
+
+<label
+className="
+mb-2
+block
+text-sm
+font-medium
+"
+>
+
+Requested Quantity
+
+</label>
+
+<input
+disabled
+value={item.qty}
+className="
+h-12
+w-full
+rounded-xl
+bg-slate-100
+px-4
+font-medium
+"
+/>
+
+</div>
+
+<div>
+
+<label
+className="
+mb-2
+block
+text-sm
+font-medium
+"
+>
+
+Approve Quantity *
+
+</label>
+
+<input
+type="number"
+min={1}
+max={item.qty}
+value={item.approved_qty}
+onChange={(e)=>{
+
+const value=Math.max(
+1,
+Math.min(
+Number(e.target.value),
+Number(item.qty)
+)
+);
+
+setApprovedItems(prev=>
+
+prev.map((p,i)=>
+
+i===index
+
+?
+
+{
+...p,
+approved_qty:value
+}
+
+:p
+
+)
+
+);
+
+}}
+className={`
+h-12
+w-full
+rounded-xl
+border
+px-4
+outline-none
+
+${
+errors[`qty_${index}`]
+
+?
+
+"border-red-500 bg-red-50"
+
+:
+
+"border-slate-200"
+
+}
+
+focus:border-green-500
+`}
+ />
+
+{
+errors[`qty_${index}`] &&
+
+<p
+className="
+mt-1
+text-xs
+text-red-500
+"
+>
+
+{
+errors[`qty_${index}`]
+}
+
+</p>
+
+}
+
+</div>
+
+</div>
+
+</div>
+
+))}
+</div>
+
+{/* ================================================= */}
+{/* UPLOADS */}
+{/* ================================================= */}
+
+<div
+className="
+mt-6
+grid
+grid-cols-1
+sm:grid-cols-2
+xl:grid-cols-4
+gap-5
+"
+>
+
+<UploadCard
+title="Dispatch Images"
+subtitle="Drag and Drop Images"
+camera
+multiple
+uploaded={dispatchImages.length>0}
+fileName={`${dispatchImages.length} Images`}
+onChange={(e)=>{
+
+const files=Array.from(
+e.target.files ?? []
+);
+
+setDispatchImages(files);
+
+}}
+/>
+
+<UploadCard
+title="Dispatch Video"
+subtitle="Record or Upload"
+camera
+video
+uploaded={!!dispatchVideo}
+fileName={dispatchVideo?.name}
+onChange={(e)=>{
+
+setDispatchVideo(
+
+e.target.files?.[0] ??
+
+null
+
+);
+
+}}
+/>
+
+<UploadCard
+title="Upload E-Way Bill"
+subtitle="PDF or Image"
+uploaded={!!ewayBill}
+fileName={ewayBill?.name}
+onChange={(e)=>{
+
+setEwayBill(
+
+e.target.files?.[0] ??
+
+null
+
+);
+
+}}
+/>
+
+<div
+className="
+rounded-[24px]
+bg-white
+p-6
+flex
+flex-col
+justify-center
+"
+>
+
+<p
+className="
+text-[30px]
+font-semibold
+text-slate-900
+"
+>
+
+Total Weight
+
+</p>
+
+<p
+className="
+mt-2
+text-[42px]
+font-bold
+text-violet-600
+"
+>
+
+{
+totalWeight.toFixed(2)
+}g
+
+</p>
+
+</div>
+
+</div>
+
+</section>
+{/* ================================================= */}
+{/* DELIVERY PARTNER DETAILS */}
+{/* ================================================= */}
+
+<section
+className="
+rounded-[28px]
+bg-gradient-to-r
+from-[#EEFCEF]
+to-[#F2FFF9]
+p-6
+"
+>
+
+<div className="mb-6 flex items-center gap-3">
+
+<div
+className="
+flex
+h-10
+w-10
+items-center
+justify-center
+rounded-full
+bg-green-100
+"
+>
+
+<User
+className="
+h-5
+w-5
+text-green-700
+"
+/>
+
+</div>
+
+<h3
+className="
+text-[30px]
+font-semibold
+text-slate-900
+"
+>
+
+Delivery Partner Details
+
+</h3>
+
+</div>
+
+<div
+className="
+grid
+grid-cols-1
+md:grid-cols-2
+xl:grid-cols-5
+gap-5
+items-start
+"
+>
+
+{/* Driver */}
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Driver Name *
+
+</label>
+
+<Input
+value={driverName}
+placeholder="Enter driver name"
+error={errors.driverName}
+onChange={(e)=>
+setDriverName(e.target.value)
+}
+/>
+
+</div>
+
+{/* Phone */}
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Driver Phone *
+
+</label>
+
+<Input
+value={driverPhone}
+placeholder="+91 XXXXX XXXXX"
+error={errors.driverPhone}
+onChange={(e)=>
+setDriverPhone(
+e.target.value.replace(/[^\d]/g,"")
+)
+}
+/>
+
+</div>
+
+{/* Vehicle */}
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Vehicle Number *
+
+</label>
+
+<Input
+value={vehicleNumber}
+placeholder="DL01AB1234"
+error={errors.vehicleNumber}
+onChange={(e)=>
+setVehicleNumber(
+e.target.value.toUpperCase()
+)
+}
+/>
+
+</div>
+
+{/* Tracking */}
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Tracking Number *
+
+</label>
+
+<Input
+value={trackingNumber}
+placeholder="TRK-XXXXXXXX"
+error={errors.trackingNumber}
+onChange={(e)=>
+setTrackingNumber(e.target.value)
+}
+/>
+
+</div>
+
+{/* Driver Photo */}
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Driver Photo
+
+</label>
+
+<div
+className="
+rounded-2xl
+border
+border-slate-200
+bg-white
+p-4
+"
+>
+
+{
+
+driverPreview ?
 
 <div className="relative">
 
 <img
+
 src={driverPreview}
+
+alt="Driver"
+
 className="
-h-32
+h-[130px]
 w-full
 rounded-xl
 object-cover
 "
 />
 
-
 <button
+
 type="button"
+
 onClick={removeDriverPhoto}
+
 className="
 absolute
 right-2
@@ -729,28 +1219,448 @@ rounded-full
 bg-red-500
 p-2
 text-white
+shadow
 "
+
 >
 
-<Trash2 size={16}/>
+<Trash2
+size={16}
+/>
 
 </button>
 
-
 </div>
 
+:
 
-):(
-
-
-<div className="
+<div
+className="
 grid
 grid-cols-2
 gap-3
-">
-
+"
+>
 
 <label
+className="
+flex
+h-11
+cursor-pointer
+items-center
+justify-center
+gap-2
+rounded-xl
+bg-green-600
+text-white
+text-sm
+font-medium
+"
+>
+
+<Camera size={17}/>
+
+Camera
+
+<input
+
+hidden
+
+type="file"
+
+capture="environment"
+
+accept="image/*"
+
+onChange={(e)=>
+
+handleDriverPhoto(
+e.target.files?.[0]
+)
+
+}
+
+/>
+
+</label>
+
+<label
+className="
+flex
+h-11
+cursor-pointer
+items-center
+justify-center
+gap-2
+rounded-xl
+border
+text-sm
+font-medium
+"
+>
+
+<Upload size={17}/>
+
+Gallery
+
+<input
+
+hidden
+
+type="file"
+
+accept="image/*"
+
+onChange={(e)=>
+
+handleDriverPhoto(
+e.target.files?.[0]
+)
+
+}
+
+/>
+
+</label>
+
+</div>
+
+}
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+{/* ================================================= */}
+{/* ADDRESS + DELIVERY */}
+{/* ================================================= */}
+
+<div
+className="
+grid
+grid-cols-1
+2xl:grid-cols-[1.55fr_1fr]
+gap-6
+"
+>
+
+{/* ADDRESS */}
+
+<section
+className="
+rounded-[28px]
+bg-gradient-to-r
+from-[#EEF4FF]
+to-[#F7FBFF]
+p-6
+"
+>
+
+<div className="mb-5 flex items-center gap-3">
+
+<div
+className="
+flex
+h-10
+w-10
+items-center
+justify-center
+rounded-full
+bg-blue-100
+"
+>
+
+<MapPin
+className="
+h-5
+w-5
+text-blue-700
+"
+/>
+
+</div>
+
+<h3
+className="
+text-[28px]
+font-semibold
+"
+>
+
+Pickup & Delivery Addresses
+
+</h3>
+
+</div>
+
+<div
+className="
+grid
+grid-cols-1
+md:grid-cols-2
+gap-5
+"
+>
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Pickup Address *
+
+</label>
+
+<Input
+value={pickupAddress}
+error={errors.pickupAddress}
+placeholder="Head Office Warehouse"
+onChange={(e)=>
+setPickupAddress(e.target.value)
+}
+/>
+
+</div>
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Delivery Address *
+
+</label>
+
+<Input
+value={deliveryAddress}
+error={errors.deliveryAddress}
+placeholder="District Store"
+onChange={(e)=>
+setDeliveryAddress(e.target.value)
+}
+/>
+
+</div>
+
+</div>
+
+</section>
+
+{/* DELIVERY */}
+
+<section
+className="
+rounded-[28px]
+bg-gradient-to-r
+from-[#FFF7E4]
+to-[#FFFDF3]
+p-6
+"
+>
+
+<div className="mb-5 flex items-center gap-3">
+
+<div
+className="
+flex
+h-10
+w-10
+items-center
+justify-center
+rounded-full
+bg-orange-100
+"
+>
+
+<Calendar
+className="
+h-5
+w-5
+text-orange-600
+"
+/>
+
+</div>
+
+<h3
+className="
+text-[28px]
+font-semibold
+"
+>
+
+Delivery Schedule
+
+</h3>
+
+</div>
+
+<div
+className="
+grid
+grid-cols-1
+md:grid-cols-2
+gap-5
+"
+>
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Expected Delivery Date *
+
+</label>
+
+<Input
+type="date"
+value={expectedDate}
+error={errors.expectedDate}
+onChange={(e)=>
+setExpectedDate(e.target.value)
+}
+/>
+
+</div>
+
+<div>
+
+<label className="mb-2 block text-sm font-medium">
+
+Expected Time *
+
+</label>
+
+<Input
+type="time"
+value={expectedTime}
+error={errors.expectedTime}
+onChange={(e)=>
+setExpectedTime(e.target.value)
+}
+/>
+
+</div>
+
+</div>
+
+</section>
+
+</div>
+
+{/* ================================================= */}
+{/* NOTES */}
+{/* ================================================= */}
+
+<section>
+
+<label
+className="
+mb-3
+block
+text-lg
+font-semibold
+"
+>
+
+Additional Notes
+
+</label>
+
+<textarea
+
+rows={5}
+
+value={notes}
+
+onChange={(e)=>
+setNotes(e.target.value)
+}
+
+placeholder="Any special instruction..."
+
+className="
+w-full
+resize-none
+rounded-[22px]
+border
+border-slate-200
+bg-white
+p-5
+outline-none
+transition
+
+focus:border-green-500
+focus:ring-4
+focus:ring-green-100
+"
+/>
+
+</section>
+
+</div>
+
+{/* ================================================= */}
+{/* FOOTER */}
+{/* ================================================= */}
+
+<div
+className="
+sticky
+bottom-0
+border-t
+border-slate-200
+bg-white
+px-8
+py-5
+"
+>
+
+<div
+className="
+flex
+flex-col-reverse
+gap-3
+sm:flex-row
+sm:justify-end
+"
+>
+
+<button
+
+type="button"
+
+disabled={loading}
+
+onClick={onClose}
+
+className="
+h-12
+rounded-xl
+border
+border-slate-300
+px-7
+font-medium
+transition
+hover:bg-slate-50
+"
+
+>
+
+Cancel
+
+</button>
+
+<button
+
+type="button"
+
+disabled={loading}
+
+onClick={handleDispatch}
+
 className="
 flex
 h-12
@@ -759,575 +1669,253 @@ justify-center
 gap-2
 rounded-xl
 bg-green-600
+px-8
+font-semibold
 text-white
-cursor-pointer
-text-sm
-font-medium
+transition
+
+hover:bg-green-700
+
+disabled:cursor-not-allowed
+disabled:opacity-60
 "
+
 >
 
-<Camera size={18}/>
-
-Camera
-
-
-<input
-hidden
-type="file"
-accept="image/*"
-capture="environment"
-
-onChange={(e)=>
-handleDriverPhoto(
-e.target.files?.[0]
-)
-}
-
+<CheckCircle2
+className="h-5 w-5"
 />
 
-</label>
+{
 
+loading
 
+?
 
-<label
-className="
-flex
-h-12
-items-center
-justify-center
-gap-2
-rounded-xl
-border
-cursor-pointer
-text-sm
-font-medium
-"
->
+"Dispatching..."
 
-<Upload size={18}/>
+:
 
-Gallery
-
-
-<input
-hidden
-type="file"
-accept="image/*"
-
-onChange={(e)=>
-handleDriverPhoto(
-e.target.files?.[0]
-)
-}
-
-/>
-
-
-</label>
-
-
-</div>
-
-
-)
+"Approve & Dispatch"
 
 }
 
+</button>
 
 </div>
 
 </div>
-            </div>
-          </section>
 
-          {/* ADDRESS + SCHEDULE */}
+</div>
 
-          <div
-            className="
-              grid
-              grid-cols-1
-              2xl:grid-cols-[1.5fr_1fr]
-              gap-5
-            "
-          >
-            {/* ADDRESS */}
-
-            <section className="rounded-3xl bg-blue-50 p-4 sm:p-6">
-              <div className="mb-4 flex items-center gap-2">
-                <MapPin className="text-blue-600" />
-
-                <h3 className="text-xl sm:text-2xl font-semibold">
-                  Pickup & Delivery
-                  Addresses
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  value={pickupAddress}
-                  onChange={(e) =>
-                    setPickupAddress(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Pickup Address"
-                  error={
-                    errors.pickupAddress
-                  }
-                />
-
-                <Input
-                  value={deliveryAddress}
-                  onChange={(e) =>
-                    setDeliveryAddress(
-                      e.target.value
-                    )
-                  }
-                  placeholder="Delivery Address"
-                  error={
-                    errors.deliveryAddress
-                  }
-                />
-              </div>
-            </section>
-
-            {/* DELIVERY SCHEDULE */}
-
-            <section className="rounded-3xl bg-yellow-50 p-4 sm:p-6">
-              <div className="mb-4 flex items-center gap-2">
-                <Calendar className="text-orange-500" />
-
-                <h3 className="text-xl sm:text-2xl font-semibold">
-                  Delivery Schedule
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  type="date"
-                  value={expectedDate}
-                  onChange={(e) =>
-                    setExpectedDate(
-                      e.target.value
-                    )
-                  }
-                  error={
-                    errors.expectedDate
-                  }
-                />
-
-                <Input
-                  type="time"
-                  value={expectedTime}
-                  onChange={(e) =>
-                    setExpectedTime(
-                      e.target.value
-                    )
-                  }
-                  error={
-                    errors.expectedTime
-                  }
-                />
-              </div>
-            </section>
-          </div>
-          {/* NOTES */}
-
-          <div>
-            <label className="mb-2 block font-medium">
-              Additional Notes
-            </label>
-
-            <textarea
-              value={notes}
-              onChange={(e) =>
-                setNotes(e.target.value)
-              }
-              rows={4}
-              placeholder="Any special instructions..."
-              className="
-                w-full
-                rounded-2xl
-                border
-                border-slate-200
-                p-4
-                outline-none
-                resize-none
-                focus:border-green-500
-                focus:ring-2
-                focus:ring-green-100
-              "
-            />
-          </div>
-
-        </div>
-
-        {/* FOOTER */}
-
-        <div
-          className="
-            sticky
-            bottom-0
-            z-20
-            bg-white
-            border-t
-            border-slate-200
-            px-4
-            sm:px-6
-            py-4
-            flex
-            flex-col-reverse
-            sm:flex-row
-            items-stretch
-            sm:items-center
-            justify-end
-            gap-3
-          "
-        >
-
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="
-              h-12
-              w-full
-              sm:w-auto
-              rounded-xl
-              border
-              border-slate-300
-              px-6
-              font-medium
-              hover:bg-slate-50
-            "
-          >
-            Cancel
-          </button>
-
-
-          <button
-            onClick={handleDispatch}
-            disabled={loading}
-            className="
-              flex
-              h-12
-              w-full
-              sm:w-auto
-              items-center
-              justify-center
-              gap-2
-              rounded-xl
-              bg-green-600
-              px-8
-              font-medium
-              text-white
-              transition
-              hover:bg-green-700
-              disabled:opacity-50
-            "
-          >
-            <CheckCircle2 className="h-5 w-5" />
-
-            {loading
-              ? "Dispatching..."
-              : "Approve & Dispatch"}
-          </button>
-
-        </div>
-
-      </div>
-    </div>
-  );
+</div>
+);
 }
-
-
 /* =====================================================
    UPLOAD CARD COMPONENT
 ===================================================== */
 
+interface UploadCardProps {
+  title: string;
+  subtitle: string;
+  uploaded?: boolean;
+  fileName?: string;
+  multiple?: boolean;
+  camera?: boolean;
+  video?: boolean;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => void;
+}
+
 function UploadCard({
+  title,
+  subtitle,
+  uploaded = false,
+  fileName,
+  multiple = false,
+  camera = false,
+  video = false,
+  onChange,
+}: UploadCardProps) {
+  return (
+    <div
+      className={`
+        rounded-[24px]
+        border-2
+        border-dashed
+        bg-white
+        p-5
+        transition-all
 
-title,
-subtitle,
-uploaded,
-fileName,
-multiple=false,
-camera=false,
-video=false,
-onChange,
+        ${
+          uploaded
+            ? "border-green-500 bg-green-50"
+            : "border-slate-300 hover:border-indigo-400"
+        }
+      `}
+    >
+      {uploaded ? (
+        <div className="flex flex-col items-center justify-center py-6">
 
-}:{
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+            <CheckCircle2 className="h-8 w-8 text-green-600" />
+          </div>
 
-title:string;
-subtitle:string;
-uploaded?:boolean;
-fileName?:string;
-multiple?:boolean;
-camera?:boolean;
-video?:boolean;
+          <p className="text-center text-base font-semibold text-green-700 break-all">
+            {fileName}
+          </p>
 
-onChange:
-(
-e:React.ChangeEvent<HTMLInputElement>
-)=>void;
+          <p className="mt-2 text-sm text-slate-500">
+            Upload completed
+          </p>
 
-}){
+        </div>
+      ) : (
+        <>
+          <div className="mb-6 text-center">
 
+            <h4 className="text-lg font-semibold text-slate-900">
+              {title}
+            </h4>
 
-return (
+            <p className="mt-1 text-sm text-slate-500">
+              {subtitle}
+            </p>
 
-<div
-className={`
-rounded-2xl
-border-2
-border-dashed
-p-4
-bg-white
+          </div>
 
-${uploaded
-?
-"border-green-500 bg-green-50"
-:
-"border-slate-300"
+          <div
+            className={`
+              grid
+              gap-3
+              ${camera ? "grid-cols-2" : "grid-cols-1"}
+            `}
+          >
+
+            {camera && (
+              <label
+                className="
+                  flex
+                  h-12
+                  cursor-pointer
+                  items-center
+                  justify-center
+                  gap-2
+                  rounded-xl
+                  bg-indigo-600
+                  text-sm
+                  font-medium
+                  text-white
+                  transition
+                  hover:bg-indigo-700
+                "
+              >
+                <Camera size={17} />
+
+                Camera
+
+                <input
+                  hidden
+                  type="file"
+                  capture="environment"
+                  accept={video ? "video/*" : "image/*"}
+                  multiple={multiple}
+                  onChange={onChange}
+                />
+              </label>
+            )}
+
+            <label
+              className="
+                flex
+                h-12
+                cursor-pointer
+                items-center
+                justify-center
+                gap-2
+                rounded-xl
+                border
+                border-slate-300
+                bg-white
+                text-sm
+                font-medium
+                transition
+                hover:bg-slate-50
+              "
+            >
+              <Upload size={17} />
+
+              Upload
+
+              <input
+                hidden
+                type="file"
+                accept={video ? "video/*" : "image/*,.pdf"}
+                multiple={multiple}
+                onChange={onChange}
+              />
+            </label>
+
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
-
-`}
->
-
-
-{
-uploaded ?
-
-
-<div className="
-flex
-flex-col
-items-center
-gap-2
-">
-
-
-<CheckCircle2
-className="
-text-green-600
-h-8
-w-8
-"
-/>
-
-
-<p
-className="
-font-semibold
-text-green-700
-text-center
-break-all
-"
->
-{fileName}
-</p>
-
-
-</div>
-
-
-:
-
-<>
-
-<p className="
-text-center
-font-semibold
-mb-3
-">
-
-{title}
-
-</p>
-
-
-<div className="
-grid
-grid-cols-2
-gap-3
-">
-
-
-{
-camera &&
-
-<label
-className="
-h-11
-flex
-items-center
-justify-center
-gap-2
-rounded-xl
-bg-indigo-600
-text-white
-cursor-pointer
-text-sm
-"
->
-
-<Camera size={16}/>
-
-Camera
-
-
-<input
-hidden
-type="file"
-
-accept={
-video
-?
-"video/*"
-:
-"image/*"
-}
-
-capture="environment"
-
-multiple={multiple}
-
-onChange={onChange}
-
-/>
-
-</label>
-
-}
-
-
-
-
-<label
-className="
-h-11
-flex
-items-center
-justify-center
-gap-2
-rounded-xl
-border
-cursor-pointer
-text-sm
-"
->
-
-
-<Upload size={16}/>
-
-Upload
-
-
-<input
-
-hidden
-
-type="file"
-
-accept={
-video
-?
-"video/*"
-:
-"image/*"
-}
-
-multiple={multiple}
-
-onChange={onChange}
-
-/>
-
-
-</label>
-
-
-
-</div>
-
-</>
-
-
-}
-
-
-
-</div>
-
-)
-
-}
-
-
 
 /* =====================================================
    INPUT COMPONENT
 ===================================================== */
 
+interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  error?: string;
+}
 
 function Input({
   error,
   className = "",
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & {
-  error?: string;
-}) {
-
+}: InputProps) {
   return (
     <div className="w-full">
 
       <input
         {...props}
-
+        autoComplete="off"
         className={`
-          h-11
+          h-12
           w-full
           rounded-xl
           border
+          bg-white
           px-4
           text-sm
-          bg-white
           outline-none
-          transition
+          transition-all
 
           ${
             error
-              ? "border-red-500 bg-red-50"
-              : "border-slate-200"
+              ? "border-red-500 bg-red-50 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+              : "border-slate-300 focus:border-green-500 focus:ring-4 focus:ring-green-100"
           }
 
-          focus:border-green-500
-          focus:ring-2
-          focus:ring-green-100
+          placeholder:text-slate-400
+
+          disabled:bg-slate-100
+          disabled:text-slate-500
 
           ${className}
         `}
       />
 
-
-      {
-        error && (
-          <p
-            className="
-              mt-1
-              text-xs
-              text-red-500
-            "
-          >
-            {error}
-          </p>
-        )
-      }
+      {error && (
+        <p className="mt-1 text-xs font-medium text-red-500">
+          {error}
+        </p>
+      )}
 
     </div>
   );
 }
-
-
-
-
-

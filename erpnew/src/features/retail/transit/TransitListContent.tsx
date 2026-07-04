@@ -10,7 +10,10 @@ import {
   RefreshCw,
   Truck,
 } from "lucide-react";
-
+import {
+  isHeadOfficeUser,
+  isDistrictUser,
+} from "@/core/auth/permissions";
 
 import { getTransitTransfers, markTransferReceived } from "./api";
 import {
@@ -27,6 +30,7 @@ import {
 import TransitGoogleMap from "./TransitGoogleMap";
 import TransitMapModal from "./TransitMapModal";
 import type { TransitDirection, TransitTransfer } from "./types";
+import { startTransferLiveTracking } from "@/features/retail/request/api/live-tracking-manager";
 import {
   canMarkDelivered,
   formatDate,
@@ -35,13 +39,27 @@ import {
   isDeliveredStatus,
   isInTransitStatus,
 } from "./utils";
-import { isHeadOfficeUser } from "@/core/auth/permissions";
+import DirectTransferModal from "./DirectTransfer";
+import stockTransferApi, {
+  type DispatchTransferPayload,
+} from "./stockTransferApi";
+import ApproveDispatchModal from "../request/components/ApproveDispatchModal";
+
 
 type SummaryState = {
   in_transit: number;
   shipments: number;
   goods_receipt: number;
 };
+
+// Single source of truth for which of the two dispatch-flow modals
+// (if any) is currently open. Using one state value instead of two
+// separate booleans avoids any chance of a render happening where
+// both are "true"/"false" out of sync with each other.
+type DispatchModalState =
+  | { step: "closed" }
+  | { step: "direct-transfer" }
+  | { step: "approve"; data: { districtId: number; items: any[] } };
 
 function getTrackingValue(item: TransitTransfer) {
   return item.tracking_number || item.transfer_no || `TRK-${item.id}`;
@@ -80,9 +98,17 @@ export default function TransitListContent({
 
   const [activeTab, setActiveTab] = useState<TransitDirection>("incoming");
   const [error, setError] = useState("");
+
+  const [dispatchModal, setDispatchModal] =
+    useState<DispatchModalState>({ step: "closed" });
+
+  const [tableLoading, setTableLoading] = useState(false);
   const [markingId, setMarkingId] = useState<number | null>(null);
   const [selectedMapItem, setSelectedMapItem] =
     useState<TransitTransfer | null>(null);
+  const isHeadOffice = isHeadOfficeUser();
+
+  const isDistrict = isDistrictUser()
 
   async function loadTransfers() {
     try {
@@ -156,6 +182,29 @@ export default function TransitListContent({
     );
   }, [items, activeTab]);
 
+  const handleApproveDispatch = async (payload: any) => {
+    try {
+      setTableLoading(true);
+
+      const response =
+        await stockTransferApi.dispatchNewItemTransfer(payload);
+
+      const transferId = response?.data?.transfer_id;
+
+      if (!transferId) throw new Error("Transfer ID missing");
+
+      await startTransferLiveTracking(transferId);
+
+      setDispatchModal({ step: "closed" });
+
+      loadTransfers();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTableLoading(false);
+    }
+  };
+
   const handleMarkDelivered = async (
     event: MouseEvent<HTMLButtonElement>,
     item: TransitTransfer
@@ -177,6 +226,21 @@ export default function TransitListContent({
     } finally {
       setMarkingId(null);
     }
+  };
+
+  // Direct Transfer modal "Continue" hands off straight to the
+  // Approve & Dispatch modal in a single atomic state update.
+  const handleDirectTransferSubmit = (
+    submittedItems: any[],
+    districtId: number
+  ) => {
+    setDispatchModal({
+      step: "approve",
+      data: {
+        items: submittedItems,
+        districtId,
+      },
+    });
   };
 
   if (loading) {
@@ -245,14 +309,50 @@ export default function TransitListContent({
         </section>
 
         <section className="mt-[32px]">
-          <div className="flex flex-col gap-[18px] lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-[18px] lg:flex-row lg:items-center lg:justify-between ">
             <h2 className="erp-section-title">Active Shipments</h2>
-            <TransitDirectionToggle
-              value={activeTab}
-              onChange={setActiveTab}
-              incomingCount={incomingCount}
-              outgoingCount={outgoingCount}
-            />
+
+            <div className="flex items-center gap-3 max-[768px]:flex-col-reverse max-[768px]:items-start">
+
+              {isDistrict && (
+                <button
+                  onClick={() =>
+                    setDispatchModal({ step: "direct-transfer" })
+                  }
+                  className="inline-flex h-[46px] items-center justify-center rounded-[14px] bg-erp-dark px-5 text-[15px] font-semibold text-white shadow-erp-card transition hover:bg-erp-primary-hover"
+                >
+                  Direct Transfer
+                </button>
+              )}
+
+              <DirectTransferModal
+                open={dispatchModal.step === "direct-transfer"}
+                onClose={() =>
+                  setDispatchModal({ step: "closed" })
+                }
+                onSubmit={handleDirectTransferSubmit}
+              />
+
+              <ApproveDispatchModal
+                open={dispatchModal.step === "approve"}
+                onClose={() =>
+                  setDispatchModal({ step: "closed" })
+                }
+                transferData={
+                  dispatchModal.step === "approve"
+                    ? dispatchModal.data
+                    : null
+                }
+                onSubmit={handleApproveDispatch}
+              />
+
+              <TransitDirectionToggle
+                value={activeTab}
+                onChange={setActiveTab}
+                incomingCount={incomingCount}
+                outgoingCount={outgoingCount}
+              />
+            </div>
           </div>
 
           <div className="mt-[28px] space-y-[20px]">

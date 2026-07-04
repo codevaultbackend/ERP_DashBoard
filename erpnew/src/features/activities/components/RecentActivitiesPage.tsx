@@ -1,4 +1,18 @@
 "use client";
+import {
+  ChevronDown,
+  Check,
+} from "lucide-react";
+import {
+  isHeadOfficeUser,
+} from "@/core/auth/permissions"
+
+import {
+  Listbox,
+  Transition,
+} from "@headlessui/react";
+
+import { Fragment } from "react";
 
 import React, {
   memo,
@@ -29,8 +43,14 @@ import {
 } from "lucide-react";
 import {
   getOwnRecentActivities,
+  getStoreWiseActivities,
   type DistrictActivity,
 } from "../api/district-activities-api";
+
+import {
+  getOrganizationsByLevel,
+  type Organization,
+} from "../../head-office/staff-management/api/staff-management-api";
 
 type UiActivity = {
   id: string;
@@ -306,12 +326,138 @@ function ActivitySkeleton() {
     </div>
   );
 }
+type DropdownOption = {
+  value: string;
+  label: string;
+};
+
+function ERPDropdown({
+  value,
+  options,
+  placeholder,
+  onChange,
+  disabled = false,
+}: {
+  value: string;
+  options: DropdownOption[];
+  placeholder: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const selected =
+    options.find((item) => item.value === value) ??
+    {
+      value: "",
+      label: placeholder,
+    };
+
+  return (
+    <Listbox
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+    >
+      <div className="relative w-full">
+        <Listbox.Button
+          className={cn(
+            "group relative h-[52px] w-full rounded-2xl",
+            "border border-[#D9E2F2]",
+            "px-5 pr-12 text-left transition-all duration-200",
+
+            disabled
+              ? "cursor-not-allowed bg-[#F8FAFC] text-[#94A3B8]"
+              : "bg-white hover:border-[#B4C7F7] focus:border-[#2F6FED] focus:ring-4 focus:ring-[#2F6FED]/10"
+          )}
+        >
+          <span className="block truncate text-[15px] font-medium text-[#1A2233]">
+            {selected.label}
+          </span>
+
+          <ChevronDown
+            className={cn(
+              "absolute right-4 top-1/2 h-5 w-5",
+              "-translate-y-1/2",
+              "text-[#64748B]",
+              "transition-transform duration-200",
+              "group-data-[headlessui-state=open]:rotate-180"
+            )}
+          />
+        </Listbox.Button>
+        {!disabled && (<Transition
+          as={Fragment}
+          leave="transition duration-100"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <Listbox.Options
+            className={cn(
+              "absolute z-50 mt-2",
+              "max-h-72 w-full overflow-auto",
+              "rounded-2xl",
+              "border border-[#DCE5F5]",
+              "bg-white",
+              "py-2",
+              "shadow-[0_20px_50px_rgba(15,23,42,.14)]",
+              "focus:outline-none"
+            )}
+          >
+            {options.map((option) => (
+              <Listbox.Option
+                key={option.value}
+                value={option.value}
+                className={({ active }) =>
+                  cn(
+                    "relative cursor-pointer select-none",
+                    "px-5 py-3",
+                    "text-[14px]",
+                    "transition-colors",
+                    active
+                      ? "bg-[#EEF4FF] text-[#1456C8]"
+                      : "text-[#1E293B]"
+                  )
+                }
+              >
+                {({ selected }) => (
+                  <>
+                    <span
+                      className={cn(
+                        "block truncate",
+                        selected
+                          ? "font-semibold"
+                          : "font-medium"
+                      )}
+                    >
+                      {option.label}
+                    </span>
+
+                    {selected && (
+                      <Check
+                        className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1456C8]"
+                      />
+                    )}
+                  </>
+                )}
+              </Listbox.Option>
+            ))}
+          </Listbox.Options>
+        </Transition>)}
+
+      </div>
+    </Listbox>
+  );
+}
 
 export default function RecentActivitiesPage() {
   const parentRef = useRef<HTMLDivElement | null>(null);
   const isMobile = useIsMobile();
+  const isHeadOffice = useMemo(() => isHeadOfficeUser(), []);
 
   const [activities, setActivities] = useState<DistrictActivity[]>([]);
+  const [retailStores, setRetailStores] = useState<Organization[]>([]);
+  const [districtStores, setDistrictStores] = useState<Organization[]>([]);
+
+  const [selectedRetailStore, setSelectedRetailStore] = useState("");
+  const [selectedDistrictStore, setSelectedDistrictStore] = useState("");
 
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
@@ -333,13 +479,7 @@ export default function RecentActivitiesPage() {
     [activities]
   );
 
-  const filteredActivities = useMemo(() => {
-    if (!debouncedSearch) return normalizedActivities;
-
-    return normalizedActivities.filter((item) =>
-      item.searchableText.includes(debouncedSearch)
-    );
-  }, [normalizedActivities, debouncedSearch]);
+  const filteredActivities = normalizedActivities;
   const rowVirtualizer = useVirtualizer({
     count: isMobile ? 0 : filteredActivities.length,
     getScrollElement: () => parentRef.current,
@@ -364,10 +504,26 @@ export default function RecentActivitiesPage() {
           setLoading(true);
         }
 
-        const response = await getOwnRecentActivities(
-          pageNumber,
-          PAGE_SIZE
-        );
+        let selectedStore = "";
+
+        if (selectedRetailStore) {
+          selectedStore = selectedRetailStore;
+        } else if (selectedDistrictStore) {
+          selectedStore = selectedDistrictStore;
+        }
+
+        const response = selectedStore
+          ? await getStoreWiseActivities(
+            selectedStore,
+            pageNumber,
+            PAGE_SIZE,
+            debouncedSearch
+          )
+          : await getOwnRecentActivities(
+            pageNumber,
+            PAGE_SIZE,
+            debouncedSearch
+          )
 
         if (!response.success) {
           throw new Error(response.message);
@@ -377,7 +533,7 @@ export default function RecentActivitiesPage() {
           ? response.data
           : [];
 
-        setActivities(prev =>
+        setActivities((prev) =>
           append ? [...prev, ...rows] : rows
         );
 
@@ -400,22 +556,93 @@ export default function RecentActivitiesPage() {
         setLoadingMore(false);
       }
     },
-    []
+    [selectedRetailStore, selectedDistrictStore]
   );
 
   useEffect(() => {
-    fetchActivities();
-  }, [fetchActivities]);
+    setPage(1);
+    setActivities([]);
+    fetchActivities(1);
+  }, [
+    fetchActivities,
+    selectedRetailStore,
+    selectedDistrictStore,
+    debouncedSearch
+  ]);
+  useEffect(() => {
+    async function loadStores() {
+      try {
+        const [retail, district] = await Promise.all([
+          getOrganizationsByLevel("retail"),
+          getOrganizationsByLevel("district"),
+        ]);
+
+        setRetailStores(retail);
+        setDistrictStores(district);
+      } catch (err) {
+        console.error("Unable to load stores", err);
+      }
+    }
+
+    loadStores();
+  }, []);
 
   const loadMore = useCallback(() => {
-  console.log("LOAD MORE", page);
+    if (loadingMore || !hasMore) return;
 
-  if (loadingMore || !hasMore) return;
-
-  fetchActivities(page + 1, false, true);
-}, [page, hasMore, loadingMore, fetchActivities]);
+    fetchActivities(page + 1, false, true);
+  }, [
+    page,
+    hasMore,
+    loadingMore,
+    fetchActivities,
+  ]);
 
   console.log(hasMore)
+  const selectedDistrict = useMemo(
+    () =>
+      districtStores.find(
+        (store) => store.store_code === selectedDistrictStore
+      ),
+    [districtStores, selectedDistrictStore]
+  );
+
+  const filteredRetailStores = useMemo(() => {
+    if (!selectedDistrict) return [];
+
+    return retailStores.filter(
+      (store) =>
+        String(store.district_id) === String(selectedDistrict.id)
+    );
+  }, [retailStores, selectedDistrict]);
+
+  const retailOptions = useMemo(
+    () => [
+      {
+        value: "",
+        label: "All Retail Stores",
+      },
+      ...filteredRetailStores.map((store) => ({
+        value: store.store_code,
+        label: store.store_name,
+      })),
+    ],
+    [filteredRetailStores]
+  );
+  const districtOptions = useMemo(
+    () => [
+      {
+        value: "",
+        label: "All District Stores",
+      },
+      ...districtStores.map((store) => ({
+        value: store.store_code,
+        label: store.store_name,
+      })),
+    ],
+    [districtStores]
+  );
+
 
   return (
     <main className="min-w-0 flex-1 bg-erp-page font-erp">
@@ -453,10 +680,40 @@ export default function RecentActivitiesPage() {
               </button>
             ) : null}
           </div>
+          {isHeadOffice && (
+            <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center">
 
-          <p className="text-[13px] font-semibold leading-[18px] tracking-[-0.02em] text-erp-muted max-md:text-right">
-            Showing {activities.length} of {totalCount}
-          </p>
+              <div className="w-full lg:w-[320px]">
+                <ERPDropdown
+                  value={selectedDistrictStore}
+                  options={districtOptions}
+                  placeholder="Select District"
+                  onChange={(value) => {
+                    setSelectedDistrictStore(value);
+                    setSelectedRetailStore("");
+                  }}
+                />
+              </div>
+
+              <div className="w-full lg:w-[320px]">
+                <ERPDropdown
+                  value={selectedRetailStore}
+                  options={retailOptions}
+                  placeholder={
+                    selectedDistrictStore
+                      ? "Select Retail Store"
+                      : "Select District First"
+                  }
+                  disabled={
+                    !selectedDistrictStore ||
+                    filteredRetailStores.length === 0
+                  }
+                  onChange={setSelectedRetailStore}
+                />
+              </div>
+
+            </div>
+          )}
         </div>
 
         <div className="mt-[24px]">

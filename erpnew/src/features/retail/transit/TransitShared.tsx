@@ -112,8 +112,8 @@ shadow-erp-card
               type="button"
               onClick={() => onChange(option.value)}
               className={cn(
-                "flex h-full items-center justify-center gap-[8px] rounded-full px-[14px]",
-                "text-[15px] font-semibold leading-[20px] tracking-[-0.02em] transition-all",
+                "flex h-[40px] items-center justify-center gap-[8px] rounded-full px-[14px]",
+                "text-[15px] font-semibold leading-[20px] tracking-[-0.02em] transition-all ",
                 active
                   ? "bg-white text-erp-dark shadow-[0px_1px_3px_rgba(15,23,42,0.12)]"
                   : "bg-transparent text-white hover:bg-white/10"

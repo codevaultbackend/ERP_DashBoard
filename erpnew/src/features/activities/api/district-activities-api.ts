@@ -6,7 +6,9 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   "https://erp-for-local.onrender.com";
 
-export type ActivityLevel = "district" | "retail" | "head";
+/* =======================
+   TYPES
+======================= */
 
 export type DistrictActivity = {
   id: number;
@@ -38,10 +40,17 @@ export type RecentActivitiesResponse = {
   data: DistrictActivity[];
 };
 
+/* =======================
+   STORAGE HELPERS
+======================= */
+
 function getCookieValue(name: string) {
   if (typeof document === "undefined") return null;
 
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  const match = document.cookie.match(
+    new RegExp(`(?:^|; )${name}=([^;]*)`)
+  );
+
   return match ? decodeURIComponent(match[1]) : null;
 }
 
@@ -57,8 +66,8 @@ function getStoredValue(keys: string[]) {
   for (const key of keys) {
     const value = safeValue(
       localStorage.getItem(key) ||
-        sessionStorage.getItem(key) ||
-        getCookieValue(key)
+      sessionStorage.getItem(key) ||
+      getCookieValue(key)
     );
 
     if (value) return value;
@@ -71,14 +80,18 @@ function getStoredUser() {
   if (typeof window === "undefined") return null;
 
   try {
-    const rawUser =
+    const raw =
       localStorage.getItem("user") || sessionStorage.getItem("user");
 
-    return rawUser ? JSON.parse(rawUser) : null;
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
+
+/* =======================
+   AUTH
+======================= */
 
 function decodeJwtPayload(token: string) {
   try {
@@ -86,10 +99,14 @@ function decodeJwtPayload(token: string) {
     if (!payload) return null;
 
     const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+
     const json = decodeURIComponent(
       atob(normalized)
         .split("")
-        .map((char) => `%${`00${char.charCodeAt(0).toString(16)}`.slice(-2)}`)
+        .map(
+          (c) =>
+            `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`
+        )
         .join("")
     );
 
@@ -106,7 +123,6 @@ function getAuthToken() {
     "access_token",
     "authToken",
     "ims_token",
-    "imsToken",
     "jwt",
   ]);
 
@@ -116,79 +132,10 @@ function getAuthToken() {
 
   return safeValue(
     user?.token ||
-      user?.accessToken ||
-      user?.access_token ||
-      user?.authToken ||
-      user?.jwt
+    user?.accessToken ||
+    user?.authToken ||
+    user?.jwt
   );
-}
-
-function getAuthPayload() {
-  const token = getAuthToken();
-  if (!token) return null;
-
-  return decodeJwtPayload(token);
-}
-
-function normalizeLevel(value?: string | null): ActivityLevel | null {
-  const level = String(value || "").trim().toLowerCase();
-
-  if (!level) return null;
-  if (level.includes("head")) return "head";
-  if (level.includes("retail")) return "retail";
-  if (level.includes("district")) return "district";
-
-  return null;
-}
-
-function getCurrentRole() {
-  const payload = getAuthPayload();
-
-  const role =
-    payload?.role ||
-    getStoredValue(["normalized_role", "role"]) ||
-    getStoredUser()?.normalized_role ||
-    getStoredUser()?.role ||
-    "";
-
-  return normalizeRole(role);
-}
-
-export function getActivityLevelByRole(): ActivityLevel {
-  const payload = getAuthPayload();
-
-  const payloadLevel = normalizeLevel(payload?.organization_level);
-  if (payloadLevel) return payloadLevel;
-
-  const storedLevel = normalizeLevel(
-    getStoredValue(["level", "organization_level"])
-  );
-  if (storedLevel) return storedLevel;
-
-  const userLevel = normalizeLevel(getStoredUser()?.organization_level);
-  if (userLevel) return userLevel;
-
-  const role = getCurrentRole();
-
-  if (
-    role === "super_admin" ||
-    role === "head_manager" ||
-    role === "head_tl" ||
-    role === "head_office_manager" ||
-    role === "head_office_tl"
-  ) {
-    return "head";
-  }
-
-  if (role === "retail_manager" || role === "retail_tl") {
-    return "retail";
-  }
-
-  if (role === "district_manager" || role === "district_tl") {
-    return "district";
-  }
-
-  return "head";
 }
 
 function getAuthHeaders() {
@@ -203,19 +150,85 @@ function getAuthHeaders() {
   };
 }
 
-export async function getOwnRecentActivities(
-  page = 2,
-  limit = 20,
-  level?: ActivityLevel
-) {
-  const finalLevel = level || getActivityLevelByRole();
+/* =======================
+   ROLE DETECTION
+======================= */
 
+function normalizeLevel(value?: string | null) {
+  const v = String(value || "").toLowerCase();
+
+  if (!v) return null;
+  if (v.includes("head")) return "head";
+  if (v.includes("retail")) return "retail";
+  if (v.includes("district")) return "district";
+
+  return null;
+}
+
+function getCurrentRole() {
+  const payload = decodeJwtPayload(getAuthToken() || "");
+
+  const role =
+    payload?.role ||
+    getStoredValue(["role", "normalized_role"]) ||
+    getStoredUser()?.role ||
+    "";
+
+  return normalizeRole(role);
+}
+
+function getActivityLevelByRole() {
+  const payload = decodeJwtPayload(getAuthToken() || "");
+
+  const payloadLevel = normalizeLevel(payload?.organization_level);
+  if (payloadLevel) return payloadLevel;
+
+  const storedLevel = normalizeLevel(
+    getStoredValue(["level", "organization_level"])
+  );
+  if (storedLevel) return storedLevel;
+
+  const userLevel = normalizeLevel(
+    getStoredUser()?.organization_level
+  );
+  if (userLevel) return userLevel;
+
+  const role = getCurrentRole();
+
+  if (
+    role === "super_admin" ||
+    role === "head_manager" ||
+    role === "head_tl" ||
+    role === "head_office_manager" ||
+    role === "head_office_tl"
+  ) return "head";
+
+  if (role === "retail_manager" || role === "retail_tl")
+    return "retail";
+
+  if (role === "district_manager" || role === "district_tl")
+    return "district";
+
+  return "head";
+}
+
+/* =======================
+   API: OWN ACTIVITY (NEW)
+   uses: /Activity
+======================= */
+
+export async function getOwnRecentActivities(
+  page = 1,
+  limit = 20,
+  search = ""
+) {
   const response = await axios.get<RecentActivitiesResponse>(
-    `${API_BASE_URL}/Activity/${finalLevel}/own`,
+    `${API_BASE_URL}/Activity/head/own`,
     {
       params: {
         page,
         limit,
+        search,
       },
       headers: getAuthHeaders(),
     }
@@ -224,17 +237,48 @@ export async function getOwnRecentActivities(
   return response.data;
 }
 
-/**
- * Backward support.
- * Important: do NOT force district here, because common page may use this
- * while user is logged in as head/retail.
- */
+/* =======================
+   API: STORE WISE (HEAD ONLY)
+   uses: /Activity/store-wise
+======================= */
+
+export async function getStoreWiseActivities(
+  storeCode: string,
+  page = 1,
+  limit = 20,
+  search = ""
+) {
+  const response = await axios.get<RecentActivitiesResponse>(
+    `${API_BASE_URL}/Activity/store-wise`,
+    {
+      params: {
+        store_code: storeCode,
+        page,
+        limit,
+        search,
+      },
+      headers: getAuthHeaders(),
+    }
+  );
+
+  return response.data;
+}
+
+/* =======================
+   BACKWARD SUPPORT (OPTIONAL WRAPPERS)
+======================= */
 
 export const getDistrictOwnRecentActivities = (limit = 500) =>
   getOwnRecentActivities(1, limit);
+export function getCurrentOrganizationLevel() {
+  return getActivityLevelByRole();
+}
+export function getLoggedInRole() {
+  return getCurrentRole();
+}
 
 export const getRetailOwnRecentActivities = (limit = 500) =>
-  getOwnRecentActivities(1, limit, "retail");
+  getOwnRecentActivities(1, limit);
 
 export const getHeadOwnRecentActivities = (limit = 500) =>
-  getOwnRecentActivities(1, limit, "head");
+  getOwnRecentActivities(1, limit);

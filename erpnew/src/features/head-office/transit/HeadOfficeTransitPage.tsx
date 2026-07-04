@@ -5,7 +5,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import DirectTransferModal from "./DirectTransferModal";
-import ApproveStockRequestModal from "./ApproveDispatchModal";
+import stockTransferApi from "@/features/head-office/transit/stockTransferApi";
+import { startTransferLiveTracking } from "@/features/retail/request/api/live-tracking-manager";
 import {
   CheckCircle2,
   ChevronDown,
@@ -45,6 +46,7 @@ import {
   isInTransitStatus,
 } from "../../retail/transit/utils";
 import FilterDropdown from "./FilterDropdown";
+import ApproveDispatchModal from "./ApproveDispatchModal";
 
 type SummaryState = {
   total: number;
@@ -121,17 +123,35 @@ export default function HeadOfficeTransitPage({
     items: any[],
     districtId: number
   ) => {
-    setTransferData({
-      items,
-      districtId,
-    });
+    setTransferData({ items, districtId });
 
     setShowDirectTransferModal(false);
-
-    setTimeout(() => {
-      setShowApproveModal(true);
-    }, 200);
+    setShowApproveModal(true);
   };
+
+  const handleApproveDispatch = async (payload: any) => {
+  setTableLoading(true);
+
+  try {
+    const response =
+      await stockTransferApi.dispatchNewItemTransfer(payload);
+
+    const transferId = response?.data?.transfer_id;
+
+    if (!transferId) {
+      throw new Error("Transfer ID missing");
+    }
+
+    await startTransferLiveTracking(transferId);
+
+    closeApproveModal();
+    loadTransfers();
+  } catch (err) {
+    console.error("Dispatch failed:", err);
+  } finally {
+    setTableLoading(false);
+  }
+};
   const openDispatchModal = () => {
     setShowDirectTransferModal(false);
 
@@ -272,6 +292,11 @@ export default function HeadOfficeTransitPage({
       );
     });
   }, [items]);
+
+  const closeApproveModal = () => {
+    setShowApproveModal(false);
+    setTransferData(null);
+  };
 
 
   if (initialLoading) {
@@ -643,12 +668,12 @@ export default function HeadOfficeTransitPage({
         onSubmit={handleDirectTransferSubmit}
       />
 
-      <ApproveStockRequestModal
+      <ApproveDispatchModal
+        key={transferData?.districtId ?? "empty"}
         open={showApproveModal}
-        onClose={() =>
-          setShowApproveModal(false)
-        }
+        onClose={closeApproveModal}
         transferData={transferData}
+        onSubmit={handleApproveDispatch}
       />
 
       <TransitMapModal

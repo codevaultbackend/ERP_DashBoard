@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { LiveScannedBillingItem } from "./live-scanner-types";
 
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   "https://erp-for-local.onrender.com";

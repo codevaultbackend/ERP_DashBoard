@@ -222,10 +222,8 @@ export async function uploadStockInFile(file: File) {
 
 export async function getHeadOfficeItemsByCategory(category: string) {
   const res = await headOfficeStockApi.get<HeadOfficeCategoryResponse>(
-    "/stock/inventory/overall/category",
-    {
-      params: { category },
-    }
+    `/stock/head/category/${category}`,
+    
   );
 
   return res.data;

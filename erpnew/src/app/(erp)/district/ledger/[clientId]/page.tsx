@@ -431,7 +431,7 @@ export default function LedgerClientDetailPage() {
 
         <div className="min-w-0">
 
-          <h1 className="truncate text-[34px] font-semibold leading-[42px] tracking-[-0.04em] text-[#111827] sm:text-[42px] sm:leading-[50px]">
+          <h1 className="truncate text-[30px] font-semibold leading-[36px] ">
 
             {loading
               ? "Loading..."
