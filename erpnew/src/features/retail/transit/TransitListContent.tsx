@@ -44,6 +44,7 @@ import stockTransferApi, {
   type DispatchTransferPayload,
 } from "./stockTransferApi";
 import ApproveDispatchModal from "../request/components/ApproveDispatchModal";
+import ApproveStockRequestModal from "@/features/head-office/transit/ApproveDispatchModal";
 
 
 type SummaryState = {
@@ -333,7 +334,7 @@ export default function TransitListContent({
                 onSubmit={handleDirectTransferSubmit}
               />
 
-              <ApproveDispatchModal
+              <ApproveStockRequestModal
                 open={dispatchModal.step === "approve"}
                 onClose={() =>
                   setDispatchModal({ step: "closed" })

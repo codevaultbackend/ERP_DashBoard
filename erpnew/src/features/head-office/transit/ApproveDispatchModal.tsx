@@ -10,6 +10,7 @@ import {
   Camera,
   Upload,
   Trash2,
+  ImageIcon,
 } from "lucide-react";
 
 import { useEffect, useMemo, useState } from "react";
@@ -144,7 +145,7 @@ export default function ApproveStockRequestModal({
       (sum, item) =>
         sum +
         Number(item.weight || 0) *
-          Number(item.approved_qty || 0),
+        Number(item.approved_qty || 0),
       0
     );
   }, [approvedItems]);
@@ -235,12 +236,12 @@ export default function ApproveStockRequestModal({
     } else {
       const today = new Date();
 
-      today.setHours(0,0,0,0);
+      today.setHours(0, 0, 0, 0);
 
       const selected =
         new Date(expectedDate);
 
-      selected.setHours(0,0,0,0);
+      selected.setHours(0, 0, 0, 0);
 
       if (selected < today) {
         newErrors.expectedDate =
@@ -380,7 +381,7 @@ export default function ApproveStockRequestModal({
 
       alert(
         error.message ||
-          "Dispatch Failed"
+        "Dispatch Failed"
       );
 
     } finally {
@@ -392,13 +393,13 @@ export default function ApproveStockRequestModal({
 
   if (!open) return null;
   return (
-<div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
+    <div className="fixed inset-0 z-[99999999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-2 sm:p-4">
 
-<div
-className="
+      <div
+        className="
 relative
 w-full
-max-w-[1180px]
+max-w-[984px]
 h-[95vh]
 overflow-hidden
 rounded-[30px]
@@ -407,26 +408,27 @@ shadow-[0_20px_60px_rgba(0,0,0,.18)]
 flex
 flex-col
 "
->
+      >
 
-{/* ================= HEADER ================= */}
+        {/* ================= HEADER ================= */}
 
-<div
-className="
+        <div
+          className="
 flex
 items-center
 justify-between
 border-b
 border-slate-100
 px-8
+max-[768px]:!px-4
 py-6
 "
->
+        >
 
-<div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 max-[768px]:gap-">
 
-<div
-className="
+            <div
+              className="
 flex
 h-11
 w-11
@@ -435,255 +437,259 @@ justify-center
 rounded-full
 bg-green-50
 "
->
+            >
 
-<CheckCircle2
-className="h-7 w-7 text-green-600"
-/>
+              <CheckCircle2
+                className="h-7 w-7 text-green-600"
+              />
 
-</div>
+            </div>
 
-<div>
+            <div>
 
-<h2
-className="
-text-[22px]
-font-bold
+              <h2
+                className="
+text-[24px]
+max-[768px]:text-[18px]
+font-[600]
 text-slate-900
 "
->
+              >
 
-Approve Stock Request
+                Approve Stock Request
 
-</h2>
+              </h2>
 
-</div>
+            </div>
 
-</div>
+          </div>
 
-<button
-onClick={onClose}
-disabled={loading}
-className="
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="
 rounded-full
 p-2
 transition
 hover:bg-slate-100
 "
->
+          >
 
-<X className="h-6 w-6"/>
+            <X className="h-6 w-6" />
 
-</button>
+          </button>
 
-</div>
+        </div>
 
-{/* ================= BODY ================= */}
+        {/* ================= BODY ================= */}
 
-<div
-className="
+        <div
+          className="
 flex-1
 overflow-y-auto
-px-6
-py-5
-space-y-6
+px-3
+py-3
+space-y-3
 "
->
+        >
 
-{/* ================================================= */}
-{/* REQUEST DETAILS */}
-{/* ================================================= */}
+          {/* ================================================= */}
+          {/* REQUEST DETAILS */}
+          {/* ================================================= */}
 
-<section
-className="
+          <section
+            className="
 rounded-[28px]
 bg-gradient-to-r
 from-[#EEF4FF]
 to-[#F8F2FF]
 p-6
 "
->
+          >
 
-<h3
-className="
+            <h3
+              className="
 mb-5
-text-[32px]
+text-[18px]
 font-semibold
-text-slate-900
+text-[#101828]
 "
->
+            >
 
-Request Details
+              Request Details
 
-</h3>
+            </h3>
 
-<div
-className="
+            <div
+              className="
 grid
 grid-cols-1
 md:grid-cols-2
 xl:grid-cols-4
 gap-8
+text-[14px] font-[400]
 "
->
+            >
 
-<div>
+              <div className="flex gap-1.5 items-center">
 
-<p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500">
 
-Requester
+                  Requester :
 
-</p>
+                </p>
 
-<p
-className="
+                <p
+                  className="
 mt-1
 font-semibold
 text-slate-900
 "
->
+                >
 
-{
-transferData?.requesterName
-??
-`District #${transferData?.districtId}`
-}
+                  {
+                    transferData?.requesterName
+                    ??
+                    `District #${transferData?.districtId}`
+                  }
 
-</p>
+                </p>
 
-</div>
+              </div>
 
-<div>
+              <div className="flex gap-1.5 items-center">
 
-<p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500">
 
-Request ID
+                  Request ID
 
-</p>
+                </p>
 
-<p className="mt-1 font-semibold">
+                <p className="mt-1 font-semibold">
 
-{
-transferData?.requestId
-??
+                  {
+                    transferData?.requestId
+                    ??
 
-`REQ-${transferData?.districtId}`
-}
+                    `REQ-${transferData?.districtId}`
+                  }
 
-</p>
+                </p>
 
-</div>
+              </div>
 
-<div>
+              <div className="flex gap-1.5 items-center">
 
-<p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500">
 
-Priority
+                  Priority
 
-</p>
+                </p>
 
-<p
-className="
+                <p
+                  className="
 mt-1
 font-semibold
 text-orange-500
 uppercase
 "
->
+                >
 
-{
-transferData?.priority
-??
+                  {
+                    transferData?.priority
+                    ??
 
-"HIGH"
-}
+                    "HIGH"
+                  }
 
-</p>
+                </p>
 
-</div>
+              </div>
 
-<div>
+              <div className="flex gap-1.5 items-center">
 
-<p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500">
 
-Created
+                  Created
 
-</p>
+                </p>
 
-<p className="mt-1 font-semibold">
+                <p className="mt-1 font-semibold">
 
-{
-transferData?.createdAt
-??
+                  {
+                    transferData?.createdAt
+                    ??
 
-new Date().toLocaleDateString()
-}
+                    new Date().toLocaleDateString()
+                  }
 
-</p>
+                </p>
 
-</div>
+              </div>
 
-</div>
+            </div>
 
-<div
-className="
+            <div
+              className="
 mt-6
 rounded-2xl
 bg-white
 px-5
 py-4
+text-[14px] font-[400]
+text-[#364153]
 "
->
+            >
 
-<span
-className="
+              <span
+                className="
 font-semibold
-text-slate-900
+
 "
->
+              >
 
-Notes:
+                Notes:
 
-</span>
+              </span>
 
-{" "}
+              {" "}
 
-{
-transferData?.notes
-??
+              {
+                transferData?.notes
+                ??
 
-"Stock transfer request awaiting approval."
-}
+                "Stock transfer request awaiting approval."
+              }
 
-</div>
+            </div>
 
-</section>
+          </section>
 
-{/* ================================================= */}
-{/* PRODUCTS */}
-{/* ================================================= */}
+          {/* ================================================= */}
+          {/* PRODUCTS */}
+          {/* ================================================= */}
 
-<section
-className="
+          <section
+            className="
 rounded-[28px]
 bg-gradient-to-r
 from-[#F6F0FF]
 to-[#EEF6FF]
 p-6
 "
->
+          >
 
-<div
-className="
+            <div
+              className="
 mb-6
 flex
 items-center
 gap-3
 "
->
+            >
 
-<div
-className="
+              <div
+                className="
 flex
 h-10
 w-10
@@ -692,50 +698,52 @@ justify-center
 rounded-full
 bg-violet-100
 "
->
+              >
 
-<Package
-className="
+                <Package
+                  className="
 h-5
 w-5
 text-violet-700
 "
-/>
+                />
 
-</div>
+              </div>
 
-<h3
-className="
-text-[30px]
+              <h3
+                className="
+text-[18px]
+font-[600]
+text-[#101828]
 font-semibold
 "
->
+              >
 
-Confirm Products & Quantities
+                Confirm Products & Quantities
 
-</h3>
+              </h3>
 
-</div>
+            </div>
 
-<div
-className="
+            <div
+              className="
 grid
 grid-cols-1
 xl:grid-cols-2
 gap-5
 "
->
+            >
 
-{
-approvedItems.map(
-(item,index)=>(
-<div
-key={
-item.sku_code ??
-item.item_id ??
-index
-}
-className="
+              {
+                approvedItems.map(
+                  (item, index) => (
+                    <div
+                      key={
+                        item.sku_code ??
+                        item.item_id ??
+                        index
+                      }
+                      className="
 rounded-[24px]
 bg-white
 border
@@ -743,169 +751,169 @@ border-slate-100
 p-6
 shadow-sm
 "
->
+                    >
 
-<h4
-className="
+                      <h4
+                        className="
 truncate
-text-[24px]
-font-semibold
-text-slate-900
+text-[16px]
+font-[500]
+text-[#101828]
 "
->
+                      >
 
-{item.item_name}
+                        {item.item_name}
 
-</h4>
+                      </h4>
 
-<div
-className="
+                      <div
+                        className="
 mt-5
 grid
 grid-cols-2
 gap-5
 "
->
+                      >
 
-<div>
+                        <div>
 
-<label
-className="
+                          <label
+                            className="
 mb-2
 block
 text-sm
 font-medium
+text-[#0A0A0A]
 "
->
+                          >
 
-Requested Quantity
+                            Requested Quantity
 
-</label>
+                          </label>
 
-<input
-disabled
-value={item.qty}
-className="
-h-12
+                          <input
+                            disabled
+                            value={item.qty}
+                            className="
+h-9
 w-full
 rounded-xl
 bg-slate-100
 px-4
 font-medium
 "
-/>
+                          />
 
-</div>
+                        </div>
 
-<div>
+                        <div>
 
-<label
-className="
+                          <label
+                            className="
 mb-2
 block
 text-sm
 font-medium
 "
->
+                          >
 
-Approve Quantity *
+                            Approve Quantity *
 
-</label>
+                          </label>
 
-<input
-type="number"
-min={1}
-max={item.qty}
-value={item.approved_qty}
-onChange={(e)=>{
+                          <input
+                            type="number"
+                            min={1}
+                            max={item.qty}
+                            value={item.approved_qty}
+                            onChange={(e) => {
 
-const value=Math.max(
-1,
-Math.min(
-Number(e.target.value),
-Number(item.qty)
-)
-);
+                              const value = Math.max(
+                                1,
+                                Math.min(
+                                  Number(e.target.value),
+                                  Number(item.qty)
+                                )
+                              );
 
-setApprovedItems(prev=>
+                              setApprovedItems(prev =>
 
-prev.map((p,i)=>
+                                prev.map((p, i) =>
 
-i===index
+                                  i === index
 
-?
+                                    ?
 
-{
-...p,
-approved_qty:value
-}
+                                    {
+                                      ...p,
+                                      approved_qty: value
+                                    }
 
-:p
+                                    : p
 
-)
+                                )
 
-);
+                              );
 
-}}
-className={`
-h-12
+                            }}
+                            className={`
+h-9
 w-full
 rounded-xl
 border
 px-4
 outline-none
+bg-slate-100
+${errors[`qty_${index}`]
 
-${
-errors[`qty_${index}`]
+                                ?
 
-?
+                                "border-red-500 bg-red-50"
 
-"border-red-500 bg-red-50"
+                                :
 
-:
+                                "border-slate-200"
 
-"border-slate-200"
-
-}
+                              }
 
 focus:border-green-500
 `}
- />
+                          />
 
-{
-errors[`qty_${index}`] &&
+                          {
+                            errors[`qty_${index}`] &&
 
-<p
-className="
+                            <p
+                              className="
 mt-1
 text-xs
 text-red-500
 "
->
+                            >
 
-{
-errors[`qty_${index}`]
-}
+                              {
+                                errors[`qty_${index}`]
+                              }
 
-</p>
+                            </p>
 
-}
+                          }
 
-</div>
+                        </div>
 
-</div>
+                      </div>
 
-</div>
+                    </div>
 
-))}
-</div>
+                  ))}
+            </div>
 
-{/* ================================================= */}
-{/* UPLOADS */}
-{/* ================================================= */}
+            {/* ================================================= */}
+            {/* UPLOADS */}
+            {/* ================================================= */}
 
-<div
-className="
+            <div
+              className="
 mt-6
 grid
 grid-cols-1
@@ -913,125 +921,122 @@ sm:grid-cols-2
 xl:grid-cols-4
 gap-5
 "
->
+            >
 
-<UploadCard
-title="Dispatch Images"
-subtitle="Drag and Drop Images"
-camera
-multiple
-uploaded={dispatchImages.length>0}
-fileName={`${dispatchImages.length} Images`}
-onChange={(e)=>{
+              <UploadCard
+                title="Dispatch Images"
+                subtitle="Drag and Drop Images"
+                camera
+                multiple
+                uploaded={dispatchImages.length > 0}
+                fileName={`${dispatchImages.length} Images`}
+                onChange={(e) => {
 
-const files=Array.from(
-e.target.files ?? []
-);
+                  const files = Array.from(
+                    e.target.files ?? []
+                  );
 
-setDispatchImages(files);
+                  setDispatchImages(files);
 
-}}
-/>
+                }}
+              />
 
-<UploadCard
-title="Dispatch Video"
-subtitle="Record or Upload"
-camera
-video
-uploaded={!!dispatchVideo}
-fileName={dispatchVideo?.name}
-onChange={(e)=>{
+              <UploadCard
+                title="Dispatch Video"
+                subtitle="Record or Upload"
+                camera
+                video
+                uploaded={!!dispatchVideo}
+                fileName={dispatchVideo?.name}
+                onChange={(e) => {
 
-setDispatchVideo(
+                  setDispatchVideo(
 
-e.target.files?.[0] ??
+                    e.target.files?.[0] ??
 
-null
+                    null
 
-);
+                  );
 
-}}
-/>
+                }}
+              />
 
-<UploadCard
-title="Upload E-Way Bill"
-subtitle="PDF or Image"
-uploaded={!!ewayBill}
-fileName={ewayBill?.name}
-onChange={(e)=>{
+              <UploadCard
+                title="Upload E-Way Bill"
+                subtitle="Upload PDF or Image"
+                uploadOnly
+                uploaded={!!ewayBill}
+                fileName={ewayBill?.name}
+                onChange={(e) => {
+                  setEwayBill(
+                    e.target.files?.[0] ?? null
+                  );
+                }}
+              />
 
-setEwayBill(
-
-e.target.files?.[0] ??
-
-null
-
-);
-
-}}
-/>
-
-<div
-className="
+              <div
+                className="
 rounded-[24px]
 bg-white
 p-6
 flex
 flex-col
 justify-center
+max-h-[80px]
 "
->
+              >
 
-<p
-className="
-text-[30px]
+                <p
+                  className="
+text-[16px]
 font-semibold
-text-slate-900
+text-[#101828]
+leading-[24px]
 "
->
+                >
 
-Total Weight
+                  Total Weight
 
-</p>
+                </p>
 
-<p
-className="
+                <p
+                  className="
 mt-2
-text-[42px]
-font-bold
-text-violet-600
+text-[18px]
+font-[700]
+text-[#9810FA]
 "
->
+                >
 
-{
-totalWeight.toFixed(2)
-}g
+                  {
+                    totalWeight.toFixed(2)
+                  }g
 
-</p>
+                </p>
 
-</div>
+              </div>
 
-</div>
+            </div>
 
-</section>
-{/* ================================================= */}
-{/* DELIVERY PARTNER DETAILS */}
-{/* ================================================= */}
+          </section>
+          {/* ================================================= */}
+          {/* DELIVERY PARTNER DETAILS */}
+          {/* ================================================= */}
 
-<section
-className="
+          <section
+            className="
 rounded-[28px]
 bg-gradient-to-r
 from-[#EEFCEF]
 to-[#F2FFF9]
 p-6
 "
->
+          >
 
-<div className="mb-6 flex items-center gap-3">
+            <div className="mb-6 flex items-center gap-3">
 
-<div
-className="
+              <div
+                className="
 flex
 h-10
 w-10
@@ -1040,34 +1045,32 @@ justify-center
 rounded-full
 bg-green-100
 "
->
+              >
 
-<User
-className="
+                <User
+                  className="
 h-5
 w-5
 text-green-700
 "
-/>
+                />
 
-</div>
+              </div>
 
-<h3
-className="
-text-[30px]
-font-semibold
-text-slate-900
+              <h3
+                className="
+   text-[18px]   font-[600]   text-[#101828]   font-semibold   
 "
->
+              >
 
-Delivery Partner Details
+                Delivery Partner Details
 
-</h3>
+              </h3>
 
-</div>
+            </div>
 
-<div
-className="
+            <div
+              className="
 grid
 grid-cols-1
 md:grid-cols-2
@@ -1075,143 +1078,143 @@ xl:grid-cols-5
 gap-5
 items-start
 "
->
+            >
 
-{/* Driver */}
+              {/* Driver */}
 
-<div>
+              <div>
 
-<label className="mb-2 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium whitespace-nowrap">
 
-Driver Name *
+                  Driver Name *
 
-</label>
+                </label>
 
-<Input
-value={driverName}
-placeholder="Enter driver name"
-error={errors.driverName}
-onChange={(e)=>
-setDriverName(e.target.value)
-}
-/>
+                <Input
+                  value={driverName}
+                  placeholder="Enter driver name"
+                  error={errors.driverName}
+                  onChange={(e) =>
+                    setDriverName(e.target.value)
+                  }
+                />
 
-</div>
+              </div>
 
-{/* Phone */}
+              {/* Phone */}
 
-<div>
+              <div>
 
-<label className="mb-2 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium whitespace-nowrap">
 
-Driver Phone *
+                  Driver Phone *
 
-</label>
+                </label>
 
-<Input
-value={driverPhone}
-placeholder="+91 XXXXX XXXXX"
-error={errors.driverPhone}
-onChange={(e)=>
-setDriverPhone(
-e.target.value.replace(/[^\d]/g,"")
-)
-}
-/>
+                <Input
+                  value={driverPhone}
+                  placeholder="10 digit"
+                  error={errors.driverPhone}
+                  onChange={(e) =>
+                    setDriverPhone(
+                      e.target.value.replace(/[^\d]/g, "")
+                    )
+                  }
+                />
 
-</div>
+              </div>
 
-{/* Vehicle */}
+              {/* Vehicle */}
 
-<div>
+              <div>
 
-<label className="mb-2 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium whitespace-nowrap">
 
-Vehicle Number *
+                  Vehicle Number *
 
-</label>
+                </label>
 
-<Input
-value={vehicleNumber}
-placeholder="DL01AB1234"
-error={errors.vehicleNumber}
-onChange={(e)=>
-setVehicleNumber(
-e.target.value.toUpperCase()
-)
-}
-/>
+                <Input
+                  value={vehicleNumber}
+                  placeholder="DL01AB1234"
+                  error={errors.vehicleNumber}
+                  onChange={(e) =>
+                    setVehicleNumber(
+                      e.target.value.toUpperCase()
+                    )
+                  }
+                />
 
-</div>
+              </div>
 
-{/* Tracking */}
+              {/* Tracking */}
 
-<div>
+              <div>
 
-<label className="mb-2 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium whitespace-nowrap">
 
-Tracking Number *
+                  Tracking Number *
 
-</label>
+                </label>
 
-<Input
-value={trackingNumber}
-placeholder="TRK-XXXXXXXX"
-error={errors.trackingNumber}
-onChange={(e)=>
-setTrackingNumber(e.target.value)
-}
-/>
+                <Input
+                  value={trackingNumber}
+                  placeholder="TRK-XXXXXXXX"
+                  error={errors.trackingNumber}
+                  onChange={(e) =>
+                    setTrackingNumber(e.target.value)
+                  }
+                />
 
-</div>
+              </div>
 
-{/* Driver Photo */}
+              {/* Driver Photo */}
 
-<div>
+              <div>
 
-<label className="mb-2 block text-sm font-medium">
+                <label className="mb-2 block text-sm font-medium whitespace-nowrap">
 
-Driver Photo
+                  Driver Photo
 
-</label>
+                </label>
 
-<div
-className="
+                <div
+                  className="
 rounded-2xl
 border
 border-slate-200
 bg-white
 p-4
 "
->
+                >
 
-{
+                  {
 
-driverPreview ?
+                    driverPreview ?
 
-<div className="relative">
+                      <div className="relative">
 
-<img
+                        <img
 
-src={driverPreview}
+                          src={driverPreview}
 
-alt="Driver"
+                          alt="Driver"
 
-className="
+                          className="
 h-[130px]
 w-full
 rounded-xl
 object-cover
 "
-/>
+                        />
 
-<button
+                        <button
 
-type="button"
+                          type="button"
 
-onClick={removeDriverPhoto}
+                          onClick={removeDriverPhoto}
 
-className="
+                          className="
 absolute
 right-2
 top-2
@@ -1222,30 +1225,30 @@ text-white
 shadow
 "
 
->
+                        >
 
-<Trash2
-size={16}
-/>
+                          <Trash2
+                            size={16}
+                          />
 
-</button>
+                        </button>
 
-</div>
+                      </div>
 
-:
+                      :
 
-<div
-className="
+                      <div
+                        className="
 grid
-grid-cols-2
+grid-cols-1
 gap-3
 "
->
+                      >
 
-<label
-className="
+                        <label
+                          className="
 flex
-h-11
+h-9
 cursor-pointer
 items-center
 justify-center
@@ -1256,38 +1259,38 @@ text-white
 text-sm
 font-medium
 "
->
+                        >
 
-<Camera size={17}/>
+                          <Camera size={17} />
 
-Camera
+                          Camera
 
-<input
+                          <input
 
-hidden
+                            hidden
 
-type="file"
+                            type="file"
 
-capture="environment"
+                            capture="environment"
 
-accept="image/*"
+                            accept="image/*"
 
-onChange={(e)=>
+                            onChange={(e) =>
 
-handleDriverPhoto(
-e.target.files?.[0]
-)
+                              handleDriverPhoto(
+                                e.target.files?.[0]
+                              )
 
-}
+                            }
 
-/>
+                          />
 
-</label>
+                        </label>
 
-<label
-className="
+                        <label
+                          className="
 flex
-h-11
+h-9
 cursor-pointer
 items-center
 justify-center
@@ -1297,73 +1300,73 @@ border
 text-sm
 font-medium
 "
->
+                        >
 
-<Upload size={17}/>
+                          <Upload size={17} />
 
-Gallery
+                          Gallery
 
-<input
+                          <input
 
-hidden
+                            hidden
 
-type="file"
+                            type="file"
 
-accept="image/*"
+                            accept="image/*"
 
-onChange={(e)=>
+                            onChange={(e) =>
 
-handleDriverPhoto(
-e.target.files?.[0]
-)
+                              handleDriverPhoto(
+                                e.target.files?.[0]
+                              )
 
-}
+                            }
 
-/>
+                          />
 
-</label>
+                        </label>
 
-</div>
+                      </div>
 
-}
+                  }
 
-</div>
+                </div>
 
-</div>
+              </div>
 
-</div>
+            </div>
 
-</section>
+          </section>
 
-{/* ================================================= */}
-{/* ADDRESS + DELIVERY */}
-{/* ================================================= */}
+          {/* ================================================= */}
+          {/* ADDRESS + DELIVERY */}
+          {/* ================================================= */}
 
-<div
-className="
+          <div
+            className="
 grid
 grid-cols-1
 2xl:grid-cols-[1.55fr_1fr]
 gap-6
 "
->
+          >
 
-{/* ADDRESS */}
+            {/* ADDRESS */}
 
-<section
-className="
+            <section
+              className="
 rounded-[28px]
 bg-gradient-to-r
 from-[#EEF4FF]
 to-[#F7FBFF]
 p-6
 "
->
+            >
 
-<div className="mb-5 flex items-center gap-3">
+              <div className="mb-5 flex items-center gap-3">
 
-<div
-className="
+                <div
+                  className="
 flex
 h-10
 w-10
@@ -1372,98 +1375,97 @@ justify-center
 rounded-full
 bg-blue-100
 "
->
+                >
 
-<MapPin
-className="
+                  <MapPin
+                    className="
 h-5
 w-5
 text-blue-700
 "
-/>
+                  />
 
-</div>
+                </div>
 
-<h3
-className="
-text-[28px]
-font-semibold
+                <h3
+                  className="
+   text-[18px]   font-[600]   text-[#101828]   font-semibold      
 "
->
+                >
 
-Pickup & Delivery Addresses
+                  Pickup & Delivery Addresses
 
-</h3>
+                </h3>
 
-</div>
+              </div>
 
-<div
-className="
+              <div
+                className="
 grid
 grid-cols-1
 md:grid-cols-2
 gap-5
 "
->
+              >
 
-<div>
+                <div>
 
-<label className="mb-2 block text-sm font-medium">
+                  <label className="mb-2 block text-[11px] font-medium whitespace-nowrap">
 
-Pickup Address *
+                    Pickup Address *
 
-</label>
+                  </label>
 
-<Input
-value={pickupAddress}
-error={errors.pickupAddress}
-placeholder="Head Office Warehouse"
-onChange={(e)=>
-setPickupAddress(e.target.value)
-}
-/>
+                  <Input
+                    value={pickupAddress}
+                    error={errors.pickupAddress}
+                    placeholder="Head Office Warehouse"
+                    onChange={(e) =>
+                      setPickupAddress(e.target.value)
+                    }
+                  />
 
-</div>
+                </div>
 
-<div>
+                <div>
 
-<label className="mb-2 block text-sm font-medium">
+                  <label className="mb-2 block text-[11px] font-medium whitespace-nowrap">
 
-Delivery Address *
+                    Delivery Address *
 
-</label>
+                  </label>
 
-<Input
-value={deliveryAddress}
-error={errors.deliveryAddress}
-placeholder="District Store"
-onChange={(e)=>
-setDeliveryAddress(e.target.value)
-}
-/>
+                  <Input
+                    value={deliveryAddress}
+                    error={errors.deliveryAddress}
+                    placeholder="District Store"
+                    onChange={(e) =>
+                      setDeliveryAddress(e.target.value)
+                    }
+                  />
 
-</div>
+                </div>
 
-</div>
+              </div>
 
-</section>
+            </section>
 
-{/* DELIVERY */}
+            {/* DELIVERY */}
 
-<section
-className="
+            <section
+              className="
 rounded-[28px]
 bg-gradient-to-r
 from-[#FFF7E4]
 to-[#FFFDF3]
 p-6
 "
->
+            >
 
-<div className="mb-5 flex items-center gap-3">
+              <div className="mb-5 flex items-center gap-3">
 
-<div
-className="
+                <div
+                  className="
 flex
 h-10
 w-10
@@ -1472,116 +1474,112 @@ justify-center
 rounded-full
 bg-orange-100
 "
->
+                >
 
-<Calendar
-className="
+                  <Calendar
+                    className="
 h-5
 w-5
 text-orange-600
 "
-/>
+                  />
 
-</div>
+                </div>
 
-<h3
-className="
-text-[28px]
-font-semibold
+                <h3
+                  className="
+      text-[18px]   font-[600]   text-[#101828]   font-semibold               
 "
->
+                >
 
-Delivery Schedule
+                  Delivery Schedule
 
-</h3>
+                </h3>
 
-</div>
+              </div>
 
-<div
-className="
+              <div
+                className="
 grid
 grid-cols-1
 md:grid-cols-2
 gap-5
 "
->
+              >
 
-<div>
+                <div>
 
-<label className="mb-2 block text-sm font-medium">
+                  <label className="mb-2 block text-[11px] font-medium ">
 
-Expected Delivery Date *
+                    Expected Delivery Date *
 
-</label>
+                  </label>
 
-<Input
-type="date"
-value={expectedDate}
-error={errors.expectedDate}
-onChange={(e)=>
-setExpectedDate(e.target.value)
-}
-/>
+                  <Input
+                    type="date"
+                    value={expectedDate}
+                    error={errors.expectedDate}
+                    onChange={(e) =>
+                      setExpectedDate(e.target.value)
+                    }
+                  />
 
-</div>
+                </div>
 
-<div>
+                <div>
 
-<label className="mb-2 block text-sm font-medium">
+                  <label className="mb-2 block text-[11px]  font-medium whitespace-nowrap ml-2">
 
-Expected Time *
+                    Expected Time *
 
-</label>
+                  </label>
 
-<Input
-type="time"
-value={expectedTime}
-error={errors.expectedTime}
-onChange={(e)=>
-setExpectedTime(e.target.value)
-}
-/>
+                  <Input
+                    type="time"
+                    value={expectedTime}
+                    error={errors.expectedTime}
+                    onChange={(e) =>
+                      setExpectedTime(e.target.value)
+                    }
+                  />
 
-</div>
+                </div>
 
-</div>
+              </div>
 
-</section>
+            </section>
 
-</div>
+          </div>
 
-{/* ================================================= */}
-{/* NOTES */}
-{/* ================================================= */}
+          {/* ================================================= */}
+          {/* NOTES */}
+          {/* ================================================= */}
 
-<section>
+          <section>
 
-<label
-className="
-mb-3
-block
-text-lg
-font-semibold
+            <label
+              className="
+   text-[18px]   font-[600]   text-[#101828]   font-semibold    !mb-2
 "
->
+            >
 
-Additional Notes
+              Additional Notes
 
-</label>
+            </label>
 
-<textarea
+            <textarea
 
-rows={5}
+              rows={5}
 
-value={notes}
+              value={notes}
 
-onChange={(e)=>
-setNotes(e.target.value)
-}
+              onChange={(e) =>
+                setNotes(e.target.value)
+              }
 
-placeholder="Any special instruction..."
+              placeholder="Any special instruction..."
 
-className="
+              className="
 w-full
 resize-none
 rounded-[22px]
@@ -1591,52 +1589,54 @@ bg-white
 p-5
 outline-none
 transition
-
+mt-[10px]
 focus:border-green-500
 focus:ring-4
 focus:ring-green-100
 "
-/>
+            />
 
-</section>
+          </section>
 
-</div>
+        </div>
 
-{/* ================================================= */}
-{/* FOOTER */}
-{/* ================================================= */}
+        {/* ================================================= */}
+        {/* FOOTER */}
+        {/* ================================================= */}
 
-<div
-className="
+        <div
+          className="
 sticky
 bottom-0
 border-t
 border-slate-200
 bg-white
 px-8
+max-[768px]:!px-4
+
 py-5
 "
->
+        >
 
-<div
-className="
+          <div
+            className="
 flex
 flex-col-reverse
 gap-3
 sm:flex-row
 sm:justify-end
 "
->
+          >
 
-<button
+            <button
 
-type="button"
+              type="button"
 
-disabled={loading}
+              disabled={loading}
 
-onClick={onClose}
+              onClick={onClose}
 
-className="
+              className="
 h-12
 rounded-xl
 border
@@ -1647,21 +1647,21 @@ transition
 hover:bg-slate-50
 "
 
->
+            >
 
-Cancel
+              Cancel
 
-</button>
+            </button>
 
-<button
+            <button
 
-type="button"
+              type="button"
 
-disabled={loading}
+              disabled={loading}
 
-onClick={handleDispatch}
+              onClick={handleDispatch}
 
-className="
+              className="
 flex
 h-12
 items-center
@@ -1670,6 +1670,8 @@ gap-2
 rounded-xl
 bg-green-600
 px-8
+max-[768px]:!px-4
+
 font-semibold
 text-white
 transition
@@ -1680,49 +1682,51 @@ disabled:cursor-not-allowed
 disabled:opacity-60
 "
 
->
+            >
 
-<CheckCircle2
-className="h-5 w-5"
-/>
+              <CheckCircle2
+                className="h-5 w-5"
+              />
 
-{
+              {
 
-loading
+                loading
 
-?
+                  ?
 
-"Dispatching..."
+                  "Dispatching..."
 
-:
+                  :
 
-"Approve & Dispatch"
+                  "Approve & Dispatch"
 
-}
+              }
 
-</button>
+            </button>
 
-</div>
+          </div>
 
-</div>
+        </div>
 
-</div>
+      </div>
 
-</div>
-);
+    </div>
+  );
 }
 /* =====================================================
    UPLOAD CARD COMPONENT
 ===================================================== */
 
+
 interface UploadCardProps {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   uploaded?: boolean;
   fileName?: string;
   multiple?: boolean;
   camera?: boolean;
   video?: boolean;
+  uploadOnly?: boolean;
   onChange: (
     e: React.ChangeEvent<HTMLInputElement>
   ) => void;
@@ -1736,130 +1740,258 @@ function UploadCard({
   multiple = false,
   camera = false,
   video = false,
+  uploadOnly = false,
   onChange,
 }: UploadCardProps) {
   return (
     <div
       className={`
-        rounded-[24px]
-        border-2
-        border-dashed
+        overflow-hidden
+        rounded-2xl
+        border
         bg-white
-        p-5
+        shadow-sm
         transition-all
+        duration-300
 
-        ${
-          uploaded
-            ? "border-green-500 bg-green-50"
-            : "border-slate-300 hover:border-indigo-400"
+        ${uploaded
+          ? "border-emerald-200 ring-1 ring-emerald-100"
+          : "border-slate-200 hover:border-green-400 hover:shadow-md"
         }
       `}
     >
-      {uploaded ? (
-        <div className="flex flex-col items-center justify-center py-6">
+      {/* Header */}
 
-          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle2 className="h-8 w-8 text-green-600" />
-          </div>
+      <div
+        className={`
+          flex
+          items-center
+          gap-3
+          border-b
+          px-4
+          py-3
 
-          <p className="text-center text-base font-semibold text-green-700 break-all">
-            {fileName}
-          </p>
+          ${uploaded
+            ? "border-emerald-100 bg-emerald-50"
+            : "border-slate-100 bg-slate-50"
+          }
+        `}
+      >
+        <div
+          className={`
+            flex
+            h-10
+            w-10
+            shrink-0
+            items-center
+            justify-center
+            rounded-xl
 
-          <p className="mt-2 text-sm text-slate-500">
-            Upload completed
-          </p>
-
+            ${uploaded
+              ? "bg-emerald-100"
+              : "bg-green-100"
+            }
+          `}
+        >
+          {uploaded ? (
+            <CheckCircle2
+              size={20}
+              className="text-emerald-600"
+            />
+          ) : (
+            <Upload
+              size={18}
+              className="text-green-700"
+            />
+          )}
         </div>
-      ) : (
-        <>
-          <div className="mb-6 text-center">
 
-            <h4 className="text-lg font-semibold text-slate-900">
-              {title}
-            </h4>
+        <div className="min-w-0 flex-1">
+          <h4 className="truncate text-sm font-semibold text-slate-900">
+            {title}
+          </h4>
 
-            <p className="mt-1 text-sm text-slate-500">
-              {subtitle}
+          <p
+            className={`truncate text-xs ${uploaded
+              ? "text-emerald-700"
+              : "text-slate-500"
+              }`}
+          >
+            {uploaded
+              ? fileName
+              : subtitle}
+          </p>
+        </div>
+      </div>
+
+      {/* Body */}
+
+      <div className="p-4">
+
+        {!uploaded ? (
+          <>
+
+            <p className="mb-3 text-xs text-slate-400">
+              {video
+                ? "Supported: MP4, MOV"
+                : "Supported: JPG, PNG, PDF"}
             </p>
 
-          </div>
+            <div
+              className={`
+                grid
+                gap-3
 
-          <div
-            className={`
-              grid
-              gap-3
-              ${camera ? "grid-cols-2" : "grid-cols-1"}
-            `}
-          >
+                ${camera && !uploadOnly
+                  ? "grid-cols-1 sm:grid-cols-2"
+                  : "grid-cols-1"
+                }
+              `}
+            >
 
-            {camera && (
+              {camera && !uploadOnly && (
+                <label
+                  className="
+                    flex
+                    h-11
+                    cursor-pointer
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    bg-green-600
+                    text-sm
+                    font-medium
+                    text-white
+                    transition-all
+
+                    hover:bg-green-700
+                    hover:shadow
+                    active:scale-[0.98]
+                  "
+                >
+                  <Camera size={17} />
+
+                  Camera
+
+                  <input
+                    hidden
+                    type="file"
+                    capture="environment"
+                    accept={
+                      video
+                        ? "video/*"
+                        : "image/*"
+                    }
+                    multiple={multiple}
+                    onChange={onChange}
+                  />
+                </label>
+              )}
+
               <label
                 className="
                   flex
-                  h-12
+                  h-11
                   cursor-pointer
                   items-center
                   justify-center
                   gap-2
                   rounded-xl
-                  bg-indigo-600
+                  border
+                  border-slate-300
+                  bg-white
                   text-sm
                   font-medium
-                  text-white
-                  transition
-                  hover:bg-indigo-700
+                  text-slate-700
+                  transition-all
+
+                  hover:border-green-500
+                  hover:bg-green-50
+                  hover:shadow
+                  active:scale-[0.98]
                 "
               >
-                <Camera size={17} />
+                <Upload size={17} />
 
-                Camera
+                {uploadOnly
+                  ? "Choose File"
+                  : "Upload"}
 
                 <input
                   hidden
                   type="file"
-                  capture="environment"
-                  accept={video ? "video/*" : "image/*"}
+                  accept={
+                    video
+                      ? "video/*"
+                      : "image/*,.pdf"
+                  }
                   multiple={multiple}
                   onChange={onChange}
                 />
               </label>
-            )}
+
+            </div>
+
+          </>
+        ) : (
+          <div className="space-y-3">
+
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3">
+
+              <div className="flex items-center gap-2">
+
+                <CheckCircle2
+                  size={18}
+                  className="text-emerald-600"
+                />
+
+                <span className="truncate text-sm font-medium text-emerald-700">
+                  {fileName}
+                </span>
+
+              </div>
+
+            </div>
 
             <label
               className="
                 flex
-                h-12
+                h-10
                 cursor-pointer
                 items-center
                 justify-center
-                gap-2
                 rounded-xl
                 border
                 border-slate-300
                 bg-white
                 text-sm
                 font-medium
-                transition
-                hover:bg-slate-50
+                text-slate-700
+                transition-all
+
+                hover:border-green-500
+                hover:bg-green-50
               "
             >
-              <Upload size={17} />
-
-              Upload
+              Replace File
 
               <input
                 hidden
                 type="file"
-                accept={video ? "video/*" : "image/*,.pdf"}
+                accept={
+                  video
+                    ? "video/*"
+                    : "image/*,.pdf"
+                }
                 multiple={multiple}
                 onChange={onChange}
               />
             </label>
 
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -1895,10 +2027,9 @@ function Input({
           outline-none
           transition-all
 
-          ${
-            error
-              ? "border-red-500 bg-red-50 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-              : "border-slate-300 focus:border-green-500 focus:ring-4 focus:ring-green-100"
+          ${error
+            ? "border-red-500 bg-red-50 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+            : "border-slate-300 focus:border-green-500 focus:ring-4 focus:ring-green-100"
           }
 
           placeholder:text-slate-400

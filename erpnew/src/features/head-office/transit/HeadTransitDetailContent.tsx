@@ -56,7 +56,7 @@ type ApiProduct = {
 };
 
 type MediaPreview = {
-  type: "image" | "video";
+  type: "image" | "video" | "pdf";
   src: string;
   title: string;
 };
@@ -160,8 +160,8 @@ export default function HeadTransitDetailContent({
   const products: ApiProduct[] = Array.isArray(item.products)
     ? item.products
     : Array.isArray(item.transfer_items)
-    ? item.transfer_items
-    : [];
+      ? item.transfer_items
+      : [];
 
   const dispatchImages = toMediaArray(item.media?.dispatch_image_url);
   const receiveImages = toMediaArray(item.media?.receive_image_url);
@@ -340,7 +340,7 @@ export default function HeadTransitDetailContent({
                 <MediaSlot
                   title="E-Way Bill"
                   src={eWayBillUrl}
-                  type="image"
+                  type="pdf"
                   onOpen={setMediaPreview}
                 />
 
@@ -493,7 +493,7 @@ function MediaSlot({
 }: {
   title: string;
   src?: string | null;
-  type: "image" | "video";
+  type: "image" | "video" | "pdf";
   onOpen: (media: MediaPreview) => void;
 }) {
   if (!src) {
@@ -519,19 +519,20 @@ function MediaSlot({
       className="group relative h-[156px] min-w-0 overflow-hidden rounded-[20px] bg-erp-card-soft text-left shadow-erp-card outline-none transition hover:-translate-y-[1px] focus:ring-2 focus:ring-erp-primary/20"
     >
       {type === "image" ? (
-        <img src={src} alt={title} className="h-full w-full object-cover" />
-      ) : (
-        <video
+        <img
           src={src}
+          alt={title}
           className="h-full w-full object-cover"
-          muted
-          playsInline
-          preload="metadata"
         />
-      )}
-
-      {type === "video" ? (
+      ) : type === "video" ? (
         <>
+          <video
+            src={src}
+            className="h-full w-full object-cover"
+            muted
+            preload="metadata"
+          />
+
           <div className="absolute inset-0 bg-black/25" />
 
           <div className="absolute inset-0 flex items-center justify-center">
@@ -540,7 +541,14 @@ function MediaSlot({
             </div>
           </div>
         </>
-      ) : null}
+      ) : (
+        <div className="flex h-full items-center justify-center bg-white">
+          <div className="text-center">
+            <ImageIcon className="mx-auto h-10 w-10 text-red-500" />
+            <p className="mt-2 font-medium">View PDF</p>
+          </div>
+        </div>
+      )}
     </button>
   );
 }
@@ -572,20 +580,28 @@ function MediaPreviewModal({
         </div>
 
         <div className="flex min-h-[420px] flex-1 items-center justify-center bg-[#0B1020] p-4">
+
           {media.type === "image" ? (
             <img
               src={media.src}
               alt={media.title}
-              className="max-h-[78vh] max-w-full rounded-erp-md object-contain"
+              className="max-h-[78vh] max-w-full object-contain"
             />
-          ) : (
+          ) : media.type === "video" ? (
             <video
               src={media.src}
-              className="max-h-[78vh] max-w-full rounded-erp-md"
               controls
               autoPlay
+              className="max-h-[78vh] max-w-full"
+            />
+          ) : (
+            <iframe
+              src={media.src}
+              className="h-[80vh] w-full rounded-lg bg-white"
+              title={media.title}
             />
           )}
+
         </div>
       </div>
     </div>

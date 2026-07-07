@@ -235,7 +235,7 @@ export default function DirectTransferModal({
             <div className="w-full max-w-[512px] max-h-[90vh] overflow-y-auto rounded-[32px] bg-white">
 
                 {/* HEADER */}
-                <div className="flex items-center justify-between border-b px-5 py-3">
+                <div className="flex items-center justify-between  px-5 py-3">
                     <h2 className="text-[18px] font-semibold">
                         Direct Transfer
                     </h2>
@@ -248,24 +248,24 @@ export default function DirectTransferModal({
                 <div className="p-4">
 
                     {/* SEARCH */}
-                    <div className="mb-5 flex gap-3">
+                    <div className="mb-5 flex gap-3 max-[768px]:flex-col justify-between">
                         <input
                             value={searchCode}
                             onChange={(e) => setSearchCode(e.target.value)}
                             placeholder="Enter SKU / Barcode"
-                            className="flex-1 h-10 rounded-xl border px-3"
+                            className="w-full h-9 bg-[#F3F3F5]  rounded-xl px-3 max-w-[363px]"
                         />
 
                         <button
                             onClick={handleSearchItem}
-                            className="px-5 bg-black text-white rounded-xl"
+                            className="px-5 h-9 bg-black text-white rounded-xl"
                         >
                             {loadingItem ? "..." : "Search"}
                         </button>
                     </div>
 
                     {/* ITEM FORM */}
-                    <div className="rounded-[24px] bg-[#F9FAFB] p-4">
+                    <div className="grid grid-cols-3 max-[768px]:grid-cols-2 gap-2.5" >
                         <Field
                             label="SKU Code / Item Code"
                             value={form.sku_code ?? ""}
@@ -301,7 +301,7 @@ export default function DirectTransferModal({
                             }
                             readOnly={itemFound}
                         />
-                        <div className="mb-3">
+                        <div className="mb-3 flex flex-col gap-0.5">
                             <label className="text-sm">Metal Type *</label>
 
                             <select
@@ -313,7 +313,7 @@ export default function DirectTransferModal({
                                         metal_type: e.target.value,
                                     }))
                                 }
-                                className="w-full h-10 border rounded-xl px-3"
+                                className="w-full h-9 bg-[#F3F3F5]  rounded-xl px-3 max-w-[163px]"
                             >
                                 <option value="">Select Metal</option>
                                 <option value="Gold">Gold</option>
@@ -358,22 +358,20 @@ export default function DirectTransferModal({
                                 }))
                             }
                         />
-                    </div>
-
-                    {/* DISTRICT */}
-                    <div className="mt-5">
-                        <select
-                            value={selectedDistrict}
-                            onChange={(e) => setSelectedDistrict(e.target.value)}
-                            className="w-full h-10 rounded-xl border px-3"
-                        >
-                            <option value="">Select District</option>
-                            {districts.map((d) => (
-                                <option key={d.id} value={d.id}>
-                                    {d.store_name}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="mt-5">
+                            <select
+                                value={selectedDistrict}
+                                onChange={(e) => setSelectedDistrict(e.target.value)}
+                                className="w-full h-9 bg-[#F3F3F5]  rounded-xl px-3 max-w-[163px] !border-0"
+                            >
+                                <option value="" >Select District</option>
+                                {districts.map((d) => (
+                                    <option key={d.id} value={d.id} className="shadow-erp-card !border-0 outline-0">
+                                        {d.store_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
                     {/* ITEMS */}
@@ -392,7 +390,7 @@ export default function DirectTransferModal({
                     <div className="mt-6 flex gap-3">
                         <button
                             onClick={handleAddItem}
-                            className="flex-1 bg-black text-white h-10 rounded-xl"
+                            className="flex items-center justify-center w-[168px] gap-1.5 bg-black text-white h-9 rounded-xl"
                         >
                             <Plus size={16} /> Add Item
                         </button>
@@ -419,11 +417,11 @@ function Field({
     label: string;
 }) {
     return (
-        <div className="mb-3">
+        <div className="mb-3 flex flex-col gap-0.5 ">
             <label className="text-sm">{label}</label>
             <input
                 {...props}
-                className="w-full h-10 border rounded-xl px-3"
+                className="w-full h-9 bg-[#F3F3F5]  rounded-xl px-3 max-w-[163px]"
             />
         </div>
     );

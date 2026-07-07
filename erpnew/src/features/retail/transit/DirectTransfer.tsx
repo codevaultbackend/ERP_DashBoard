@@ -169,7 +169,7 @@ export default function DirectTransferModal({
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-3 sm:p-6">
 
             {/* MODAL */}
-            <div className="w-full max-w-3xl max-h-[90vh] overflow-hidden rounded-[24px] bg-white shadow-xl flex flex-col">
+            <div className="w-full max-w-[512px] max-h-[90vh] overflow-hidden rounded-[24px] bg-white shadow-xl flex flex-col">
 
                 {/* HEADER */}
                 <div className="flex items-center justify-between  px-4 max-[768px]:px-6 py-3">
@@ -192,7 +192,7 @@ export default function DirectTransferModal({
                         <div className="grid grid-cols-3 max-[768px]:grid-cols-2 gap-4">
 
                             {/* SKU */}
-                            <div className="sm:col-span-2 flex items-end gap-2">
+                            <div className="max-[768px]:col-span-2  col-span-2 flex items-end gap-2">
 
                                 <div className="flex-1">
                                     <label className="text-sm">SKU Code</label>
@@ -221,6 +221,7 @@ export default function DirectTransferModal({
 
                             <Field
                                 label="Item Name"
+                                disabled
                                 value={form.item_name}
                                 onChange={(e) =>
                                     setForm((p) => ({
@@ -232,6 +233,7 @@ export default function DirectTransferModal({
 
                             <Field
                                 label="Qty"
+                                disabled
                                 type="number"
                                 value={form.qty || ""}
                                 onChange={(e) =>
@@ -245,6 +247,7 @@ export default function DirectTransferModal({
                             <Field
                                 label="Weight"
                                 type="number"
+                                disabled
                                 value={form.weight || ""}
                                 onChange={(e) =>
                                     setForm((p) => ({
@@ -257,6 +260,7 @@ export default function DirectTransferModal({
                             <Field
                                 label="Rate"
                                 type="number"
+                                disabled
                                 value={form.rate || ""}
                                 onChange={(e) =>
                                     setForm((p) => ({
@@ -334,7 +338,7 @@ export default function DirectTransferModal({
                 </div>
 
                 {/* FOOTER (STICKY) */}
-                <div className=" p-4 flex gap-3 border-t">
+                <div className=" p-4 flex gap-3">
                     <button
                         onClick={handleAddItem}
                         className="flex-1 bg-black text-white rounded-xl h-11"
